@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
@@ -18,6 +19,12 @@ import (
 // answers with its own name, so a test can see where a request went.
 func sitesLab(t *testing.T, sitesJSON string, apps ...string) (gw *httptest.Server, logs *strings.Builder) {
 	t.Helper()
+	return sitesLabIn(t, "", sitesJSON, apps...)
+}
+
+// sitesLabIn is sitesLab with a data folder (for what must survive a restart).
+func sitesLabIn(t *testing.T, dataDir, sitesJSON string, apps ...string) (gw *httptest.Server, logs *strings.Builder) {
+	t.Helper()
 	for _, name := range apps {
 		app := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, name) }))
 		t.Cleanup(app.Close)
@@ -30,7 +37,7 @@ func sitesLab(t *testing.T, sitesJSON string, apps ...string) (gw *httptest.Serv
 	u, _ := url.Parse("http://127.0.0.1:1")
 	rules, _ := waf.LoadRules("")
 	cfg := &config.Config{UpstreamURL: u, Mode: "protect", WAFMode: "block", WAFThreshold: 5, MaxBodyBytes: 1 << 20,
-		HoneypotBan: time.Minute, Upstreams: "/=" + u.String(), Sites: sites, Dashboard: true}
+		HoneypotBan: time.Minute, Upstreams: "/=" + u.String(), Sites: sites, Dashboard: true, DataDir: dataDir}
 	logs = &strings.Builder{}
 	h, err := NewHandler(cfg, waf.NewEngine(rules, 5), testAuth(t), nil, slog.New(slog.NewJSONHandler(&lockedWriter{w: logs}, nil)))
 	if err != nil {
@@ -172,5 +179,48 @@ sites:
 		if _, err := config.ParseSites(bad); err == nil || !strings.Contains(err.Error(), why) {
 			t.Errorf("%s: want an error about %q, got %v", bad, why, err)
 		}
+	}
+}
+
+func TestSiteModeFromDashboard(t *testing.T) {
+	dir := t.TempDir()
+	sitesJSON := `[{"name":"new","hosts":["*"],"upstreams":["{new}"],"mode":"monitor"}]`
+	gw, _ := sitesLabIn(t, dir, sitesJSON, "new")
+	if code, _ := hostGet(t, gw, "new.test", attack); code != 200 {
+		t.Fatalf("monitor mode: attack got %d, want it forwarded", code)
+	}
+	l := &lab{t: t, gw: gw, logBuf: &strings.Builder{}}
+	admin := l.login("admin", "Admin#2026")
+	if code, out := l.do("POST", "/__sentinel/api/sites/new/mode", admin, `{"mode":"protect"}`); code != 200 {
+		t.Fatalf("switch to protect: %d %v", code, out)
+	}
+	if code, _ := hostGet(t, gw, "new.test", attack); code != 403 {
+		t.Errorf("after switching to protect: attack got %d, want 403", code)
+	}
+	if code, _ := l.do("POST", "/__sentinel/api/sites/new/mode", admin, `{"mode":"block"}`); code != 400 {
+		t.Errorf("a bad mode must be refused: %d", code)
+	}
+	if code, _ := l.do("POST", "/__sentinel/api/sites/nope/mode", admin, `{"mode":"protect"}`); code != 400 {
+		t.Errorf("an unknown site must be refused: %d", code)
+	}
+	if code, _ := l.do("POST", "/__sentinel/api/sites/new/mode", "", `{"mode":"monitor"}`); code != 401 {
+		t.Errorf("without a login: %d, want 401", code)
+	}
+	code, sites := 0, []map[string]any{}
+	req, _ := http.NewRequest("GET", gw.URL+"/__sentinel/api/sites", nil)
+	req.Header.Set("Authorization", "Bearer "+admin)
+	if resp, err := http.DefaultClient.Do(req); err == nil {
+		code = resp.StatusCode
+		json.NewDecoder(resp.Body).Decode(&sites)
+		resp.Body.Close()
+	}
+	if code != 200 || len(sites) != 1 || sites[0]["mode"] != "protect" || sites[0]["config_mode"] != "monitor" {
+		t.Errorf("sites API: %d %v", code, sites)
+	}
+
+	// The choice survives a restart (same data folder).
+	gw2, _ := sitesLabIn(t, dir, sitesJSON, "new")
+	if code, _ := hostGet(t, gw2, "new.test", attack); code != 403 {
+		t.Errorf("after a restart: attack got %d, want 403 (the dashboard's choice must be kept)", code)
 	}
 }

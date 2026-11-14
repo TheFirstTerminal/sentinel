@@ -68,6 +68,41 @@ td.n { text-align: right; font-variant-numeric: tabular-nums; }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .row input { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); width: 150px; }
 .row input[type=checkbox] { width: auto; padding: 0; margin: 0 6px 0 0; vertical-align: -2px; }
+select { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); }
+.sites { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.site { border: 1px solid var(--line); border-radius: 9px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.site .top { display: flex; align-items: center; gap: 8px; }
+.site .name { font-weight: 650; }
+.site .hosts { color: var(--muted); font-size: 12.5px; overflow-wrap: anywhere; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; padding: 4px 10px; font-size: 12.5px; background: transparent; }
+.seg button.on.protect { background: var(--ok-bg); color: var(--ok); font-weight: 650; }
+.seg button.on.monitor { background: var(--warn-bg); color: var(--warn); font-weight: 650; }
+.seg button + button { border-left: 1px solid var(--line); }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+.dot.up { background: var(--ok); } .dot.down { background: var(--bad); }
+.servers { font-size: 12.5px; display: grid; gap: 2px; }
+.note { font-size: 12px; color: var(--muted); }
+.hist-form { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); align-items: end; margin-bottom: 10px; }
+.hist-form label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.hist-form input { width: 100%; font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); }
+.hist-form input[type=checkbox] { width: auto; }
+.empty { color: var(--muted); padding: 10px 6px; }
+body:not(.multi) .site-col { display: none; }
+@media (max-width: 640px) {
+  header { padding: 10px 14px; gap: 8px; flex-wrap: wrap; }
+  header h1 { font-size: 16px; }
+  #who, #version { display: none; }
+  #site-pick { order: 10; width: 100%; }
+  #site-pick select { width: calc(100% - 40px); }
+  main { padding: 12px 12px 32px; }
+  .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .kpi .v { font-size: 22px; }
+  .kpi h2 { font-size: 11px; letter-spacing: .3px; }
+  .card { padding: 12px; }
+  .sites { grid-template-columns: 1fr; }
+}
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   /* Console: the live log, like a terminal */
   .console-card { background:#0B1220; border-color:#1E2A3B; color:#D6E2EE; }
@@ -93,6 +128,7 @@ td.n { text-align: right; font-variant-numeric: tabular-nums; }
   <h1>Sentinel</h1>
   <span class="pill" id="version">dashboard</span>
   <span class="sp"></span>
+  <label class="hidden" id="site-pick"><span class="muted" style="font-size:12px;margin-right:6px">Site</span><select id="site-sel" aria-label="Show one site"><option value="*">All sites</option></select></label>
   <span class="pill off hidden" id="live">● live</span>
   <span class="pill hidden" id="who"></span>
   <button class="hidden" id="logout">Log out</button>
@@ -127,6 +163,11 @@ td.n { text-align: right; font-variant-numeric: tabular-nums; }
     <div class="card kpi"><h2>Banned IPs</h2><div class="v" id="k-bans">0</div><div class="s">right now</div></div>
   </div>
 
+  <div class="card" style="margin-top:14px" id="sites-card">
+    <h2>Sites <span class="muted" style="font-weight:400;font-size:13px;text-transform:none;letter-spacing:0">monitor logs only · protect blocks</span></h2>
+    <div class="sites" id="sites"></div>
+  </div>
+
   <div class="grid two" style="margin-top:14px">
     <div class="card">
       <h2>Requests per minute</h2>
@@ -152,9 +193,20 @@ td.n { text-align: right; font-variant-numeric: tabular-nums; }
   <div class="card" style="margin-top:14px">
     <div class="row" style="justify-content:space-between"><h2 style="margin:0">Live decisions</h2>
       <label class="muted"><input type="checkbox" id="only-stopped"> only stopped</label></div>
-    <div class="feed" style="margin-top:8px"><table><thead><tr><th>Time</th><th>Decision</th><th>Method</th><th>Path</th><th>Who</th><th>Why</th><th></th></tr></thead><tbody id="feed"></tbody></table></div>
+    <div class="feed" style="margin-top:8px"><table><thead><tr><th>Time</th><th class="site-col">Site</th><th>Decision</th><th>Method</th><th>Path</th><th>Who</th><th>Why</th><th></th></tr></thead><tbody id="feed"></tbody></table></div>
   </div>
 
+
+  <div class="card" style="margin-top:14px" id="hist-card">
+    <h2>History <span class="muted" style="font-weight:400;font-size:13px;text-transform:none;letter-spacing:0">every stopped or flagged request, kept on disk</span></h2>
+    <form class="hist-form" id="hist-form">
+      <div><label for="h-from">From</label><input type="datetime-local" id="h-from"></div>
+      <div><label for="h-to">To <span class="muted">(empty = now)</span></label><input type="datetime-local" id="h-to"></div>
+      <div><label for="h-q">Contains</label><input type="search" id="h-q" placeholder="IP, path, rule…"></div>
+      <div class="row"><button class="primary" type="submit">Search</button><span class="muted" id="h-count" style="font-size:12px"></span></div>
+    </form>
+    <div class="feed"><table><thead><tr><th>Time</th><th class="site-col">Site</th><th>Decision</th><th>Method</th><th>Path</th><th>Who</th><th>Why</th></tr></thead><tbody id="hist"></tbody></table></div>
+  </div>
 
   <div class="card console-card" style="margin-top:14px" id="console-card">
     <div class="row" style="justify-content:space-between"><h2 style="margin:0">Console <span class="muted" style="font-weight:400;font-size:13px;color:#6B7F95">every decision, live</span></h2>
@@ -199,6 +251,11 @@ const $ = (id) => document.getElementById(id);
 let token = null;
 try { token = sessionStorage.getItem("sentinel_token"); } catch (e) {}
 let mfaToken = null, streamAbort = null;
+let SITE = "*", SITES = [];
+try { SITE = localStorage.getItem("sentinel_site") || "*"; } catch (e) {}
+const siteOf = (e) => e.site || "";
+const inSite = (e) => SITE === "*" || siteOf(e) === SITE;
+const siteName = (n) => n === "" ? "all hosts" : n;
 
 const LABELS = {
   allowed: ["ALLOWED", "ok"], login: ["LOGIN", "ok"], mfa_ok: ["2FA OK", "ok"], mfa_required: ["2FA WAIT", "warn"],
@@ -261,7 +318,18 @@ $("f3").onsubmit = async (e) => {
   const out = await res.json().catch(() => ({}));
   if (!res.ok) { $("err").textContent = out.error || ("HTTP " + res.status); return; }
   try { await fetch("/__sentinel/auth/logout", { method: "POST", headers: { Authorization: "Bearer " + enrolToken } }); } catch (x) {}
-  enrolToken = null; $("f3").classList.add("hidden"); $("f1").classList.remove("hidden"); $("p").value = "";
+  enrolToken = null; $("f3").classList.add("hidden");
+  // Log in again with the password just typed, so only a code is needed.
+  try {
+    const again = await post("login", { username: $("u").value, password: $("p").value });
+    $("p").value = "";
+    if (again.mfa_required) {
+      mfaToken = again.mfa_token; $("f2").classList.remove("hidden"); $("c").value = ""; $("c").focus();
+      $("err").innerHTML = '<span style="color:var(--ok)">2FA is on. Enter the next code your app shows (each code works once).</span>';
+      return;
+    }
+  } catch (x) {}
+  $("f1").classList.remove("hidden"); $("p").value = "";
   $("err").innerHTML = '<span style="color:var(--ok)">2FA is on. Log in again with your password and a code.</span>';
 };
 $("logout").onclick = async () => {
@@ -282,14 +350,15 @@ function start() {
   $("login").classList.add("hidden"); $("app").classList.remove("hidden");
   ["live", "who", "logout"].forEach(id => $(id).classList.remove("hidden"));
   try { const c = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))); $("who").textContent = c.sub + " · admin · 2FA"; } catch (e) {}
-  refresh(); loadEvents(); stream(); loadInfo(); loadExclusions();
+  refresh(); loadSites(); loadEvents(); stream(); loadInfo(); loadExclusions(); defaultHistoryRange();
   if (location.hash === "#console") setTimeout(() => { conFull(true); }, 300);
 }
 
 async function refresh() {
   if (!token) return;
   try {
-    const [s, bans] = await Promise.all([api("stats?minutes=60"), api("bans")]);
+    const site = SITE === "*" ? "" : "&site=" + encodeURIComponent(SITE);
+    const [s, bans] = await Promise.all([api("stats?minutes=60" + site), api("bans")]);
     $("k-total").textContent = s.total; $("k-stopped").textContent = s.stopped;
     $("k-rate").textContent = (s.total ? Math.round(100 * s.stopped / s.total) : 0) + "% of requests";
     $("k-bans").textContent = (bans || []).length;
@@ -323,6 +392,13 @@ document.addEventListener("click", async (e) => {
     if (b.dataset.unban) { await api("bans/" + encodeURIComponent(b.dataset.unban), { method: "DELETE" }); refresh(); }
     if (b.dataset.allow && EVENTS.has(b.dataset.allow)) openAllow(EVENTS.get(b.dataset.allow));
     if (b.dataset.unexcl) { await api("exclusions/" + encodeURIComponent(b.dataset.unexcl), { method: "DELETE" }); loadExclusions(); }
+    if (b.dataset.mode) {
+      const name = b.dataset.site;
+      if (b.dataset.mode === "protect" || confirm("Switch " + siteName(name) + " to monitor? Attacks will be logged but no longer blocked.")) {
+        await api("sites/" + encodeURIComponent(name === "" ? "_" : name) + "/mode", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: b.dataset.mode }) });
+        loadSites(); loadInfo();
+      }
+    }
   } catch (x) { alertBox(x.message); }
 });
 $("ban-btn").onclick = async () => {
@@ -395,14 +471,17 @@ function row(e) {
   const [label, cls] = LABELS[e.outcome] || [e.outcome.toUpperCase(), "warn"];
   const tr = document.createElement("tr");
   tr.dataset.stopped = cls === "bad" ? "1" : "0";
+  tr.dataset.site = siteOf(e);
   const who = e.user ? esc(e.user) + (e.role ? " <span class='muted'>(" + esc(e.role) + ")</span>" : "") : "<span class='mono'>" + esc(e.client_ip) + "</span>";
   const why = [e.rule, e.reason].filter(Boolean).map(esc).join(" · ") + (e.country && e.country !== "LAN" ? " <span class='pill'>" + esc(e.country) + "</span>" : "");
-  tr.innerHTML = "<td class='mono'>" + new Date(e.time).toLocaleTimeString() + "</td><td><span class='tag " + cls + "'>" + label + "</span></td><td class='mono'>" + esc(e.method) +
+  tr.innerHTML = "<td class='mono'>" + new Date(e.time).toLocaleTimeString() + "</td><td class='site-col'>" + esc(siteOf(e) || "–") + "</td><td><span class='tag " + cls + "'>" + label + "</span></td><td class='mono'>" + esc(e.method) +
     "</td><td class='mono' title='" + esc(e.path) + "'>" + esc(e.path.length > 48 ? e.path.slice(0, 45) + "…" : e.path) + "</td><td>" + who + "</td><td class='why'>" + why + "</td><td>" + allowBtn(e) + "</td>";
-  if ($("only-stopped").checked && cls !== "bad") tr.classList.add("hidden");
+  if (!feedVisible(tr)) tr.classList.add("hidden");
   return tr;
 }
-$("only-stopped").onchange = () => { document.querySelectorAll("#feed tr").forEach(tr => tr.classList.toggle("hidden", $("only-stopped").checked && tr.dataset.stopped !== "1")); };
+function feedVisible(tr) { return !($("only-stopped").checked && tr.dataset.stopped !== "1") && (SITE === "*" || tr.dataset.site === SITE); }
+function refilter() { document.querySelectorAll("#feed tr").forEach(tr => tr.classList.toggle("hidden", !feedVisible(tr))); conRender(); }
+$("only-stopped").onchange = refilter;
 
 function noise(p) { return /\.(js|css|png|jpe?g|svg|ico|woff2?|ttf|map|gif)$/.test(p) || p.startsWith("/socket.io/") || p.startsWith("/assets/") || p.startsWith("/__sentinel/api/") || p.startsWith("/__sentinel/dashboard") || p === "/__sentinel/health"; }
 
@@ -426,13 +505,14 @@ function conLine(e) {
     esc(conPad(e.method, 7)) + esc(conPad(e.path, 34)) + " " + esc(conPad(status, 4)) + " " + esc(conPad(who, 16)) + " " +
     (why ? "<span class='" + (cls === "ok" ? "dim" : cls) + "'>" + esc(why) + "</span>" : "") + "</span>";
   if (e.detail) html += "<span class='d'>" + esc(e.detail) + "</span>";
-  const text = [time, label, e.method, e.path, status, who, why, e.detail || ""].join(" ");
+  const text = [time, label, siteOf(e), e.method, e.path, status, who, why, e.detail || ""].join(" ");
   return { e, html, text: text.toLowerCase() };
 }
 function conVisible(x) {
   const f = $("con-filter").value, q = $("con-search").value.trim().toLowerCase();
   if (f !== "noisy" && x.e.outcome === "allowed" && noise(x.e.path)) return false;
   if (f === "stopped" && !ALLOWABLE.has(x.e.outcome) && !STOPPED.has(x.e.outcome)) return false;
+  if (!inSite(x.e)) return false;
   return !q || x.text.includes(q);
 }
 const STOPPED = new Set(["blocked", "denied", "rate_limited", "banned", "honeypot", "geo_blocked", "ml_blocked", "prompt_injection",
@@ -502,6 +582,67 @@ async function loadEvents() {
     conRender();
   } catch (e) {}
 }
+
+// ---- Sites -------------------------------------------------------------
+async function loadSites() {
+  let list;
+  try { list = await api("sites"); } catch (e) { return; }
+  SITES = list || [];
+  const named = SITES.filter(s => s.name !== "");
+  document.body.classList.toggle("multi", named.length > 0);
+  $("site-pick").classList.toggle("hidden", named.length === 0);
+  const sel = $("site-sel"), want = SITE;
+  sel.innerHTML = "<option value='*'>All sites</option>" + named.map(s => "<option value='" + esc(s.name) + "'>" + esc(s.name) + "</option>").join("");
+  sel.value = named.some(s => s.name === want) ? want : "*";
+  if (sel.value !== SITE) { SITE = sel.value; refilter(); }
+  $("sites").innerHTML = SITES.map(siteCard).join("") || "<div class='empty'>No sites.</div>";
+}
+function siteCard(s) {
+  const up = (s.servers || []).filter(x => x.up).length, all = (s.servers || []).length;
+  const servers = (s.servers || []).map(x => "<div><span class='dot " + (x.up ? "up" : "down") + "' title='" + (x.up ? "up" : "down") + "'></span><span class='mono'>" + esc(x.url) + "</span>" +
+    (x.prefix !== "/" ? " <span class='muted'>for " + esc(x.prefix) + "</span>" : "") + "</div>").join("");
+  const btn = (m, label) => "<button type='button' class='" + m + (s.mode === m ? " on" : "") + "' data-site='" + esc(s.name) + "' data-mode='" + m + "'" +
+    (s.mode === m ? " aria-pressed='true' disabled" : " aria-pressed='false'") + ">" + label + "</button>";
+  const changed = s.mode !== s.config_mode ? "<div class='note'>Changed on the dashboard; the config file says " + esc(s.config_mode) + ".</div>" : "";
+  return "<div class='site'><div class='top'><span class='name'>" + esc(siteName(s.name)) + "</span><span class='sp' style='flex:1'></span>" +
+    "<span class='seg' role='group' aria-label='Mode of " + esc(siteName(s.name)) + "'>" + btn("monitor", "Monitor") + btn("protect", "Protect") + "</span></div>" +
+    "<div class='hosts'>" + (s.hosts || []).map(h => h === "*" ? "any host" : esc(h)).join(", ") + "</div>" +
+    "<div class='servers'>" + servers + "</div>" +
+    "<div class='note'>" + up + " of " + all + " server" + (all === 1 ? "" : "s") + " up · WAF " + esc(s.waf_mode) + " · ML " + esc(s.ml_mode) + "</div>" + changed + "</div>";
+}
+$("site-sel").onchange = () => {
+  SITE = $("site-sel").value; try { localStorage.setItem("sentinel_site", SITE); } catch (e) {}
+  refilter(); refresh();
+};
+setInterval(() => { if (token) loadSites(); }, 10000);
+
+// ---- History -------------------------------------------------------------
+function localInput(d) { const z = new Date(d.getTime() - d.getTimezoneOffset() * 60000); return z.toISOString().slice(0, 16); }
+function defaultHistoryRange() {
+  if (!$("h-from").value) $("h-from").value = localInput(new Date(Date.now() - 7 * 864e5)); // "To" empty = up to now
+}
+$("hist-form").onsubmit = async (ev) => {
+  ev.preventDefault();
+  const q = new URLSearchParams({ stopped: "1", limit: "500" });
+  if ($("h-from").value) q.set("from", new Date($("h-from").value).toISOString().replace(/\.\d+Z$/, "Z"));
+  if ($("h-to").value) q.set("to", new Date(new Date($("h-to").value).getTime() + 59999).toISOString().replace(/\.\d+Z$/, "Z")); // to the end of that minute
+  if ($("h-q").value.trim()) q.set("q", $("h-q").value.trim());
+  if (SITE !== "*") q.set("site", SITE);
+  $("h-count").textContent = "searching…";
+  try {
+    const list = await api("history?" + q);
+    $("hist").innerHTML = list.length ? list.map(e => {
+      const [label, cls] = LABELS[e.outcome] || [e.outcome.toUpperCase(), "warn"];
+      return "<tr><td class='mono'>" + new Date(e.time).toLocaleString() + "</td><td class='site-col'>" + esc(siteOf(e) || "–") + "</td><td><span class='tag " + cls + "'>" + label +
+        "</span></td><td class='mono'>" + esc(e.method) + "</td><td class='mono' title='" + esc(e.path) + "'>" + esc(e.path.length > 48 ? e.path.slice(0, 45) + "…" : e.path) +
+        "</td><td class='mono'>" + esc(e.user || e.client_ip) + "</td><td class='why'>" + [e.rule, e.reason].filter(Boolean).map(esc).join(" · ") + "</td></tr>";
+    }).join("") : "<tr><td colspan='7' class='empty'>Nothing in this range.</td></tr>";
+    $("h-count").textContent = list.length + (list.length === 500 ? "+ (newest 500; narrow the range)" : "") + " found";
+  } catch (x) {
+    $("h-count").textContent = "";
+    $("hist").innerHTML = "<tr><td colspan='7' class='empty'>" + esc(x.message) + "</td></tr>";
+  }
+};
 
 async function loadInfo() {
   try {

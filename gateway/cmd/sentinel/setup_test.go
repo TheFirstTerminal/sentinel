@@ -139,4 +139,17 @@ func TestDashboardOnItsOwnPort(t *testing.T) {
 	if c := code(admin.URL, "/products"); c != 302 {
 		t.Errorf("the app must not be served on the admin port: %d", c)
 	}
+
+	// An admin whose address got banned (a shared office or mobile network)
+	// can still open the dashboard on its own port to lift the ban.
+	code(public.URL, "/.env") // honeypot: this address is now banned
+	if c := code(public.URL, "/products"); c != 403 {
+		t.Errorf("banned address on the public port: %d, want 403", c)
+	}
+	if c := code(admin.URL, "/__sentinel/dashboard"); c != 200 {
+		t.Errorf("banned address on the dashboard port: %d, want 200", c)
+	}
+	if c := code(admin.URL, "/__sentinel/api/stats"); c != 401 {
+		t.Errorf("dashboard API on its port still needs a login: %d, want 401", c)
+	}
 }

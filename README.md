@@ -85,7 +85,9 @@ and the same request gets a `403`.
 (`FIRST RUN: ... /__sentinel/setup#...`). Open it, choose an admin
 password, then log in at http://localhost:8080/__sentinel/dashboard and scan
 the QR code with an authenticator app. You'll see every decision live in its
-**Console**, with an **Allow…** button for false alarms. To keep the
+**Console**, with an **Allow…** button for false alarms, each site's servers and
+mode (switch a site between monitor and protect with one click), and a
+searchable history that survives restarts. To keep the
 dashboard off the public port, give it its own: `-e DASHBOARD_ADDR=:9000
 -p 9000:9000`, then open http://localhost:9000. The account, the exclusions and the secret
 key are kept in the `sentinel-data` volume, so they survive restarts.

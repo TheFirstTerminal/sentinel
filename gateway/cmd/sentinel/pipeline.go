@@ -13,6 +13,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"sentinel/gateway/internal/alert"
@@ -56,18 +58,26 @@ type shared struct {
 	banFor     time.Duration
 	botKey     []byte
 	admin      http.Handler // Sentinel's own pages: login API, first-run setup, dashboard
+	adminPort  http.Handler // the dashboard port's own chain (no IP bans: see adminChain)
 }
 
 // site is one built site: its settings and its pipeline.
 type site struct {
 	name   string
 	hosts  []string
+	conf   config.Site // as configured (before dashboard changes)
+	mu     sync.Mutex  // rebuilds
 	mode   string
 	waf    string
 	ml     string
 	limits []string
 	router *proxy.Router
-	h      http.Handler
+	prof   *profile.Profile // app profile, kept across rebuilds
+	h      atomic.Value     // http.Handler: the current pipeline
+}
+
+func (s *site) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.h.Load().(http.Handler).ServeHTTP(w, r)
 }
 
 // NewHandler wires everything. Order matters: outermost runs first.
@@ -89,8 +99,10 @@ func NewHandler(cfg *config.Config, engine *waf.Engine, authSvc *auth.Service, r
 		return nil, err
 	}
 	hostRouter := newHostRouter(sites)
+	hostRouter.admin = sh.adminPort
 	if d, ok := sh.admin.(*adminPages); ok && d.dash != nil {
-		d.dash.Sites = func() []dashboard.SiteStatus { return siteStatus(sites) }
+		d.dash.Sites = func() []dashboard.SiteStatus { return siteStatus(sites, cfg.Mode) }
+		d.dash.SetMode = func(name, mode string) error { return sh.setSiteMode(sites, name, mode) }
 	}
 
 	trust := middleware.ProxyTrust{All: cfg.TrustProxyHeaders}
@@ -203,6 +215,9 @@ func newShared(cfg *config.Config, engine *waf.Engine, authSvc *auth.Service, re
 	if sh.admin, err = sh.adminPages(excl); err != nil {
 		return nil, err
 	}
+	if sh.adminPort, err = sh.adminChain(); err != nil {
+		return nil, err
+	}
 	return sh, nil
 }
 
@@ -228,9 +243,15 @@ func (sh *shared) buildSites() ([]*site, error) {
 	if len(list) == 0 {
 		list = []config.Site{{Hosts: []string{"*"}, Spec: cfg.Upstreams, HealthCheck: cfg.HealthCheck}}
 	}
+	overrides := loadModeOverrides(sh.modesFile())
 	var out []*site
 	for _, sc := range list {
-		s, err := sh.sitePipeline(sc)
+		s := &site{name: sc.Name, hosts: sc.Hosts, conf: sc}
+		if m, ok := overrides[sc.Name]; ok {
+			sc.Mode = m
+			sh.log.Info("site mode set on the dashboard", "site", siteLabel(sc.Name), "mode", m, "file", sh.modesFile())
+		}
+		err := sh.sitePipeline(sc, s)
 		if err != nil {
 			if sc.Name != "" {
 				return nil, fmt.Errorf("site %q: %w", sc.Name, err)
@@ -242,16 +263,21 @@ func (sh *shared) buildSites() ([]*site, error) {
 	return out, nil
 }
 
-// sitePipeline builds one site's checks with its own modes and limits.
-func (sh *shared) sitePipeline(sc config.Site) (*site, error) {
+// sitePipeline builds (or rebuilds) one site's checks with its own modes
+// and limits, and switches the site to them. A rebuild keeps the site's
+// servers, their health and its app profile.
+func (sh *shared) sitePipeline(sc config.Site, s *site) error {
 	cfg, log := sh.cfg, sh.log
-	s := &site{name: sc.Name, hosts: sc.Hosts, mode: pick(sc.Mode, cfg.Mode), waf: pick(sc.WAFMode, cfg.WAFMode), ml: pick(sc.MLMode, cfg.MLMode)}
+	mode, wafM, mlM := pick(sc.Mode, cfg.Mode), pick(sc.WAFMode, cfg.WAFMode), pick(sc.MLMode, cfg.MLMode)
 
-	routes, err := proxy.ParseRoutes(sc.Spec)
-	if err != nil {
-		return nil, err
+	if s.router == nil {
+		routes, err := proxy.ParseRoutes(sc.Spec)
+		if err != nil {
+			return err
+		}
+		s.router = proxy.NewRouter(routes, proxy.Options{HealthPath: pick(sc.HealthCheck, cfg.HealthCheck)}, log)
 	}
-	s.router = proxy.NewRouter(routes, proxy.Options{HealthPath: pick(sc.HealthCheck, cfg.HealthCheck)}, log)
+	var limits []string
 
 	var limiter *ratelimit.Limiter
 	limitSpec := pick(sc.RateLimitSpec(), cfg.RateLimits)
@@ -261,13 +287,13 @@ func (sh *shared) sitePipeline(sc config.Site) (*site, error) {
 		}
 		rules, err := ratelimit.Parse(limitSpec)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		limiter = ratelimit.New(rules, sh.store).ForSite(sc.Name)
-		s.limits = limiter.Describe()
+		limits = limiter.Describe()
 	}
 
-	monitor := s.mode == "monitor"
+	monitor := mode == "monitor"
 	respMode := cfg.ResponseCheck
 	if monitor && respMode == "block" {
 		respMode = "detect"
@@ -278,7 +304,7 @@ func (sh *shared) sitePipeline(sc config.Site) (*site, error) {
 	// it logs what it would refuse, and the request goes on anyway. The WAF,
 	// ML and prompt guard have their own log-only mode, which keeps their
 	// logs accurate ("detected", not "blocked").
-	wafMode, mlMode, pgMode := s.waf, s.ml, cfg.PromptGuardMode
+	wafMode, mlMode, pgMode := wafM, mlM, cfg.PromptGuardMode
 	if monitor {
 		wafMode, pgMode = "detect", "detect"
 		if mlMode == "block" {
@@ -301,32 +327,35 @@ func (sh *shared) sitePipeline(sc config.Site) (*site, error) {
 		upstream.ServeHTTP(w, r)
 	})
 	if cfg.AppProfile != "off" {
-		mode := cfg.AppProfile
-		if monitor && mode == "block" {
-			mode = "detect"
+		pmode := cfg.AppProfile
+		if monitor && pmode == "block" {
+			pmode = "detect"
 		}
-		name := "app-profile.json"
-		if sc.Name != "" {
-			name = "app-profile-" + sc.Name + ".json"
-		}
-		file := filepath.Join(cfg.DataDir, name)
-		prof, err := profile.Load(file)
-		if err != nil {
-			return nil, err
-		}
-		n, pages, fields := prof.Stats()
-		log.Info("app profile", "site", sc.Name, "mode", mode, "learned_from", n, "pages", pages, "fields", fields, "file", file)
-		if mode == "learn" {
-			go func() {
-				for range time.Tick(30 * time.Second) {
-					if err := prof.Save(file); err != nil {
-						log.Warn("app profile not saved", "error", err.Error())
+		if s.prof == nil {
+			name := "app-profile.json"
+			if sc.Name != "" {
+				name = "app-profile-" + sc.Name + ".json"
+			}
+			file := filepath.Join(cfg.DataDir, name)
+			prof, err := profile.Load(file)
+			if err != nil {
+				return err
+			}
+			n, pages, fields := prof.Stats()
+			log.Info("app profile", "site", sc.Name, "mode", pmode, "learned_from", n, "pages", pages, "fields", fields, "file", file)
+			if cfg.AppProfile == "learn" {
+				go func() {
+					for range time.Tick(30 * time.Second) {
+						if err := prof.Save(file); err != nil {
+							log.Warn("app profile not saved", "error", err.Error())
+						}
 					}
-				}
-			}()
-			saveProfiles = append(saveProfiles, func() { prof.Save(file) })
+				}()
+				saveProfiles = append(saveProfiles, func() { prof.Save(file) })
+			}
+			s.prof = prof
 		}
-		p = middleware.AppProfile(prof, mode, cfg.AppProfileMinSeen, cfg.MaxBodyBytes, log)(p)
+		p = middleware.AppProfile(s.prof, pmode, cfg.AppProfileMinSeen, cfg.MaxBodyBytes, log)(p)
 	}
 	if mlMode == "detect" || mlMode == "block" {
 		p = guard(middleware.ML(sh.model, mlMode, cfg.MLThreshold, cfg.MLSkipPaths, cfg.MaxBodyBytes, sh.rec, log))(p) // 8
@@ -356,14 +385,90 @@ func (sh *shared) sitePipeline(sc config.Site) (*site, error) {
 	p = guard(middleware.Geo(sh.geoDB, sh.filter, sh.rec, log))(p)
 	p = guard(middleware.IPBlock(sh.bans, log))(p) // 1
 	name := sc.Name
-	s.h = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	var h http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		reqctx.From(r.Context()).Site = name
 		p.ServeHTTP(w, r)
 	})
+	s.mode, s.waf, s.ml, s.limits = mode, wafM, mlM, limits
+	s.h.Store(h)
 	if len(sh.cfg.Sites) > 0 {
-		log.Info("site", "name", sc.Name, "hosts", sc.Hosts, "upstreams", sc.Spec, "mode", s.mode, "waf_mode", s.waf, "ml_mode", s.ml)
+		log.Info("site", "name", sc.Name, "hosts", sc.Hosts, "upstreams", sc.Spec, "mode", mode, "waf_mode", wafM, "ml_mode", mlM)
 	}
-	return s, nil
+	return nil
+}
+
+// modesFile keeps modes set on the dashboard ("" = no data folder).
+func (sh *shared) modesFile() string {
+	if sh.cfg.DataDir == "" || !usableDir(sh.cfg.DataDir) {
+		return ""
+	}
+	return filepath.Join(sh.cfg.DataDir, "site-modes.json")
+}
+
+func loadModeOverrides(file string) map[string]string {
+	out := map[string]string{}
+	if file == "" {
+		return out
+	}
+	if b, err := os.ReadFile(file); err == nil {
+		json.Unmarshal(b, &out)
+	}
+	for k, v := range out {
+		if v != "monitor" && v != "protect" {
+			delete(out, k)
+		}
+	}
+	return out
+}
+
+// setSiteMode switches a site between monitor and protect from the
+// dashboard, saves the choice (it wins over the config file) and rebuilds
+// the site's pipeline. Choosing the configured mode again removes the saved
+// choice.
+func (sh *shared) setSiteMode(sites []*site, name, mode string) error {
+	if mode != "monitor" && mode != "protect" {
+		return fmt.Errorf("mode must be monitor or protect")
+	}
+	var s *site
+	for _, x := range sites {
+		if x.name == name {
+			s = x
+		}
+	}
+	if s == nil {
+		return fmt.Errorf("no site %q", name)
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	sc := s.conf
+	configured := pick(sc.Mode, sh.cfg.Mode)
+	sc.Mode = mode
+	if err := sh.sitePipeline(sc, s); err != nil {
+		return err
+	}
+	if file := sh.modesFile(); file != "" {
+		overrides := loadModeOverrides(file)
+		if mode == configured {
+			delete(overrides, name)
+		} else {
+			overrides[name] = mode
+		}
+		b, _ := json.MarshalIndent(overrides, "", "  ")
+		if err := os.WriteFile(file, b, 0o600); err != nil {
+			sh.log.Warn("site mode not saved: it lasts until Sentinel restarts", "file", file, "error", err.Error())
+		}
+	}
+	sh.log.Warn("site mode changed on the dashboard", "site", siteLabel(name), "mode", mode)
+	currentAlerter.Send("mode:"+name, alert.Message{Title: "Site mode changed",
+		Text: fmt.Sprintf("Site %q is now in %s mode (changed on the dashboard).", siteLabel(name), mode)})
+	return nil
+}
+
+func siteLabel(name string) string {
+	if name == "" {
+		return "all hosts"
+	}
+	return name
 }
 
 func pick(v, fallback string) string {
@@ -416,6 +521,25 @@ func (sh *shared) adminPages(excl *exclude.Set) (http.Handler, error) {
 	return a, nil
 }
 
+// adminChain is what requests on the dashboard's own port go through. IP
+// bans, honeypots and country lists are left out on purpose: that port is
+// for administrators (keep it private), and an admin who shares an address
+// with an attacker (an office or mobile network) must still be able to open
+// the dashboard to lift the ban. Logins stay rate limited and guarded
+// against password spraying.
+func (sh *shared) adminChain() (http.Handler, error) {
+	cfg, log := sh.cfg, sh.log
+	rules, err := ratelimit.Parse(ratelimit.DefaultRules)
+	if err != nil {
+		return nil, err
+	}
+	var h http.Handler = sh.admin
+	h = middleware.LoginGuard(sh.loginFails, cfg.LoginFailLimit, sh.rec, log)(h)
+	h = middleware.RateLimitBan(ratelimit.New(rules, sh.store).ForSite("__admin"), nil, 0, sh.rec, log)(h)
+	h = middleware.Authenticate(sh.authSvc)(h)
+	return middleware.BodyLimit(cfg.MaxBodyBytes, sh.rec, log)(h), nil
+}
+
 func (a *adminPages) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	dashPath := strings.HasPrefix(path, dashboard.SetupPath) || strings.HasPrefix(path, dashboard.APIPrefix) ||
@@ -446,6 +570,7 @@ type hostRouter struct {
 	}
 	fallback *site
 	first    *site
+	admin    http.Handler // the dashboard port
 }
 
 func newHostRouter(sites []*site) *hostRouter {
@@ -491,9 +616,17 @@ func (hr *hostRouter) find(host string) *site {
 }
 
 func (hr *hostRouter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if onAdminPort(r) {
+		if !isAdminPath(r.URL.Path) {
+			http.Redirect(w, r, dashboard.PagePath, http.StatusFound) // the admin port serves only Sentinel's own pages
+			return
+		}
+		hr.admin.ServeHTTP(w, r)
+		return
+	}
 	s := hr.find(r.Host)
 	if s == nil {
-		if isAdminPath(r.URL.Path) || onAdminPort(r) {
+		if isAdminPath(r.URL.Path) {
 			s = hr.first // Sentinel's own pages work on any host
 		} else {
 			info := reqctx.From(r.Context())
@@ -502,17 +635,15 @@ func (hr *hostRouter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if onAdminPort(r) && !isAdminPath(r.URL.Path) {
-		http.Redirect(w, r, dashboard.PagePath, http.StatusFound) // the admin port serves only Sentinel's own pages
-		return
-	}
-	s.h.ServeHTTP(w, r)
+	s.ServeHTTP(w, r)
 }
 
-func siteStatus(sites []*site) []dashboard.SiteStatus {
+func siteStatus(sites []*site, defaultMode string) []dashboard.SiteStatus {
 	out := make([]dashboard.SiteStatus, 0, len(sites))
 	for _, s := range sites {
-		st := dashboard.SiteStatus{Name: s.name, Hosts: s.hosts, Mode: s.mode, WAFMode: s.waf, MLMode: s.ml, RateLimits: s.limits}
+		s.mu.Lock()
+		st := dashboard.SiteStatus{Name: s.name, Hosts: s.hosts, Mode: s.mode, ConfigMode: pick(s.conf.Mode, defaultMode), WAFMode: s.waf, MLMode: s.ml, RateLimits: s.limits}
+		s.mu.Unlock()
 		for _, u := range s.router.Status() {
 			st.Servers = append(st.Servers, dashboard.ServerStatus{Prefix: u.Prefix, URL: u.URL, Up: u.Up})
 		}

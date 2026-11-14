@@ -36,7 +36,7 @@ In the file, nested keys map to one variable: `waf: {threshold: 7}` is
 | `log_file` | `LOG_FILE` | none | Also write JSON logs here (`sentinel watch` reads it) |
 | `history_days` | `HISTORY_DAYS` | `30` | Days of dashboard history kept on disk, in `history/` in the data folder: every request Sentinel stopped or flagged (plain allowed requests are not kept). It survives restarts, older days are deleted, and the dashboard can search it. `0` keeps history in memory only |
 | `dashboard` | `DASHBOARD` | on | The dashboard, at `/__sentinel/dashboard` (admins with 2FA) |
-| `dashboard_listen` | `DASHBOARD_ADDR` | none (on the main port) | Give the dashboard its own port, e.g. `:9000`: then it opens at `http://<host>:9000` and is not reachable on the public port at all. Recommended: keep that port private (firewall or VPN) |
+| `dashboard_listen` | `DASHBOARD_ADDR` | none (on the main port) | Give the dashboard its own port, e.g. `:9000`: then it opens at `http://<host>:9000` and is not reachable on the public port at all. Recommended: keep that port private (firewall or VPN). IP bans don't apply on it, so an admin who shares an address with an attacker (an office or mobile network) can still get in to lift the ban; logins there stay rate limited |
 | `security_headers` | `SECURITY_HEADERS` | on | Adds nosniff, Referrer-Policy, X-Frame-Options and (over HTTPS) HSTS when the app doesn't |
 | `timezone` | `TZ` | `UTC` | Time zone for log times shown to people |
 

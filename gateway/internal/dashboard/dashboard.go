@@ -56,6 +56,7 @@ type SiteStatus struct {
 	Name       string         `json:"name"`
 	Hosts      []string       `json:"hosts"`
 	Mode       string         `json:"mode"`
+	ConfigMode string         `json:"config_mode"` // the mode in the config file
 	WAFMode    string         `json:"waf_mode"`
 	MLMode     string         `json:"ml_mode"`
 	RateLimits []string       `json:"rate_limits"`
@@ -70,14 +71,15 @@ type ServerStatus struct {
 }
 
 type Dashboard struct {
-	Sites  func() []SiteStatus // nil = not available
-	Hub    *events.Hub
-	Bans   *blocklist.List
-	Rec    Recorder
-	Log    *slog.Logger
-	Info   Info
-	Excl   *exclude.Set           // false-alarm exclusions (nil = feature off)
-	Reload func(why string) error // reloads rules, CRS and exclusions
+	Sites   func() []SiteStatus           // nil = not available
+	SetMode func(site, mode string) error // switch a site between monitor and protect
+	Hub     *events.Hub
+	Bans    *blocklist.List
+	Rec     Recorder
+	Log     *slog.Logger
+	Info    Info
+	Excl    *exclude.Set           // false-alarm exclusions (nil = feature off)
+	Reload  func(why string) error // reloads rules, CRS and exclusions
 }
 
 func (d *Dashboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -156,6 +158,24 @@ func (d *Dashboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		reply(w, map[string]any{"unbanned": ip})
 	case path == "info" && r.Method == "GET":
 		reply(w, d.Info)
+	case strings.HasPrefix(path, "sites/") && strings.HasSuffix(path, "/mode") && r.Method == "POST" && d.SetMode != nil:
+		name := strings.TrimSuffix(strings.TrimPrefix(path, "sites/"), "/mode")
+		if name == "_" {
+			name = "" // the only site, when there are no named sites
+		}
+		var in struct {
+			Mode string `json:"mode"`
+		}
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<10)).Decode(&in); err != nil {
+			jsonError(w, http.StatusBadRequest, `send {"mode":"protect"} or {"mode":"monitor"}`, info.ID)
+			return
+		}
+		if err := d.SetMode(name, in.Mode); err != nil {
+			jsonError(w, http.StatusBadRequest, err.Error(), info.ID)
+			return
+		}
+		d.audit(r, "dashboard_mode", map[string]any{"site": name, "mode": in.Mode, "by": u.Username})
+		reply(w, map[string]any{"site": name, "mode": in.Mode})
 	case path == "sites" && r.Method == "GET":
 		if d.Sites == nil {
 			reply(w, []SiteStatus{})
