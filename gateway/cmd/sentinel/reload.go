@@ -15,6 +15,7 @@ import (
 
 	"sentinel/gateway/internal/config"
 	"sentinel/gateway/internal/crs"
+	"sentinel/gateway/internal/events"
 	"sentinel/gateway/internal/middleware"
 	"sentinel/gateway/internal/waf"
 )
@@ -56,6 +57,9 @@ func redactURL(u string) string {
 	}
 	return "(set)"
 }
+
+// currentHistory is the dashboard history on disk (nil = off).
+var currentHistory *events.History
 
 // saveProfiles save each site's app profile on shutdown (learn mode).
 var saveProfiles []func()

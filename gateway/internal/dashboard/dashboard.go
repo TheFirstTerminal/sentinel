@@ -110,13 +110,36 @@ func (d *Dashboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if m, err := strconv.Atoi(r.URL.Query().Get("minutes")); err == nil && m >= 1 && m <= 24*60 {
 			win = time.Duration(m) * time.Minute
 		}
-		reply(w, d.Hub.Stats(win))
+		reply(w, d.Hub.Stats(win, r.URL.Query().Get("site")))
 	case path == "events" && r.Method == "GET":
 		n, _ := strconv.Atoi(r.URL.Query().Get("n"))
 		if n <= 0 || n > 1000 {
 			n = 200
 		}
 		reply(w, d.Hub.Recent(n))
+	case path == "history" && r.Method == "GET":
+		hist := d.Hub.History()
+		if hist == nil {
+			jsonError(w, http.StatusNotFound, "history is not kept on disk (no usable data folder, or HISTORY_DAYS=0)", info.ID)
+			return
+		}
+		q := r.URL.Query()
+		hq := events.Query{Site: q.Get("site"), Stopped: q.Get("stopped") == "1", Text: q.Get("q")}
+		hq.Limit, _ = strconv.Atoi(q.Get("limit"))
+		var err error
+		if v := q.Get("from"); v != "" {
+			if hq.From, err = time.Parse(time.RFC3339, v); err != nil {
+				jsonError(w, http.StatusBadRequest, "from: use a time like 2026-11-14T08:00:00Z", info.ID)
+				return
+			}
+		}
+		if v := q.Get("to"); v != "" {
+			if hq.To, err = time.Parse(time.RFC3339, v); err != nil {
+				jsonError(w, http.StatusBadRequest, "to: use a time like 2026-11-14T18:00:00Z", info.ID)
+				return
+			}
+		}
+		reply(w, hist.Query(hq))
 	case path == "stream" && r.Method == "GET":
 		d.stream(w, r)
 	case path == "bans" && r.Method == "GET":

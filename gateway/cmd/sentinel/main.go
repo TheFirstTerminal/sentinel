@@ -149,6 +149,9 @@ func main() {
 		}
 	}
 	cfg.Secret = secret
+	if dataOK && cfg.HistoryDays > 0 {
+		cfg.HistoryDir = filepath.Join(cfg.DataDir, "history")
+	}
 	if cfg.ExclusionsFile == "" && dataOK {
 		cfg.ExclusionsFile = filepath.Join(cfg.DataDir, "exclusions.yaml")
 	}
@@ -313,6 +316,9 @@ func main() {
 	<-stop
 	for _, save := range saveProfiles {
 		save()
+	}
+	if currentHistory != nil {
+		currentHistory.Close()
 	}
 	sctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

@@ -83,6 +83,8 @@ type Config struct {
 	Upstreams     string // "/api/=http://api:8000,/=http://web-1:3000|http://web-2:3000"
 	HealthCheck   string // path checked on every server, e.g. "/healthz" ("" = none)
 	Sites         []Site // per-domain settings (SITES); empty = one site for every host
+	HistoryDays   int    // days of dashboard history kept on disk (HISTORY_DAYS, 0 = off)
+	HistoryDir    string // set at startup: <data dir>/history when the data folder is usable
 	DatabaseURL   string // PostgreSQL; empty = in-memory users (lost on restart)
 	Secret        string // SENTINEL_SECRET, master key for tokens and encryption
 	APISpecFile   string // OpenAPI spec; empty = schema validation off
@@ -213,6 +215,10 @@ func Load() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	historyDays, err := strconv.Atoi(env("HISTORY_DAYS", "30"))
+	if err != nil || historyDays < 0 || historyDays > 3650 {
+		return nil, fmt.Errorf("HISTORY_DAYS must be 0-3650 (0 = keep no history on disk)")
+	}
 	health := os.Getenv("HEALTH_CHECK")
 	if health != "" && !strings.HasPrefix(health, "/") {
 		return nil, fmt.Errorf("HEALTH_CHECK must be a path like /healthz")
@@ -299,6 +305,7 @@ func Load() (*Config, error) {
 		RateLimits:        os.Getenv("RATE_LIMITS"),
 		Sites:             sites,
 		HealthCheck:       health,
+		HistoryDays:       historyDays,
 		GeoIPFile:         os.Getenv("GEOIP_FILE"),
 		GeoDenyCountries:  os.Getenv("GEO_DENY_COUNTRIES"),
 		GeoAllowCountries: os.Getenv("GEO_ALLOW_COUNTRIES"),

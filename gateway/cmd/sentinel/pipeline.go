@@ -139,6 +139,16 @@ func newShared(cfg *config.Config, engine *waf.Engine, authSvc *auth.Service, re
 	sh.bans = blocklist.New()
 	currentBans = sh.bans
 	sh.hub = events.NewHub(5000)
+	if cfg.HistoryDir != "" {
+		hist, err := events.OpenHistory(cfg.HistoryDir, cfg.HistoryDays, log)
+		if err != nil {
+			log.Warn("history: not kept on disk", "dir", cfg.HistoryDir, "error", err.Error())
+		} else {
+			sh.hub.Persist(hist) // before alerts subscribe: old events must not alert again
+			currentHistory = hist
+			log.Info("history: kept on disk", "dir", cfg.HistoryDir, "days", cfg.HistoryDays, "loaded", len(sh.hub.Recent(0)))
+		}
+	}
 	if cfg.AlertWebhookURL != "" {
 		host, _ := os.Hostname()
 		currentAlerter = &alert.Alerter{URL: cfg.AlertWebhookURL, ChatID: cfg.AlertTelegramChat, Burst: cfg.AlertBurst, Log: log, Name: host}

@@ -47,6 +47,18 @@ type Hub struct {
 	full bool
 	subs map[chan Event]struct{}
 	now  func() time.Time
+	disk *History // nil = memory only
+}
+
+// Persist keeps every event except plain allowed requests on disk too, and
+// refills the hub from what is already there.
+func (h *Hub) Persist(hist *History) {
+	for _, e := range hist.Last(len(h.ring)) {
+		h.Publish(e)
+	}
+	h.mu.Lock()
+	h.disk = hist
+	h.mu.Unlock()
 }
 
 func NewHub(size int) *Hub {
@@ -61,6 +73,9 @@ func NewHub(size int) *Hub {
 func (h *Hub) Publish(e Event) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if h.disk != nil && e.Outcome != "allowed" {
+		h.disk.Append(e)
+	}
 	h.ring[h.next] = e
 	h.next = (h.next + 1) % len(h.ring)
 	if h.next == 0 {
@@ -131,7 +146,15 @@ type Minute struct {
 	Stopped int       `json:"stopped"`
 }
 
-func (h *Hub) Stats(window time.Duration) Stats {
+// History is the hub's disk history, or nil.
+func (h *Hub) History() *History {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.disk
+}
+
+// Stats summarises the last window of events, for one site or ("") all.
+func (h *Hub) Stats(window time.Duration, site ...string) Stats {
 	now := h.now()
 	from := now.Add(-window)
 	s := Stats{Window: window.String(), ByOutcome: map[string]int{}}
@@ -146,7 +169,7 @@ func (h *Hub) Stats(window time.Duration) Stats {
 		s.PerMinute[i].Time = start.Add(time.Duration(i) * time.Minute)
 	}
 	for _, e := range h.snapshot() {
-		if e.Time.Before(from) {
+		if e.Time.Before(from) || len(site) > 0 && site[0] != "" && e.Site != site[0] {
 			continue
 		}
 		s.Total++
