@@ -119,6 +119,11 @@ func (op *operator) matchOpt(v, param string, groups bool) (bool, []string) {
 	if op.pre != nil && !op.pre.MayMatch(prefilter.Lower(v)) {
 		return op.negate, nil // the regex cannot match this value
 	}
+	return op.matchChecked(v, param, groups)
+}
+
+// matchChecked is matchOpt after the prefilter has passed.
+func (op *operator) matchChecked(v, param string, groups bool) (bool, []string) {
 	if op.name == "rx" && !groups && !op.negate {
 		if op.bytes {
 			v = bytesAsRunes(v)

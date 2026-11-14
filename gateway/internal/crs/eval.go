@@ -116,8 +116,9 @@ func (tx *Tx) evalLink(r *Rule, onMatch func()) bool {
 	}
 	vals := tx.ruleValues(r)
 	var found []kv
+	var buf [8]string // candidates, without a new slice per value
 	for _, v := range vals {
-		candidates := []string{v.value}
+		candidates := append(buf[:0], v.value)
 		if r.multiMatch {
 			cur := v.value
 			for _, t := range r.transforms {
@@ -125,10 +126,16 @@ func (tx *Tx) evalLink(r *Rule, onMatch func()) bool {
 				candidates = append(candidates, cur)
 			}
 		} else if len(r.transforms) > 0 {
-			candidates = []string{tx.transform(r, v.value)}
+			candidates[0] = tx.transform(r, v.value)
 		}
 		for _, c := range candidates {
-			ok, groups := r.op.matchOpt(c, param, r.capture)
+			var ok bool
+			var groups []string
+			if r.op.pre != nil && !r.op.pre.MayMatch(tx.lowerOf(c)) {
+				ok = r.op.negate // the regex cannot match this value
+			} else {
+				ok, groups = r.op.matchChecked(c, param, r.capture)
+			}
 			if !ok {
 				continue
 			}

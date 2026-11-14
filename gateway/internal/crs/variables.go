@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"path"
 	"regexp"
+	"sentinel/gateway/internal/prefilter"
 	"sort"
 	"strconv"
 	"strings"
@@ -101,6 +102,50 @@ type Tx struct {
 	tcache     map[[2]string]string
 	vcache     map[string][]kv // values of fixed variable lists
 	txSorted   []kv            // TX in key order; nil when TX changed
+
+	// Per-request caches: the same values are looked at by hundreds of rules.
+	names    map[string][]string // "ARGS:q"-style names of each request collection
+	singleKV map[string][]kv     // single variables, wrapped once
+	lower    map[string]string   // lowercased values, for the prefilters
+}
+
+// lowerOf is prefilter.Lower, remembered for the request.
+func (tx *Tx) lowerOf(v string) string {
+	if l, ok := tx.lower[v]; ok {
+		return l
+	}
+	l := prefilter.Lower(v)
+	if l == v {
+		return v // nothing to lower: not worth remembering
+	}
+	if tx.lower == nil {
+		tx.lower = map[string]string{}
+	}
+	tx.lower[v] = l
+	return l
+}
+
+// itemNames returns "COL:key" for each item of a request collection.
+func (tx *Tx) itemNames(col string, items []kv) []string {
+	if col == "TX" || col == "MATCHED_VARS" || col == "MATCHED_VARS_NAMES" {
+		out := make([]string, len(items))
+		for i, it := range items {
+			out[i] = col + ":" + it.key
+		}
+		return out
+	}
+	if n, ok := tx.names[col]; ok && len(n) == len(items) {
+		return n
+	}
+	out := make([]string, len(items))
+	for i, it := range items {
+		out[i] = col + ":" + it.key
+	}
+	if tx.names == nil {
+		tx.names = map[string][]string{}
+	}
+	tx.names[col] = out
+	return out
 }
 
 // newTx builds the variables of a request. body is its (complete) body.
@@ -315,18 +360,24 @@ func sortedKeys[V any](m map[string]V) []string {
 func (tx *Tx) values(specs []varSpec) []kv {
 	var out []kv
 	type exclKey struct{ col, key string }
-	excluded := map[exclKey]bool{}
+	var excluded map[exclKey]bool // most rules exclude nothing: no map then
 	var exclRe []varSpec
 	for _, s := range specs {
 		if s.exclude {
 			if s.keyRe != nil {
 				exclRe = append(exclRe, s)
 			} else {
+				if excluded == nil {
+					excluded = map[exclKey]bool{}
+				}
 				excluded[exclKey{s.name, s.key}] = true
 			}
 		}
 	}
 	isExcluded := func(col, key string) bool {
+		if excluded == nil && exclRe == nil {
+			return false
+		}
 		if excluded[exclKey{col, strings.ToLower(key)}] {
 			return true
 		}
@@ -344,6 +395,22 @@ func (tx *Tx) values(specs []varSpec) []kv {
 		if excluded[exclKey{s.name, ""}] {
 			continue // the whole variable was removed (e.g. by ctl)
 		}
+		if s.name == "TX" && s.key != "" && s.keyRe == nil {
+			// One TX variable by name: look it up instead of sorting all of
+			// TX, which changes after almost every rule (anomaly scores).
+			key := strings.ToLower(s.key)
+			v, ok := tx.tx[key]
+			if s.count {
+				n := 0
+				if ok {
+					n = 1
+				}
+				out = append(out, kv{"&TX", strconv.Itoa(n)})
+			} else if ok && !isExcluded("TX", key) {
+				out = append(out, kv{"TX:" + key, v})
+			}
+			continue
+		}
 		items := tx.collection(s.name)
 		if s.key != "" || s.keyRe != nil {
 			var sel []kv
@@ -358,15 +425,18 @@ func (tx *Tx) values(specs []varSpec) []kv {
 			out = append(out, kv{"&" + s.name, strconv.Itoa(len(items))})
 			continue
 		}
-		for _, it := range items {
-			if collections[s.name] && isExcluded(s.name, it.key) {
+		if !collections[s.name] {
+			for _, it := range items {
+				out = append(out, kv{s.name, it.value})
+			}
+			continue
+		}
+		names := tx.itemNames(s.name, items)
+		for i, it := range items {
+			if isExcluded(s.name, it.key) {
 				continue
 			}
-			name := s.name
-			if collections[s.name] {
-				name += ":" + it.key
-			}
-			out = append(out, kv{name, it.value})
+			out = append(out, kv{names[i], it.value})
 		}
 	}
 	return out
@@ -405,7 +475,15 @@ func (tx *Tx) collection(name string) []kv {
 		return tx.cols[name]
 	}
 	if v, ok := tx.single[name]; ok {
-		return []kv{{"", v}}
+		if w, ok := tx.singleKV[name]; ok && w[0].value == v {
+			return w
+		}
+		w := []kv{{"", v}}
+		if tx.singleKV == nil {
+			tx.singleKV = map[string][]kv{}
+		}
+		tx.singleKV[name] = w
+		return w
 	}
 	return nil
 }
