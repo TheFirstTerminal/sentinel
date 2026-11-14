@@ -1,0 +1,87 @@
+# Sentinel configuration.
+#
+# Every setting is optional except `upstream`. Any setting can also be given
+# as an environment variable, which wins over this file: waf.threshold here
+# is WAF_THRESHOLD there. Check this file with:  sentinel check-config
+
+# monitor: every check runs and is logged, but nothing is blocked.
+# protect: refuse what the checks catch.
+# Start in monitor, watch the dashboard for a few days, then switch.
+mode: monitor
+
+listen: ":8080"
+
+# A starting point for your kind of app: wordpress, laravel, django, nextjs
+# or ai. Anything set below still wins.
+# profile: wordpress
+
+# The app Sentinel protects.
+upstream: http://localhost:3000
+
+# Several apps behind one gateway: the longest matching path prefix wins.
+# routes:
+#   /api/: http://api:8000
+#   /: http://web:3000
+
+# Master key for login tokens. Required when you use Sentinel's logins.
+# Make one with:  openssl rand -hex 32
+# secret: ""
+
+waf:
+  mode: block            # inside protect mode: block, or detect (log only)
+  threshold: 5           # anomaly score at which a request is an attack
+  max_field_bytes: 65536 # larger single values are refused
+  # crs: /etc/sentinel/crs/rules   # also load the OWASP Core Rule Set
+  # crs_paranoia: 1                # 1 (few false alarms) to 4 (strict)
+
+max_body_bytes: 1048576  # bigger bodies are refused (they can't be inspected)
+
+# False alarms: the dashboard's "Allow..." button saves exclusions here.
+# exclusions_file: /var/lib/sentinel/exclusions.yaml
+
+# Check what the app sends back: SQL errors, stack traces and keys are
+# withheld, card numbers masked. off, detect or block.
+response_check: block
+
+bot:
+  block_scanners: true   # refuse sqlmap, nikto, nuclei... by User-Agent
+  challenge: "off"       # "suspicious" or "all": a quick JavaScript check
+  # challenge_paths: [/login]
+
+ml:
+  mode: detect           # off, detect (log only) or block
+  threshold: 0.9
+
+# Requests per window, by path prefix. "off" turns rate limiting off.
+rate_limits:
+  /__sentinel/auth/: 10/1m
+  /: 600/1m
+
+login_fail_limit: 10     # failed logins per account before a 15 minute pause
+
+# AI chat endpoints to protect from prompt injection.
+# prompt_guard:
+#   paths: [/api/chat]
+#   canary: ""           # a secret word in your system prompt; if a reply
+#                        # contains it, the reply is blocked
+
+# Shared state for several Sentinel instances.
+# redis_url: redis://redis:6379
+
+# Only trust X-Forwarded-For from your own load balancer.
+# trusted_proxies: [10.0.0.0/8]
+
+dashboard: true          # /__sentinel/dashboard
+security_headers: true
+
+# Automatic HTTPS with Let's Encrypt (ports 80 and 443 must be public).
+# tls:
+#   auto_domains: [shop.example.com]
+#   auto_email: you@example.com
+
+# Prometheus metrics on a separate port, and alerts.
+# metrics_listen: ":9090"
+# alerts:
+#   webhook_url: https://hooks.slack.com/services/...   # or Discord, Telegram
+
+# log_file: /var/log/sentinel/events.log

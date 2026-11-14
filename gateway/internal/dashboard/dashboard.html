@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sentinel Dashboard</title>
+<style>
+:root {
+  --bg: #f4f6f9; --panel: #ffffff; --ink: #18202c; --muted: #5d6b7e; --line: #dfe5ec;
+  --ok: #1b8a5a; --ok-bg: #e5f5ed; --bad: #c9372c; --bad-bg: #fcebea; --warn: #b26b00; --warn-bg: #fff4e0;
+  --accent: #2357d9; --chip: #eef2f7;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f141b; --panel: #171e27; --ink: #e6ebf2; --muted: #93a1b4; --line: #26303d;
+    --ok: #3fbf86; --ok-bg: #12291f; --bad: #f0675c; --bad-bg: #2e1715; --warn: #f0a640; --warn-bg: #2d2111;
+    --accent: #6d95ff; --chip: #1f2833;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { display: flex; align-items: center; gap: 12px; padding: 14px 20px; background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 2; }
+header h1 { font-size: 17px; margin: 0; letter-spacing: .2px; }
+header .shield { width: 26px; height: 26px; }
+header .sp { flex: 1; }
+.pill { font-size: 12px; padding: 3px 9px; border-radius: 99px; background: var(--chip); color: var(--muted); white-space: nowrap; }
+.pill.live { background: var(--ok-bg); color: var(--ok); }
+.pill.off { background: var(--bad-bg); color: var(--bad); }
+button { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 7px; padding: 5px 11px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.small { padding: 2px 8px; font-size: 12px; }
+main { padding: 18px 20px 40px; max-width: 1400px; margin: 0 auto; }
+.grid { display: grid; gap: 14px; }
+.kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.two { grid-template-columns: 2fr 1fr; }
+.three { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 900px) { .two, .three { grid-template-columns: 1fr; } }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+.card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+.kpi .v { font-size: 28px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.kpi .s { color: var(--muted); font-size: 12px; }
+.kpi.bad .v { color: var(--bad); } .kpi.ok .v { color: var(--ok); }
+table { width: 100%; border-collapse: collapse; }
+td, th { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 12px; color: var(--muted); font-weight: 600; }
+td.n { text-align: right; font-variant-numeric: tabular-nums; }
+.feed { max-height: 460px; overflow: auto; }
+.feed table { font-size: 13px; }
+.feed td { white-space: nowrap; }
+.feed td.why { white-space: normal; color: var(--muted); }
+.tag { display: inline-block; font-size: 11px; font-weight: 650; padding: 1px 7px; border-radius: 5px; letter-spacing: .3px; }
+.tag.ok { background: var(--ok-bg); color: var(--ok); }
+.tag.bad { background: var(--bad-bg); color: var(--bad); }
+.tag.warn { background: var(--warn-bg); color: var(--warn); }
+.mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12px; }
+.muted { color: var(--muted); }
+.bars { width: 100%; height: 150px; display: block; }
+.legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin-top: 6px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.hbar { height: 6px; background: var(--chip); border-radius: 3px; margin-top: 3px; }
+.hbar > span { display: block; height: 100%; border-radius: 3px; background: var(--bad); }
+#login { max-width: 360px; margin: 10vh auto; }
+#login label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+#login input { width: 100%; font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--ink); }
+#login .err { color: var(--bad); min-height: 20px; margin-top: 10px; font-size: 13px; }
+.hidden { display: none !important; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.row input { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); width: 150px; }
+.row input[type=checkbox] { width: auto; padding: 0; margin: 0 6px 0 0; vertical-align: -2px; }
+
+  /* Console: the live log, like a terminal */
+  .console-card { background:#0B1220; border-color:#1E2A3B; color:#D6E2EE; }
+  .console-card h2 { color:#9FB3C8; }
+  .console-card.full { position:fixed; inset:12px; z-index:50; margin:0 !important; display:flex; flex-direction:column; }
+  .console-card.full .term { height:auto; flex:1; }
+  .term { height:360px; overflow:auto; background:#060B14; border:1px solid #1E2A3B; border-radius:8px; padding:10px 12px;
+          font:12.5px/1.55 "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space:pre; }
+  .term .l { display:block; }
+  .term .d { color:#6B7F95; display:block; padding-left:9.5em; }
+  .term .t { color:#6B7F95; }
+  .term .ok { color:#55C28A; } .term .bad { color:#F2725A; } .term .warn { color:#E8B04B; } .term .info { color:#6CC3E0; } .term .dim { color:#6B7F95; }
+  .term .sys { color:#8C9DB0; font-style:italic; }
+  .console-bar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:8px 0; }
+  .console-bar input[type=search] { flex:1; min-width:160px; background:#0F1828; color:#D6E2EE; border:1px solid #1E2A3B; }
+  .console-bar button, .console-bar select { background:#15223A; color:#D6E2EE; border:1px solid #24344D; }
+  .console-bar label { color:#9FB3C8; }
+</style>
+</head>
+<body>
+<header>
+  <svg class="shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 3v6c0 5-3.5 9.5-8 11-4.5-1.5-8-6-8-11V5l8-3z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>
+  <h1>Sentinel</h1>
+  <span class="pill" id="version">dashboard</span>
+  <span class="sp"></span>
+  <span class="pill off hidden" id="live">● live</span>
+  <span class="pill hidden" id="who"></span>
+  <button class="hidden" id="logout">Log out</button>
+</header>
+
+<section id="login" class="card">
+  <h2>Admin login</h2>
+  <p class="muted" style="margin-top:0">The dashboard is for admins who passed two-factor authentication.</p>
+  <form id="f1">
+    <label for="u">Username</label><input id="u" autocomplete="username" required>
+    <label for="p">Password</label><input id="p" type="password" autocomplete="current-password" required>
+    <div style="margin-top:14px"><button class="primary" type="submit">Continue</button></div>
+  </form>
+  <form id="f3" class="hidden">
+    <p style="margin-top:0">The dashboard needs two-factor authentication. Scan this code with an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password, Aegis...).</p>
+    <img id="qr" alt="QR code for your authenticator app" style="display:block;margin:8px auto;border-radius:8px;background:#fff;padding:6px" width="220" height="220">
+    <p class="muted" style="font-size:13px">Can't scan? Enter this key by hand: <code id="secret" style="word-break:break-all"></code></p>
+    <label for="c3">Then type the 6-digit code it shows</label><input id="c3" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required>
+    <div style="margin-top:14px"><button class="primary" type="submit">Turn on 2FA</button></div>
+  </form>
+  <form id="f2" class="hidden">
+    <label for="c">6-digit code from your authenticator app</label><input id="c" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required>
+    <div style="margin-top:14px"><button class="primary" type="submit">Verify</button></div>
+  </form>
+  <div class="err" id="err"></div>
+</section>
+
+<main id="app" class="hidden">
+  <div class="grid kpis">
+    <div class="card kpi"><h2>Requests</h2><div class="v" id="k-total">0</div><div class="s">last 60 minutes</div></div>
+    <div class="card kpi bad"><h2>Stopped</h2><div class="v" id="k-stopped">0</div><div class="s" id="k-rate">0% of requests</div></div>
+    <div class="card kpi"><h2>Banned IPs</h2><div class="v" id="k-bans">0</div><div class="s">right now</div></div>
+  </div>
+
+  <div class="grid two" style="margin-top:14px">
+    <div class="card">
+      <h2>Requests per minute</h2>
+      <svg class="bars" id="chart" preserveAspectRatio="none"></svg>
+      <div class="legend"><span><i style="background:var(--ok)"></i>let through</span><span><i style="background:var(--bad)"></i>stopped</span><span id="chart-range"></span></div>
+    </div>
+    <div class="card">
+      <h2>Why requests were stopped</h2>
+      <table id="t-rules"></table>
+    </div>
+  </div>
+
+  <div class="grid three" style="margin-top:14px">
+    <div class="card"><h2>Top attacking IPs</h2><table id="t-ips"></table></div>
+    <div class="card"><h2>Countries</h2><table id="t-countries"></table></div>
+    <div class="card">
+      <h2>Bans</h2>
+      <table id="t-bans"></table>
+      <div class="row" style="margin-top:10px"><input id="ban-ip" placeholder="IP address"><button id="ban-btn">Ban 60 min</button></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0">Live decisions</h2>
+      <label class="muted"><input type="checkbox" id="only-stopped"> only stopped</label></div>
+    <div class="feed" style="margin-top:8px"><table><thead><tr><th>Time</th><th>Decision</th><th>Method</th><th>Path</th><th>Who</th><th>Why</th><th></th></tr></thead><tbody id="feed"></tbody></table></div>
+  </div>
+
+
+  <div class="card console-card" style="margin-top:14px" id="console-card">
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0">Console <span class="muted" style="font-weight:400;font-size:13px;color:#6B7F95">every decision, live</span></h2>
+      <span class="muted" id="con-count" style="font-size:12px;color:#6B7F95"></span></div>
+    <div class="console-bar">
+      <select id="con-filter" title="Which lines to show"><option value="all">All requests</option><option value="stopped">Stopped only</option><option value="noisy">All, with static files</option></select>
+      <input type="search" id="con-search" placeholder="Filter: IP, path, rule, user…">
+      <button id="con-pause" title="Stop scrolling new lines in (they are kept)">Pause</button>
+      <button id="con-clear">Clear</button>
+      <button id="con-copy" title="Copy the lines shown">Copy</button>
+      <button id="con-full" title="Full screen (Esc to leave)">Full screen</button>
+    </div>
+    <div class="term" id="term" aria-live="polite"></div>
+  </div>
+
+  <div class="card" style="margin-top:14px" id="excl-card">
+    <h2>Exclusions <span class="muted" style="font-weight:400;font-size:13px">rules switched off for one path or field (false alarms)</span></h2>
+    <form id="excl-form" class="hidden" style="margin:6px 0 14px">
+      <p class="muted" style="margin:0 0 8px">Let requests like this one through these rules. Narrower is safer: keep the path and the field if you can.</p>
+      <div class="grid three">
+        <div><label for="x-rule">Rules (comma separated)</label><input id="x-rule" class="mono" required></div>
+        <div><label for="x-path">Path starts with</label><input id="x-path" class="mono" placeholder="any path"></div>
+        <div><label for="x-field">Field</label><input id="x-field" class="mono" placeholder="any field"></div>
+      </div>
+      <label for="x-note">Why (for whoever reads this later)</label><input id="x-note" placeholder="e.g. reviews can mention SQL words">
+      <div class="row" style="margin-top:10px"><button class="primary" type="submit">Save exclusion</button><button type="button" id="x-cancel">Cancel</button><span class="err" id="x-err"></span></div>
+    </form>
+    <table id="t-excl"></table>
+    <p class="muted" id="excl-file" style="font-size:13px;margin-bottom:0"></p>
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0">Configuration</h2>
+      <span><span class="muted" id="reload-msg" style="font-size:13px"></span> <button class="small" id="reload-btn" title="Read the rules, Core Rule Set and exclusions files again">Reload rules</button></span></div>
+    <table id="t-info" class="mono"></table>
+  </div>
+</main>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+let token = null;
+try { token = sessionStorage.getItem("sentinel_token"); } catch (e) {}
+let mfaToken = null, streamAbort = null;
+
+const LABELS = {
+  allowed: ["ALLOWED", "ok"], login: ["LOGIN", "ok"], mfa_ok: ["2FA OK", "ok"], mfa_required: ["2FA WAIT", "warn"],
+  detected: ["DETECTED", "warn"], blocked: ["BLOCKED", "bad"], honeypot: ["HONEYPOT", "bad"],
+  banned: ["BANNED", "bad"], unauthenticated: ["NO LOGIN", "bad"], denied: ["DENIED", "bad"], invalid: ["INVALID", "bad"],
+  login_failed: ["LOGIN FAIL", "bad"], mfa_failed: ["2FA FAIL", "bad"], rate_limited: ["TOO MANY", "bad"],
+  geo_blocked: ["GEO BLOCK", "bad"], 
+  prompt_injection: ["PROMPT INJ", "bad"], leak_blocked: ["LEAK", "bad"], ml_blocked: ["ML", "bad"],
+  monitored: ["WOULD BLOCK", "warn"], challenged: ["CHALLENGE", "warn"]
+};
+
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+
+async function api(path, opts = {}) {
+  const res = await fetch("/__sentinel/api/" + path, { ...opts, headers: { ...(opts.headers || {}), Authorization: "Bearer " + token } });
+  if (res.status === 401) { logout("Your session ended. Log in again."); throw new Error("401"); }
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.status);
+  return res.json();
+}
+
+async function post(path, body) {
+  const res = await fetch("/__sentinel/auth/" + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(out.error || ("HTTP " + res.status));
+  return out;
+}
+
+$("f1").onsubmit = async (e) => {
+  e.preventDefault(); $("err").textContent = "";
+  try {
+    const out = await post("login", { username: $("u").value, password: $("p").value });
+    if (out.mfa_required) { mfaToken = out.mfa_token; $("f1").classList.add("hidden"); $("f2").classList.remove("hidden"); $("c").focus(); }
+    else if (out.role === "admin") { enrol(out.token); }
+    else { $("err").textContent = "Only admins with 2FA can open the dashboard."; }
+  } catch (x) { $("err").textContent = x.message; }
+};
+$("f2").onsubmit = async (e) => {
+  e.preventDefault(); $("err").textContent = "";
+  try {
+    const out = await post("verify-2fa", { mfa_token: mfaToken, code: $("c").value.trim() });
+    if (out.role !== "admin") { $("err").textContent = "Only admins can open the dashboard."; return; }
+    token = out.token; try { sessionStorage.setItem("sentinel_token", token); } catch (x) {}
+    start();
+  } catch (x) { $("err").textContent = x.message; }
+};
+// An admin without 2FA (e.g. right after first-run setup) turns it on here.
+let enrolToken = null;
+async function enrol(tok) {
+  enrolToken = tok;
+  const res = await fetch("/__sentinel/auth/2fa/setup", { method: "POST", headers: { Authorization: "Bearer " + tok } });
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok) { $("err").textContent = out.error || ("HTTP " + res.status); return; }
+  $("qr").src = out.qr; $("secret").textContent = out.secret;
+  $("f1").classList.add("hidden"); $("f3").classList.remove("hidden"); $("c3").focus();
+}
+$("f3").onsubmit = async (e) => {
+  e.preventDefault(); $("err").textContent = "";
+  const res = await fetch("/__sentinel/auth/2fa/enable", { method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + enrolToken }, body: JSON.stringify({ code: $("c3").value.trim() }) });
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok) { $("err").textContent = out.error || ("HTTP " + res.status); return; }
+  try { await fetch("/__sentinel/auth/logout", { method: "POST", headers: { Authorization: "Bearer " + enrolToken } }); } catch (x) {}
+  enrolToken = null; $("f3").classList.add("hidden"); $("f1").classList.remove("hidden"); $("p").value = "";
+  $("err").innerHTML = '<span style="color:var(--ok)">2FA is on. Log in again with your password and a code.</span>';
+};
+$("logout").onclick = async () => {
+  try { await fetch("/__sentinel/auth/logout", { method: "POST", headers: { Authorization: "Bearer " + token } }); } catch (e) {}
+  logout("");
+};
+
+function logout(msg) {
+  token = null; try { sessionStorage.removeItem("sentinel_token"); } catch (e) {}
+  if (streamAbort) streamAbort.abort();
+  $("app").classList.add("hidden"); $("login").classList.remove("hidden");
+  ["live", "who", "logout"].forEach(id => $(id).classList.add("hidden"));
+  $("f1").classList.remove("hidden"); $("f2").classList.add("hidden"); $("c").value = ""; $("p").value = "";
+  $("err").textContent = msg;
+}
+
+function start() {
+  $("login").classList.add("hidden"); $("app").classList.remove("hidden");
+  ["live", "who", "logout"].forEach(id => $(id).classList.remove("hidden"));
+  try { const c = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))); $("who").textContent = c.sub + " · admin · 2FA"; } catch (e) {}
+  refresh(); loadEvents(); stream(); loadInfo(); loadExclusions();
+  if (location.hash === "#console") setTimeout(() => { conFull(true); }, 300);
+}
+
+async function refresh() {
+  if (!token) return;
+  try {
+    const [s, bans] = await Promise.all([api("stats?minutes=60"), api("bans")]);
+    $("k-total").textContent = s.total; $("k-stopped").textContent = s.stopped;
+    $("k-rate").textContent = (s.total ? Math.round(100 * s.stopped / s.total) : 0) + "% of requests";
+    $("k-bans").textContent = (bans || []).length;
+    drawChart(s.per_minute);
+    table("t-rules", s.top_rules, "Rule / check", true);
+    table("t-ips", s.top_ips, "IP", true, true);
+    table("t-countries", s.top_countries, "Country", false);
+    drawBans(bans || []);
+  } catch (e) {}
+}
+
+function table(id, rows, head, bar, banBtn) {
+  const max = Math.max(1, ...(rows || []).map(r => r.count));
+  $(id).innerHTML = "<tr><th>" + head + "</th><th class='n'>Count</th>" + (banBtn ? "<th></th>" : "") + "</tr>" +
+    ((rows || []).length ? rows.map(r => "<tr><td><span class='mono'>" + esc(r.name) + "</span>" +
+      (bar ? "<div class='hbar'><span style='width:" + (100 * r.count / max) + "%'></span></div>" : "") +
+      "</td><td class='n'>" + r.count + "</td>" + (banBtn ? "<td><button class='small' data-ban='" + esc(r.name) + "'>Ban</button></td>" : "") + "</tr>").join("")
+      : "<tr><td colspan='3' class='muted'>Nothing yet</td></tr>");
+}
+
+function drawBans(bans) {
+  $("t-bans").innerHTML = "<tr><th>IP</th><th>Until</th><th></th></tr>" + (bans.length ? bans.map(b =>
+    "<tr><td class='mono'>" + esc(b.ip) + "</td><td>" + new Date(b.until).toLocaleTimeString() + "</td><td><button class='small' data-unban='" + esc(b.ip) + "'>Unban</button></td></tr>").join("")
+    : "<tr><td colspan='3' class='muted'>No active bans</td></tr>");
+}
+
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  try {
+    if (b.dataset.ban) { await api("bans", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ip: b.dataset.ban, minutes: 60 }) }); refresh(); }
+    if (b.dataset.unban) { await api("bans/" + encodeURIComponent(b.dataset.unban), { method: "DELETE" }); refresh(); }
+    if (b.dataset.allow && EVENTS.has(b.dataset.allow)) openAllow(EVENTS.get(b.dataset.allow));
+    if (b.dataset.unexcl) { await api("exclusions/" + encodeURIComponent(b.dataset.unexcl), { method: "DELETE" }); loadExclusions(); }
+  } catch (x) { alertBox(x.message); }
+});
+$("ban-btn").onclick = async () => {
+  const ip = $("ban-ip").value.trim(); if (!ip) return;
+  try { await api("bans", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ip, minutes: 60 }) }); $("ban-ip").value = ""; refresh(); }
+  catch (x) { alertBox(x.message); }
+};
+function alertBox(m) { $("ban-ip").placeholder = m; setTimeout(() => $("ban-ip").placeholder = "IP address", 4000); }
+
+function drawChart(mins) {
+  const svg = $("chart"), W = 600, H = 150, n = mins.length, bw = W / n;
+  const max = Math.max(1, ...mins.map(m => m.allowed + m.stopped));
+  let out = "";
+  mins.forEach((m, i) => {
+    const ha = H * m.allowed / max, hs = H * m.stopped / max, x = i * bw + 0.5, w = Math.max(1, bw - 1);
+    const t = new Date(m.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    out += "<g><title>" + t + ": " + m.allowed + " let through, " + m.stopped + " stopped</title>" +
+      "<rect x='" + x + "' y='" + (H - ha - hs) + "' width='" + w + "' height='" + hs + "' fill='var(--bad)'/>" +
+      "<rect x='" + x + "' y='" + (H - ha) + "' width='" + w + "' height='" + ha + "' fill='var(--ok)' opacity='.75'/></g>";
+  });
+  svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+  svg.innerHTML = out;
+  if (n) $("chart-range").textContent = new Date(mins[0].time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " – now";
+}
+
+// Decisions made by a content check (WAF, CRS, ML, prompt guard) can be
+// false alarms; offer to exclude the rule for this path and field.
+const ALLOWABLE = new Set(["blocked", "detected", "ml_blocked", "prompt_injection", "monitored"]);
+const EVENTS = new Map();
+function allowBtn(e) {
+  if (!ALLOWABLE.has(e.outcome) || !e.rule || e.rule.startsWith("BODY-") || ["honeypot", "dashboard", "setup"].includes(e.rule)) return "";
+  EVENTS.set(e.request_id, e);
+  if (EVENTS.size > 3000) EVENTS.delete(EVENTS.keys().next().value);
+  return "<button class='small' data-allow='" + esc(e.request_id) + "' title='This was a false alarm: let requests like it through this rule'>Allow…</button>";
+}
+function openAllow(e) {
+  $("x-rule").value = [e.rule, ...(e.related || [])].join(", ");
+  $("x-path").value = e.path; $("x-field").value = e.field || ""; $("x-note").value = ""; $("x-err").textContent = "";
+  $("excl-form").classList.remove("hidden"); $("excl-card").scrollIntoView({ behavior: "smooth" }); $("x-note").focus();
+}
+$("reload-btn").onclick = async () => {
+  $("reload-msg").textContent = "reloading…";
+  try { await api("reload", { method: "POST" }); $("reload-msg").textContent = "reloaded " + new Date().toLocaleTimeString(); loadInfo(); loadExclusions(); }
+  catch (x) { $("reload-msg").textContent = x.message; }
+};
+$("x-cancel").onclick = () => $("excl-form").classList.add("hidden");
+$("excl-form").onsubmit = async (ev) => {
+  ev.preventDefault(); $("x-err").textContent = "";
+  const rules = $("x-rule").value.split(",").map(s => s.trim()).filter(Boolean);
+  try {
+    for (const rule of rules) {
+      await api("exclusions", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rule, path: $("x-path").value.trim(), field: $("x-field").value.trim(), note: $("x-note").value.trim() }) });
+    }
+    $("excl-form").classList.add("hidden"); loadExclusions();
+  } catch (x) { $("x-err").textContent = x.message; }
+};
+async function loadExclusions() {
+  let out;
+  try { out = await api("exclusions"); } catch (x) { $("excl-card").classList.add("hidden"); return; }
+  const list = out.exclusions || [];
+  $("t-excl").innerHTML = "<tr><th>Rule</th><th>Path</th><th>Field</th><th>Why</th><th>By</th><th></th></tr>" + (list.length ? list.map(x =>
+    "<tr><td class='mono'>" + esc(x.rule) + "</td><td class='mono'>" + esc(x.path || "any") + "</td><td class='mono'>" + esc(x.field || "any") +
+    "</td><td>" + esc(x.note) + "</td><td>" + esc(x.by) + "</td><td><button class='small' data-unexcl='" + esc(x.id) + "'>Remove</button></td></tr>").join("")
+    : "<tr><td colspan='6' class='muted'>None. Use \"Allow…\" on a stopped request that was a false alarm.</td></tr>");
+  $("excl-file").textContent = out.file ? "Saved in " + out.file + " (you can edit it by hand)." : "Not saved to a file: set exclusions_file to keep them after a restart.";
+}
+
+function row(e) {
+  const [label, cls] = LABELS[e.outcome] || [e.outcome.toUpperCase(), "warn"];
+  const tr = document.createElement("tr");
+  tr.dataset.stopped = cls === "bad" ? "1" : "0";
+  const who = e.user ? esc(e.user) + (e.role ? " <span class='muted'>(" + esc(e.role) + ")</span>" : "") : "<span class='mono'>" + esc(e.client_ip) + "</span>";
+  const why = [e.rule, e.reason].filter(Boolean).map(esc).join(" · ") + (e.country && e.country !== "LAN" ? " <span class='pill'>" + esc(e.country) + "</span>" : "");
+  tr.innerHTML = "<td class='mono'>" + new Date(e.time).toLocaleTimeString() + "</td><td><span class='tag " + cls + "'>" + label + "</span></td><td class='mono'>" + esc(e.method) +
+    "</td><td class='mono' title='" + esc(e.path) + "'>" + esc(e.path.length > 48 ? e.path.slice(0, 45) + "…" : e.path) + "</td><td>" + who + "</td><td class='why'>" + why + "</td><td>" + allowBtn(e) + "</td>";
+  if ($("only-stopped").checked && cls !== "bad") tr.classList.add("hidden");
+  return tr;
+}
+$("only-stopped").onchange = () => { document.querySelectorAll("#feed tr").forEach(tr => tr.classList.toggle("hidden", $("only-stopped").checked && tr.dataset.stopped !== "1")); };
+
+function noise(p) { return /\.(js|css|png|jpe?g|svg|ico|woff2?|ttf|map|gif)$/.test(p) || p.startsWith("/socket.io/") || p.startsWith("/assets/") || p.startsWith("/__sentinel/api/") || p.startsWith("/__sentinel/dashboard") || p === "/__sentinel/health"; }
+
+
+// ---- Console --------------------------------------------------------------
+const CON = { lines: [], paused: false, held: [], max: 2000 };
+const CLS = { ok: "ok", bad: "bad", warn: "warn", info: "info" };
+function conLabel(e) {
+  const l = LABELS[e.outcome] || [e.outcome, ""];
+  const cls = /bad/.test(l[1]) ? "bad" : /warn/.test(l[1]) ? "warn" : /ok|good/.test(l[1]) ? "ok" : "info";
+  return [l[0], cls];
+}
+function conPad(s, n) { s = String(s == null ? "" : s); return s.length >= n ? s.slice(0, n - 1) + "…" : s + " ".repeat(n - s.length); }
+function conLine(e) {
+  const [label, cls] = conLabel(e);
+  const time = new Date(e.time).toLocaleTimeString([], { hour12: false });
+  const who = e.user || e.client_ip || "";
+  const why = [e.rule, e.reason].filter(Boolean).join("  ");
+  const status = e.status ? String(e.status) : "";
+  let html = "<span class='l'><span class='t'>" + time + "</span>  <span class='" + cls + "'>" + esc(conPad(label, 12)) + "</span> " +
+    esc(conPad(e.method, 7)) + esc(conPad(e.path, 34)) + " " + esc(conPad(status, 4)) + " " + esc(conPad(who, 16)) + " " +
+    (why ? "<span class='" + (cls === "ok" ? "dim" : cls) + "'>" + esc(why) + "</span>" : "") + "</span>";
+  if (e.detail) html += "<span class='d'>" + esc(e.detail) + "</span>";
+  const text = [time, label, e.method, e.path, status, who, why, e.detail || ""].join(" ");
+  return { e, html, text: text.toLowerCase() };
+}
+function conVisible(x) {
+  const f = $("con-filter").value, q = $("con-search").value.trim().toLowerCase();
+  if (f !== "noisy" && x.e.outcome === "allowed" && noise(x.e.path)) return false;
+  if (f === "stopped" && !ALLOWABLE.has(x.e.outcome) && !STOPPED.has(x.e.outcome)) return false;
+  return !q || x.text.includes(q);
+}
+const STOPPED = new Set(["blocked", "denied", "rate_limited", "banned", "honeypot", "geo_blocked", "ml_blocked", "prompt_injection",
+  "leak_blocked", "unauthenticated", "invalid", "too_large", "challenged", "monitored", "detected"]);
+function conRender() {
+  const term = $("term"), shown = CON.lines.filter(conVisible);
+  term.innerHTML = shown.length ? shown.map(x => x.html).join("") :
+    "<span class='sys'>Waiting for requests… Send some traffic through Sentinel and every decision appears here.</span>";
+  term.scrollTop = term.scrollHeight;
+  conCount();
+}
+function conCount() {
+  $("con-count").textContent = CON.lines.length + " lines" + (CON.paused ? " · paused, " + CON.held.length + " new" : "");
+}
+function conAdd(e) {
+  const x = conLine(e);
+  if (CON.paused) { CON.held.push(x); conCount(); return; }
+  conPush(x);
+}
+function conPush(x) {
+  CON.lines.push(x);
+  const term = $("term");
+  if (CON.lines.length > CON.max) { CON.lines.splice(0, CON.lines.length - CON.max); return conRender(); }
+  if (!conVisible(x)) return conCount();
+  if (term.querySelector(".sys")) term.innerHTML = "";
+  const near = term.scrollHeight - term.scrollTop - term.clientHeight < 60;
+  term.insertAdjacentHTML("beforeend", x.html);
+  if (near) term.scrollTop = term.scrollHeight;
+  conCount();
+}
+$("con-filter").onchange = conRender;
+$("con-search").oninput = conRender;
+$("con-pause").onclick = () => {
+  CON.paused = !CON.paused;
+  $("con-pause").textContent = CON.paused ? "Resume" : "Pause";
+  if (!CON.paused) { CON.held.forEach(conPush); CON.held = []; }
+  conCount();
+};
+$("con-clear").onclick = () => { CON.lines = []; CON.held = []; conRender(); };
+$("con-copy").onclick = async () => {
+  const text = $("term").innerText;
+  try { await navigator.clipboard.writeText(text); $("con-copy").textContent = "Copied"; } catch (x) { $("con-copy").textContent = "Copy failed"; }
+  setTimeout(() => $("con-copy").textContent = "Copy", 1500);
+};
+function conFull(on) {
+  $("console-card").classList.toggle("full", on);
+  $("con-full").textContent = on ? "Exit full screen" : "Full screen";
+  $("term").scrollTop = $("term").scrollHeight;
+}
+$("con-full").onclick = () => conFull(!$("console-card").classList.contains("full"));
+document.addEventListener("keydown", (k) => { if (k.key === "Escape") conFull(false); });
+
+function addEvent(e, prepend) {
+  conAdd(e);
+  if (e.outcome === "allowed" && noise(e.path)) return;
+  const body = $("feed");
+  if (prepend) body.prepend(row(e)); else body.append(row(e));
+  while (body.children.length > 300) body.lastChild.remove();
+}
+
+async function loadEvents() {
+  try {
+    const ev = await api("events?n=300");
+    $("feed").innerHTML = ""; CON.lines = []; CON.held = [];
+    ev.forEach(e => conPush(conLine(e)));                  // oldest first, like a terminal
+    ev.slice().reverse().forEach(e => { if (!(e.outcome === "allowed" && noise(e.path))) $("feed").append(row(e)); }); // newest first
+    conRender();
+  } catch (e) {}
+}
+
+async function loadInfo() {
+  try {
+    const i = await api("info");
+    $("version").textContent = "v" + i.version;
+    const rows = [["Mode", i.mode === "monitor" ? "MONITOR: logging only, nothing is blocked" : "protect"], ["WAF", i.waf_mode + ", " + i.waf_rules + " rules"], ["Rate limits", (i.rate_limits || []).join("  ") || "off"], ["Shared store", i.store],
+      ["Geo", i.geo], ["AI prompt guard", (i.prompt_guard_paths || []).join(", ") || "off"], ["ML classifier", i.ml], ["Started", new Date(i.started).toLocaleString()]];
+    $("t-info").innerHTML = rows.map(r => "<tr><td class='muted' style='width:160px'>" + r[0] + "</td><td>" + esc(r[1]) + "</td></tr>").join("");
+  } catch (e) {}
+}
+
+async function stream() {
+  if (streamAbort) streamAbort.abort();
+  streamAbort = new AbortController();
+  const live = $("live");
+  try {
+    const res = await fetch("/__sentinel/api/stream", { headers: { Authorization: "Bearer " + token }, signal: streamAbort.signal });
+    if (!res.ok) throw new Error(res.status);
+    live.className = "pill live"; live.textContent = "● live";
+    const reader = res.body.getReader(), dec = new TextDecoder();
+    let buf = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf("\n\n")) >= 0) {
+        const chunk = buf.slice(0, i); buf = buf.slice(i + 2);
+        if (chunk.startsWith("data: ")) { try { addEvent(JSON.parse(chunk.slice(6)), true); } catch (e) {} }
+      }
+    }
+  } catch (e) { if (e.name === "AbortError") return; }
+  live.className = "pill off"; live.textContent = "● reconnecting";
+  if (token) setTimeout(stream, 3000);
+}
+
+setInterval(refresh, 5000);
+if (token) start();
+</script>
+</body>
+</html>

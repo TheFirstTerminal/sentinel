@@ -1,0 +1,17 @@
+Sentinel is running in {{ .Values.config.mode | upper }} mode in front of {{ .Values.config.upstream }}.
+{{- if eq .Values.config.mode "monitor" }}
+
+Nothing is blocked yet. Watch what Sentinel would block:
+  kubectl logs -f -l app.kubernetes.io/instance={{ .Release.Name }} | grep '"outcome":"\(monitored\|detected\)"'
+
+When the log looks right, switch to protect mode:
+  helm upgrade {{ .Release.Name }} <chart> --reuse-values --set config.mode=protect
+{{- end }}
+
+Send traffic through Sentinel by pointing your Ingress at the Service
+"{{ include "sentinel.fullname" . }}" (port {{ .Values.service.port }}).
+{{- if gt (int .Values.replicaCount) 1 }}
+
+With {{ .Values.replicaCount }} replicas, rate limits and bans are counted per pod
+unless you set REDIS_URL (env) so the pods share them.
+{{- end }}

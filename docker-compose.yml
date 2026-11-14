@@ -1,0 +1,52 @@
+# Sentinel quick demo: Sentinel in front of OWASP Juice Shop (a deliberately
+# vulnerable shop). Start it with `bash lab/start.sh`.
+#
+#   http://localhost:3000  -> Juice Shop directly (unprotected, for comparison)
+#   http://localhost:8080  -> Juice Shop through Sentinel
+#   http://localhost:9000  -> Sentinel's dashboard
+#
+# Ports listen on 127.0.0.1 only: the vulnerable shop must never be
+# reachable from the network. To put Sentinel in front of your own app,
+# see deploy/.
+
+name: sentinel
+
+services:
+  gateway:
+    build: ./gateway
+    ports:
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:9000:9000"
+    environment:
+      UPSTREAM_URL: http://juice-shop:3000
+      MODE: protect                  # real installs start in "monitor"
+      DASHBOARD_ADDR: ":9000"
+      ML_SKIP_PATHS: /socket.io/
+      RATE_LIMITS: /rest/user/login=10/1m,/=600/1m
+      LOG_FILE: /logs/sentinel.log
+    volumes:
+      - sentinel-data:/var/lib/sentinel   # admin account, secret key, exclusions
+      - ./logs:/logs
+    depends_on: [juice-shop]
+    restart: unless-stopped
+
+  juice-shop:
+    image: bkimminich/juice-shop
+    ports:
+      - "127.0.0.1:3000:3000"
+    restart: unless-stopped
+
+  # bash lab/evaluate.sh: replays thousands of attacks and runs sqlmap.
+  eval:
+    build:
+      context: .
+      dockerfile: lab/eval/Dockerfile
+    profiles: ["eval"]
+    environment:
+      N: "1000"
+    volumes:
+      - ./eval-results:/out
+    depends_on: [gateway]
+
+volumes:
+  sentinel-data:

@@ -1,0 +1,363 @@
+[
+  {
+    "id": "SQLI-001",
+    "name": "UNION-based SQL injection",
+    "category": "sqli",
+    "severity": 5,
+    "targets": [
+      "path",
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "\\bunion\\b(?:\\s+all)?\\s+select\\b"
+  },
+  {
+    "id": "SQLI-002",
+    "name": "Boolean tautology after a quote (' OR 1=1)",
+    "category": "sqli",
+    "severity": 5,
+    "targets": [
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "['\"`]\\s*(?:or|and|\\|\\||&&)\\s+(?:'[^']*'|\"[^\"]*\"|\\d+|true|false|[a-z_]+)\\s*(?:=|<|>|like\\b|is\\b)"
+  },
+  {
+    "id": "SQLI-003",
+    "name": "Quote followed by SQL comment (admin'--)",
+    "category": "sqli",
+    "severity": 5,
+    "targets": [
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "['\"`]\\s*\\)*\\s*(?:--|/\\*)"
+  },
+  {
+    "id": "SQLI-007",
+    "name": "Quote followed by MySQL # comment",
+    "category": "sqli",
+    "severity": 3,
+    "targets": [
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "['`]\\s*\\)*\\s*#"
+  },
+  {
+    "id": "SQLI-008",
+    "name": "Conditional expression for blind SQL injection (CASE WHEN ... THEN)",
+    "category": "sqli",
+    "severity": 3,
+    "targets": [
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "\\bcase\\s+when\\b.{1,120}?\\bthen\\b"
+  },
+  {
+    "id": "SQLI-009",
+    "name": "Quoted comparison used as a probe (AND 'abc'='abc)",
+    "category": "sqli",
+    "severity": 5,
+    "targets": [
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "\\b(?:and|or)\\s+['\"][^'\"]{0,30}['\"]?\\s*=\\s*['\"]"
+  },
+  {
+    "id": "SQLI-010",
+    "name": "BETWEEN comparison after a quote",
+    "category": "sqli",
+    "severity": 5,
+    "targets": [
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "['\"`]\\s*\\)*\\s*(?:and|or|&&|\\|\\|)\\s+\\S+\\s+(?:not\\s+)?between\\s+\\S+\\s+and\\b"
+  },
+  {
+    "id": "SQLI-011",
+    "name": "String built from character codes (CHAR(65,66,...))",
+    "category": "sqli",
+    "severity": 3,
+    "targets": [
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "\\b(?:char|chr|nchar)\\s*\\(\\s*\\d+\\s*(?:,\\s*\\d+\\s*){2,}\\)"
+  },
+  {
+    "id": "SQLI-004",
+    "name": "Stacked query with destructive statement",
+    "category": "sqli",
+    "severity": 5,
+    "targets": [
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": ";\\s*(?:drop|delete|insert|update|alter|create|truncate|exec|shutdown)\\b"
+  },
+  {
+    "id": "SQLI-005",
+    "name": "Time-based blind SQL injection",
+    "category": "sqli",
+    "severity": 5,
+    "targets": [
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "\\b(?:sleep|benchmark|pg_sleep)\\s*\\(|\\bwaitfor\\s+delay\\b"
+  },
+  {
+    "id": "SQLI-006",
+    "name": "Database metadata access",
+    "category": "sqli",
+    "severity": 5,
+    "targets": [
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "\\b(?:information_schema|sqlite_master|pg_catalog|mysql\\.user|xp_cmdshell)\\b"
+  },
+  {
+    "id": "XSS-001",
+    "name": "Script tag",
+    "category": "xss",
+    "severity": 5,
+    "targets": [
+      "path",
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "<\\s*script\\b"
+  },
+  {
+    "id": "XSS-002",
+    "name": "HTML event handler attribute",
+    "category": "xss",
+    "severity": 5,
+    "targets": [
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "<[^>]*\\bon(?:error|load|click|mouseover|focus|blur|submit|toggle|animationstart|pointerover)\\s*="
+  },
+  {
+    "id": "XSS-003",
+    "name": "javascript: URI",
+    "category": "xss",
+    "severity": 5,
+    "targets": [
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "javascript\\s*:"
+  },
+  {
+    "id": "XSS-004",
+    "name": "Dangerous embedded element",
+    "category": "xss",
+    "severity": 3,
+    "targets": [
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "<\\s*(?:iframe|object|embed|svg|math|base)\\b"
+  },
+  {
+    "id": "XSS-005",
+    "name": "Common XSS sinks",
+    "category": "xss",
+    "severity": 3,
+    "targets": [
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "\\b(?:alert|prompt|confirm|eval)\\s*\\(|document\\.(?:cookie|domain|write)"
+  },
+  {
+    "id": "LFI-001",
+    "name": "Directory traversal (../)",
+    "category": "traversal",
+    "severity": 5,
+    "targets": [
+      "path",
+      "query",
+      "body",
+      "cookies"
+    ],
+    "pattern": "(?:\\.\\./|\\.\\.\\\\)"
+  },
+  {
+    "id": "LFI-002",
+    "name": "Access to sensitive system files",
+    "category": "traversal",
+    "severity": 5,
+    "targets": [
+      "path",
+      "query",
+      "body",
+      "cookies"
+    ],
+    "pattern": "/etc/(?:passwd|shadow|hosts)|/proc/self/|win\\.ini|boot\\.ini"
+  },
+  {
+    "id": "NULL-001",
+    "name": "Null byte injection (file.bak%00.md)",
+    "category": "traversal",
+    "severity": 5,
+    "targets": [
+      "path",
+      "query",
+      "body",
+      "cookies"
+    ],
+    "pattern": "␀"
+  },
+  {
+    "id": "CMDI-001",
+    "name": "Shell command chaining",
+    "category": "cmdi",
+    "severity": 5,
+    "targets": [
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "(?:;|\\||&&|\\$\\(|`)\\s*(?:cat|ls|id|whoami|uname|pwd|wget|curl|nc|ncat|bash|sh|ping|nslookup|powershell|cmd)\\b"
+  },
+  {
+    "id": "CMDI-002",
+    "name": "Command after a newline (x%0Aid)",
+    "category": "cmdi",
+    "severity": 5,
+    "targets": [
+      "query",
+      "headers",
+      "cookies"
+    ],
+    "pattern": "\\n\\s*(?:cat|ls|id|whoami|uname|pwd|wget|curl|nc|ncat|bash|sh|ping|nslookup|sleep|echo|rm|python[0-9.]*|perl|php)\\b"
+  },
+  {
+    "id": "SCAN-001",
+    "name": "Known attack tool user agent",
+    "category": "scanner",
+    "severity": 5,
+    "targets": [
+      "headers"
+    ],
+    "pattern": "\\b(?:sqlmap|nikto|nmap|masscan|zgrab|gobuster|dirbuster|wpscan|hydra|nuclei|acunetix)\\b"
+  },
+  {
+    "id": "JNDI-001",
+    "name": "Log4Shell JNDI lookup (${jndi:...}, including obfuscated forms)",
+    "category": "rce",
+    "severity": 5,
+    "targets": [
+      "path",
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "\\$\\{[^}]{0,40}?(?:jndi\\s*:|\\$\\{\\s*(?:lower|upper|::-|env|sys|date|base64)[^}]*\\})"
+  },
+  {
+    "id": "SSTI-001",
+    "name": "Server-side template injection reaching Python internals ({{ ...__class__... }})",
+    "category": "ssti",
+    "severity": 5,
+    "targets": [
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "\\{\\{[^}]{0,200}(?:__class__|__globals__|__init__|__mro__|__subclasses__|__builtins__|config\\.|request\\.application|lipsum|cycler|joiner)"
+  },
+  {
+    "id": "SSTI-002",
+    "name": "Template expression probe ({{7*7}}, ${7*7}, <%= %>, T(java...))",
+    "category": "ssti",
+    "severity": 5,
+    "targets": [
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "\\{\\{\\s*\\d+\\s*[*+]\\s*\\d+\\s*\\}\\}|\\$\\{\\s*\\d+\\s*[*+]\\s*\\d+\\s*\\}|<%=[^%]{0,200}%>|\\$\\{\\s*t\\s*\\(\\s*java\\.|\\{%\\s*(?:import|include|set)\\b|freemarker\\.template"
+  },
+  {
+    "id": "SSRF-001",
+    "name": "Cloud metadata or internal address in a URL parameter",
+    "category": "ssrf",
+    "severity": 5,
+    "targets": [
+      "query",
+      "body",
+      "headers"
+    ],
+    "pattern": "(?:https?|gopher|dict|ftp)://(?:169\\.254\\.169\\.254|metadata\\.google\\.internal|100\\.100\\.100\\.200|\\[?::1\\]?|0x7f[0-9a-f]*|2130706433|0+\\.0+\\.0+\\.0+)|\\bgopher://|\\bdict://"
+  },
+  {
+    "id": "XXE-001",
+    "name": "XML external entity (<!ENTITY ... SYSTEM)",
+    "category": "xxe",
+    "severity": 5,
+    "targets": [
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "<!(?:doctype|entity)[^>]{0,300}\\b(?:system|public)\\b"
+  },
+  {
+    "id": "CRLF-001",
+    "name": "Header injection (newline followed by a header)",
+    "category": "crlf",
+    "severity": 5,
+    "targets": [
+      "query",
+      "headers",
+      "cookies"
+    ],
+    "pattern": "[\\r\\n]\\s*(?:set-cookie|location|content-length|content-type|x-[a-z-]+|http/1\\.[01])\\s*:?"
+  }
+]

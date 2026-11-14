@@ -1,0 +1,139 @@
+[
+  {
+    "id": "VP-2014-6271",
+    "name": "Shellshock (CVE-2014-6271): bash function definition in a header",
+    "reference": "https://nvd.nist.gov/vuln/detail/CVE-2014-6271",
+    "category": "cmdi",
+    "severity": 5,
+    "targets": [
+      "headers",
+      "query",
+      "body",
+      "cookies"
+    ],
+    "pattern": "\\(\\s*\\)\\s*\\{\\s*[^}]*?;\\s*\\}\\s*;"
+  },
+  {
+    "id": "VP-2017-5638",
+    "name": "Apache Struts OGNL injection (CVE-2017-5638 and relatives)",
+    "reference": "https://nvd.nist.gov/vuln/detail/CVE-2017-5638",
+    "category": "rce",
+    "severity": 5,
+    "targets": [
+      "headers",
+      "query",
+      "body",
+      "path"
+    ],
+    "pattern": "[%$]\\{\\s*\\(?\\s*#(?:_memberaccess|context|_|[a-z]+\\s*=\\s*@)|#_memberaccess|@ognl\\.ognlcontext|ognlutil"
+  },
+  {
+    "id": "VP-2022-22965",
+    "name": "Spring4Shell (CVE-2022-22965): class loader access through a parameter name",
+    "reference": "https://nvd.nist.gov/vuln/detail/CVE-2022-22965",
+    "category": "rce",
+    "severity": 5,
+    "targets": [
+      "query",
+      "body"
+    ],
+    "pattern": "\\bclass\\.(?:module\\.)?classloader\\b|\\bclass\\[[\"']?(?:module|classloader)"
+  },
+  {
+    "id": "VP-2022-22963",
+    "name": "Spring Cloud Function SpEL injection (CVE-2022-22963)",
+    "reference": "https://nvd.nist.gov/vuln/detail/CVE-2022-22963",
+    "category": "rce",
+    "severity": 5,
+    "targets": [
+      "headers",
+      "query",
+      "body"
+    ],
+    "pattern": "\\bt\\s*\\(\\s*java\\.lang\\.(?:runtime|processbuilder|system|class)\\s*\\)"
+  },
+  {
+    "id": "VP-2022-26134",
+    "name": "Confluence OGNL injection (CVE-2022-26134)",
+    "reference": "https://nvd.nist.gov/vuln/detail/CVE-2022-26134",
+    "category": "rce",
+    "severity": 5,
+    "targets": [
+      "path",
+      "query",
+      "body",
+      "headers"
+    ],
+    "pattern": "\\$\\{[^}]*(?:@java\\.lang\\.|java\\.lang\\.runtime|getruntime\\(|processbuilder|@org\\.apache\\.commons|freemarker\\.template)"
+  },
+  {
+    "id": "VP-2023-22527",
+    "name": "Confluence template injection (CVE-2023-22527)",
+    "reference": "https://nvd.nist.gov/vuln/detail/CVE-2023-22527",
+    "category": "rce",
+    "severity": 5,
+    "targets": [
+      "query",
+      "body"
+    ],
+    "pattern": "#request\\[|\\.key_velocity_|velocity\\.struts2\\.context|com\\.opensymphony\\.xwork2\\.actioncontext"
+  },
+  {
+    "id": "VP-2021-41773",
+    "name": "Apache HTTP Server path traversal (CVE-2021-41773, CVE-2021-42013)",
+    "reference": "https://nvd.nist.gov/vuln/detail/CVE-2021-41773",
+    "category": "lfi",
+    "severity": 5,
+    "targets": [
+      "path"
+    ],
+    "pattern": "/(?:cgi-bin|icons)/(?:[^/]*/)*\\.\\./"
+  },
+  {
+    "id": "VP-2024-4577",
+    "name": "PHP-CGI argument injection (CVE-2024-4577)",
+    "reference": "https://nvd.nist.gov/vuln/detail/CVE-2024-4577",
+    "category": "rce",
+    "severity": 5,
+    "targets": [
+      "query",
+      "path"
+    ],
+    "pattern": "(?:^|[^a-z0-9_])d\\s*(?:allow_url_include|auto_prepend_file|auto_append_file|safe_mode|open_basedir|disable_functions)\\s*="
+  },
+  {
+    "id": "VP-2023-46805",
+    "name": "Ivanti Connect Secure auth bypass and command injection (CVE-2023-46805, CVE-2024-21887)",
+    "reference": "https://nvd.nist.gov/vuln/detail/CVE-2024-21887",
+    "category": "rce",
+    "severity": 5,
+    "targets": [
+      "path"
+    ],
+    "pattern": "/api/v1/totp/user-backup-code/\\.\\./|/api/v1/(?:license/keys-status|configuration/system/bulk-import)/.*;"
+  },
+  {
+    "id": "VP-2021-26084",
+    "name": "Confluence OGNL injection through queryString (CVE-2021-26084)",
+    "reference": "https://nvd.nist.gov/vuln/detail/CVE-2021-26084",
+    "category": "rce",
+    "severity": 5,
+    "targets": [
+      "query",
+      "body"
+    ],
+    "pattern": "\\\\u0027\\s*\\+\\s*\\{|['\"]\\s*\\+\\s*\\{\\s*[a-z0-9_.]+\\s*\\(\\s*\\)\\s*\\.\\s*(?:getclass|forname)"
+  },
+  {
+    "id": "VP-2018-7600",
+    "name": "Drupalgeddon 2 (CVE-2018-7600): render-array key in a form field",
+    "reference": "https://nvd.nist.gov/vuln/detail/CVE-2018-7600",
+    "category": "rce",
+    "severity": 5,
+    "targets": [
+      "query",
+      "body"
+    ],
+    "pattern": "\\[\\s*#(?:post_render|pre_render|lazy_builder|access_callback|submit|validate)\\s*\\]"
+  }
+]

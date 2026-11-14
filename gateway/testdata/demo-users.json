@@ -1,0 +1,7 @@
+[
+  {"username": "alice", "password": "Alice#2026", "role": "employee", "department": "sales"},
+  {"username": "bob",   "password": "Bob#2026",   "role": "employee", "department": "engineering"},
+  {"username": "carol", "password": "Carol#2026", "role": "employee", "department": "hr"},
+  {"username": "admin", "password": "Admin#2026", "role": "admin",    "department": "it",
+   "totp_secret": "KRSXG5CTMVRXEZLUKN2XAZLSKNSWG4TF"}
+]

@@ -1,0 +1,8 @@
+apiVersion: v2
+name: sentinel
+description: Sentinel security gateway (WAF + OWASP CRS + ML) in front of your service
+type: application
+version: 0.11.0
+appVersion: "0.11.0"
+keywords: [waf, security, gateway, owasp, crs]
+home: https://github.com/tsxmamii/sentinel

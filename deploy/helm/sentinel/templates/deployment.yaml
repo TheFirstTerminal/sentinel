@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "sentinel.fullname" . }}
+  labels: {{- include "sentinel.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels: {{- include "sentinel.selector" . | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "sentinel.selector" . | nindent 8 }}
+      annotations:
+        # Restart the pods when the configuration changes.
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- if .Values.config.metrics_listen }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: /metrics
+        {{- end }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext: {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: sentinel
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["--config", "/etc/sentinel/config/sentinel.yaml"]
+          ports:
+            - name: http
+              containerPort: 8080
+            {{- if .Values.config.metrics_listen }}
+            - name: metrics
+              containerPort: 9090
+            {{- end }}
+          env:
+            - name: LISTEN_ADDR
+              value: ":8080"
+            {{- if or .Values.secret.create .Values.secret.existingSecret }}
+            - name: SENTINEL_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "sentinel.secretName" . }}
+                  key: SENTINEL_SECRET
+            {{- end }}
+            {{- with .Values.env }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          readinessProbe:
+            httpGet: {path: /__sentinel/health, port: http}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /__sentinel/health, port: http}
+            periodSeconds: 15
+            failureThreshold: 4
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          securityContext: {{- toYaml .Values.securityContext | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/sentinel/config
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+            - name: data
+              mountPath: /var/lib/sentinel
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "sentinel.fullname" . }}
+        - name: tmp
+          emptyDir: {}
+        - name: data
+          {{- if .Values.persistence.existingClaim }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}

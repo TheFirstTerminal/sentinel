@@ -1,0 +1,12 @@
+# Sentinel lab country database: cidr,country
+#
+# LAB DATA ONLY. These are the IP ranges reserved for documentation
+# (RFC 5737 and 3849), which are never used on the real internet, given
+# pretend countries so the demo can "come from" another country with an
+# X-Forwarded-For header. For real use, point GEOIP_FILE at a real
+# IP-to-country database converted to this format (cidr,country).
+203.0.113.0/24,IQ
+198.51.100.0/24,DE
+192.0.2.0/25,RU
+192.0.2.128/25,KP
+2001:db8::/32,DE

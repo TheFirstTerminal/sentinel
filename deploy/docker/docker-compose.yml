@@ -1,0 +1,44 @@
+# Sentinel in front of your app, with automatic HTTPS.
+#
+# 1. Set YOUR_DOMAIN and the app's address below.
+# 2. Point the domain's DNS at this server; open ports 80 and 443.
+# 3. docker compose up -d, then: docker compose logs sentinel | grep "FIRST RUN"
+#    and open that link (through an SSH tunnel to port 9000) to create the admin.
+#
+# Sentinel starts in monitor mode: it logs what it would block. Read the
+# log or the dashboard for a few days, then set MODE: protect.
+
+services:
+  sentinel:
+    image: ghcr.io/tsxmamii/sentinel:latest
+    ports:
+      - "80:8080"                    # HTTP: redirects to HTTPS, answers Let's Encrypt
+      - "443:8443"
+      - "127.0.0.1:9000:9000"        # dashboard: this machine only (ssh -L 9000:localhost:9000)
+    environment:
+      UPSTREAM_URL: http://app:80    # your app, as this network sees it
+      MODE: monitor
+      TLS_AUTO_DOMAINS: YOUR_DOMAIN  # automatic HTTPS from Let's Encrypt
+      TLS_AUTO_EMAIL: you@example.com
+      TLS_LISTEN_ADDR: ":8443"
+      DASHBOARD_ADDR: ":9000"
+      REDIS_URL: redis://redis:6379  # needed only for more than one instance
+      # PROFILE: wordpress           # or laravel, django, nextjs, ai
+      # APP_PROFILE: learn           # learn your app's normal requests, later: detect / block
+    volumes:
+      - sentinel-data:/var/lib/sentinel   # admin account, secret key, certificates, exclusions
+    depends_on: [redis]
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    restart: unless-stopped
+
+  # Your app. Remove its published ports: only Sentinel should reach it.
+  app:
+    image: nginxdemos/hello
+    expose: ["80"]
+
+volumes:
+  sentinel-data:

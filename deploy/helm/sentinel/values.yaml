@@ -1,0 +1,67 @@
+# Sentinel runs as a reverse proxy: point your Ingress (or Service) at
+# Sentinel, and Sentinel at your app.
+
+image:
+  repository: ghcr.io/tsxmamii/sentinel
+  tag: ""            # defaults to the chart's appVersion
+  pullPolicy: IfNotPresent
+
+replicaCount: 2
+
+# Everything here becomes /etc/sentinel/sentinel.yaml. Any key from
+# docs/configuration.md works. Environment variables (env, below) win.
+config:
+  mode: monitor                      # switch to "protect" once the logs look right
+  upstream: http://my-app:3000       # the Service Sentinel protects
+  waf:
+    crs: "on"                        # the OWASP Core Rule Set built into the image ("off" to disable)
+    crs_paranoia: 1
+  ml:
+    mode: detect
+  log_format: json
+  metrics_listen: ":9090"            # Prometheus metrics (see the pod annotations)
+  # Only believe X-Forwarded-For from inside the cluster (your Ingress).
+  trusted_proxies: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]
+
+# Extra environment variables, e.g. from your own Secrets.
+env: []
+#  - name: REDIS_URL
+#    value: redis://redis:6379
+
+# SENTINEL_SECRET (signs dashboard logins and encrypts 2FA secrets). Either let the
+# chart create a Secret with a random value, or name an existing one.
+secret:
+  create: false
+  existingSecret: ""     # a Secret with the key SENTINEL_SECRET
+
+# The data folder (/var/lib/sentinel): accounts, exclusions, the secret.
+# An emptyDir is lost when the pod is replaced; for several replicas use
+# DATABASE_URL and REDIS_URL (env) and set secret.create, or name a PVC here.
+persistence:
+  existingClaim: ""
+
+service:
+  type: ClusterIP
+  port: 80
+
+resources:
+  requests: {cpu: 100m, memory: 64Mi}
+  limits: {memory: 256Mi}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  seccompProfile: {type: RuntimeDefault}
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities: {drop: [ALL]}
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

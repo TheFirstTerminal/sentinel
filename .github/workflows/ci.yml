@@ -1,0 +1,180 @@
+# Runs on every push and pull request: format check, static analysis,
+# all tests (including against real PostgreSQL and Redis), builds, and checks of
+# the Docker setup and lab scripts.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  gateway:
+    name: Gateway tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: sentinel
+          POSTGRES_PASSWORD: ci-password
+          POSTGRES_DB: sentinel
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sentinel -d sentinel"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 20
+    defaults:
+      run:
+        working-directory: gateway
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: gateway/go.mod
+          cache: false   # dependencies are vendored
+
+      - name: Formatting (gofmt)
+        run: |
+          unformatted=$(gofmt -l cmd internal)
+          if [ -n "$unformatted" ]; then
+            echo "These files need gofmt:"; echo "$unformatted"; exit 1
+          fi
+
+      - name: Static analysis (go vet)
+        run: go vet ./...
+
+      - name: Tests
+        env:
+          TEST_DATABASE_URL: postgres://sentinel:ci-password@localhost:5432/sentinel?sslmode=disable
+          TEST_REDIS_URL: redis://localhost:6379
+        run: go test -count=1 ./...
+
+      # Dependencies: download each one from the official Go proxy, check it
+      # against go.sum (the proxy's copies are themselves checked against the
+      # public checksum database), then check vendor/ is exactly those files.
+      - name: Verify dependencies
+        run: |
+          GOFLAGS=-mod=mod go mod download
+          GOFLAGS=-mod=mod go mod verify
+          go mod vendor
+          git diff --exit-code -- vendor/ || (echo "vendor/ differs from the verified modules" && exit 1)
+
+      # Replays the OWASP Core Rule Set's own regression suite (about 3,800
+      # requests) through Sentinel's CRS engine. The test fails below 95%.
+      - name: OWASP CRS regression suite
+        run: |
+          git clone --quiet --depth 1 --branch v4.8.0 https://github.com/coreruleset/coreruleset.git /tmp/crs
+          CRS_TEST_DIR=/tmp/crs/rules go test -count=1 -v -run 'TestCRSRegressionSuite|TestCompareWithCRS' ./internal/crs/ | grep -E 'suite|PL[0-9]|^(ok|FAIL|---)'
+
+      # Reports known vulnerabilities in the Go code and dependencies that
+      # Sentinel actually calls. Report only here; the release workflow
+      # refuses to publish when it finds any.
+      - name: Known vulnerabilities (govulncheck)
+        continue-on-error: true
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+      - name: Build
+        run: go build -mod=vendor -o /dev/null ./cmd/sentinel ./cmd/mltrain ./cmd/evaluate
+
+  lab:
+    name: Lab checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: gateway/go.mod
+          cache: false
+
+      - name: Lab scripts parse
+        run: for f in lab/*.sh; do bash -n "$f" && echo "ok  $f"; done
+
+      - name: Example policy is valid JSON
+        run: python3 -m json.tool deploy/examples/policy.json > /dev/null
+
+      - name: Docker Compose file is valid
+        run: docker compose config -q
+
+  fuzz:
+    name: Fuzz the parsers
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gateway
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: gateway/go.mod
+      # 30 seconds each on every push; anything found becomes a failing test
+      # input under testdata/fuzz, so it stays fixed.
+      - name: Fuzz
+        run: |
+          set -e
+          for t in "ml FuzzScoreFast" "prefilter FuzzPrefilterSound" "crs FuzzTransforms" "crs FuzzParseRule" "crs FuzzEvaluate" \
+                   "waf FuzzNormalize" "waf FuzzInspect" "promptguard FuzzInspect" "config FuzzParseFile" "exclude FuzzLoad"; do
+            set -- $t
+            go test -run XXX -fuzz "^$2\$" -fuzztime 30s ./internal/$1/
+          done
+
+  helm:
+    name: Helm chart
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint and render the chart
+        run: |
+          helm lint deploy/helm/sentinel
+          helm template t deploy/helm/sentinel > /tmp/default.yaml
+          helm template t deploy/helm/sentinel --set secret.create=true --set replicaCount=1 --set config.mode=protect > /tmp/other.yaml
+          grep -q "kind: Deployment" /tmp/default.yaml
+          grep -q "kind: PodDisruptionBudget" /tmp/default.yaml
+          ! grep -q "kind: PodDisruptionBudget" /tmp/other.yaml
+          grep -q "SENTINEL_SECRET" /tmp/other.yaml
+          grep -q "mode: protect" /tmp/other.yaml
+          grep -q "runAsUser: 65532" /tmp/default.yaml
+
+  images:
+    name: Docker images build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build gateway image
+        run: docker build -t sentinel-gateway ./gateway
+
+      # The quickstart, for real: one container in front of a test app.
+      - name: Quickstart smoke test
+        run: |
+          docker network create qs
+          docker run -d --name app --network qs traefik/whoami
+          docker run -d --name gw --network qs -p 8080:8080 -e UPSTREAM_URL=http://app:80 sentinel-gateway
+          for i in $(seq 30); do curl -sf localhost:8080/__sentinel/health && break; sleep 1; done
+          docker logs gw 2>&1 | grep -q "OWASP Core Rule Set loaded"
+          # Monitor mode (the default): the attack reaches the app, and is logged.
+          test "$(curl -s -o /dev/null -w '%{http_code}' "localhost:8080/?id=1'%20UNION%20SELECT%20password%20FROM%20users--")" = 200
+          docker logs gw 2>&1 | grep -q '"outcome":"monitored"'
+          # Protect mode blocks it.
+          docker rm -f gw
+          docker run -d --name gw --network qs -p 8080:8080 -e UPSTREAM_URL=http://app:80 -e MODE=protect sentinel-gateway
+          for i in $(seq 30); do curl -sf localhost:8080/__sentinel/health && break; sleep 1; done
+          test "$(curl -s -o /dev/null -w '%{http_code}' "localhost:8080/?id=1'%20UNION%20SELECT%20password%20FROM%20users--")" = 403
+          test "$(curl -s -o /dev/null -w '%{http_code}' "localhost:8080/?q=apple")" = 200
+          sleep 35 && test "$(docker inspect -f '{{.State.Health.Status}}' gw)" = healthy

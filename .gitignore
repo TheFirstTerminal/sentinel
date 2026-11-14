@@ -1,0 +1,6 @@
+logs/*.log
+/gateway/sentinel
+lab/certs/
+eval-results/
+*.test
+sentinel-data/

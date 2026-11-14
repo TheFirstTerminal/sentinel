@@ -1,0 +1,183 @@
+# Configuration
+
+Sentinel reads its settings from a YAML file, from environment variables, or
+both. **An environment variable always wins over the file**, so Docker and
+Kubernetes can override a single setting without editing the file.
+
+```bash
+sentinel init                 # writes a commented sentinel.yaml to start from
+sentinel check-config         # checks it without starting (typos are named)
+sentinel                      # runs with ./sentinel.yaml if it exists
+sentinel --config /path/to/sentinel.yaml
+```
+
+The file is found with `--config`, then `SENTINEL_CONFIG`, then
+`./sentinel.yaml`, then `/etc/sentinel/sentinel.yaml`. An unknown key stops
+the start with a suggestion (`waf.treshold` → did you mean `WAF_THRESHOLD`?),
+so a typo can never silently turn a protection off.
+
+In the file, nested keys map to one variable: `waf: {threshold: 7}` is
+`WAF_THRESHOLD=7`. Lists become comma-separated values, maps become
+`key=value` pairs, and `false` becomes `off`.
+
+## The basics
+
+| File key | Variable | Default | Meaning |
+|---|---|---|---|
+| `mode` | `MODE` | `monitor` | `monitor`: every check runs and is logged, nothing is blocked. `protect`: refuse what the checks catch. Start in monitor, read the log for a few days, then switch. |
+| `profile` | `PROFILE` | none | A starting point for your kind of app: `wordpress`, `laravel`, `django`, `nextjs` or `ai` (see below) |
+| `upstream` | `UPSTREAM_URL` | `http://localhost:3000` | The app Sentinel protects |
+| `routes` | `UPSTREAMS` | `/` → `upstream` | Several apps by path prefix (longest wins): `{/api/: http://api:8000, /: http://web:3000}` |
+| `listen` | `LISTEN_ADDR` | `:8080` | Where Sentinel listens |
+| `data_dir` | `DATA_DIR` | `/var/lib/sentinel` in the Docker image, else `./sentinel-data` | Keeps what must survive a restart when there is no database: the secret key, accounts, exclusions and HTTPS certificates. Keep it on a volume. If it isn't writable, Sentinel says so and keeps them in memory |
+| `log_format` | `LOG_FORMAT` | automatic | `pretty` (one readable line per decision) in a terminal, `json` otherwise |
+| `log_file` | `LOG_FILE` | none | Also write JSON logs here (`sentinel watch` reads it) |
+| `dashboard` | `DASHBOARD` | on | The dashboard, at `/__sentinel/dashboard` (admins with 2FA) |
+| `dashboard_listen` | `DASHBOARD_ADDR` | none (on the main port) | Give the dashboard its own port, e.g. `:9000`: then it opens at `http://<host>:9000` and is not reachable on the public port at all. Recommended: keep that port private (firewall or VPN) |
+| `security_headers` | `SECURITY_HEADERS` | on | Adds nosniff, Referrer-Policy, X-Frame-Options and (over HTTPS) HSTS when the app doesn't |
+| `timezone` | `TZ` | `UTC` | For quiet hours and office-hours rules |
+
+### Profiles
+
+A profile fills in settings that suit a kind of app. Anything you set
+yourself still wins, and you can see exactly what a profile does in
+[`gateway/internal/config/profiles.go`](../gateway/internal/config/profiles.go).
+
+| Profile | What it does |
+|---|---|
+| `wordpress` | Removes the `/wp-admin` and `/wp-login.php` honeypot traps (they are real pages there, so admins would be banned), rate-limits `wp-login.php` and `xmlrpc.php`, and lets HTML and code through in the post, theme and plugin editors |
+| `laravel` | Encrypted `laravel_session` / `XSRF-TOKEN` cookies and the `_token` field are not mistaken for attacks; rate-limits `/login` and `/password/` |
+| `django` | The same for `csrftoken`, `csrfmiddlewaretoken` and `sessionid`; rate-limits the admin and account logins |
+| `nextjs` | The ML model skips `/_next/` build assets; NextAuth cookies are not mistaken for attacks; rate-limits `/api/auth/` |
+| `ai` | Turns the prompt-injection guard on for `/api/chat`, `/api/generate` (Ollama) and the OpenAI- and Anthropic-style `/v1/...` endpoints |
+
+## Attack detection
+
+| File key | Variable | Default | Meaning |
+|---|---|---|---|
+| `waf.mode` | `WAF_MODE` | `block` | Inside protect mode: `block`, or `detect` to only log WAF findings |
+| `waf.threshold` | `WAF_THRESHOLD` | `5` | Anomaly score that counts as an attack (a critical match scores 5) |
+| `waf.rules_file` | `RULES_FILE` | built-in | Replace Sentinel's own rules with a JSON file |
+| `waf.crs` | `CRS_DIR` | on if built in (the Docker image), else off | The OWASP Core Rule Set: `on`, `off`, or the path of a CRS `rules/` folder |
+| `waf.crs_paranoia` | `CRS_PARANOIA` | `1` | `1` (few false alarms) to `4` (strict; expect to tune) |
+| `waf.crs_exclude` | `CRS_EXCLUDE` | `920220` | CRS rule IDs or ranges to switch off, e.g. `[920220, 942100-942199]` |
+| `exclusions_file` | `EXCLUSIONS_FILE` | `exclusions.yaml` in the data folder | YAML list of exclusions: a rule switched off for one path and/or field. The dashboard's "Allow…" button adds to it; see below |
+| `waf.max_field_bytes` | `WAF_MAX_FIELD_BYTES` | `65536` | A single field, header or raw body larger than this is refused (rule BODY-003); `0` = off |
+| `max_body_bytes` | `MAX_BODY_BYTES` | `1048576` | Larger bodies are refused with 413: they can't be inspected whole |
+| `app_profile` | `APP_PROFILE` | `off` | **Learn your app.** `learn`: Sentinel learns, from requests that passed every check, what each page's parameters normally look like (length, characters, numbers, fixed values). `detect` / `block`: flag or refuse requests that don't fit, which catches parameter tampering that has no attack syntax. Saved in the data folder. On the CSIC 2010 dataset it caught 96.6% of attacks with 0.01% false alarms ([ml-report](ml-report.md)) |
+| `app_profile_min_seen` | `APP_PROFILE_MIN_SEEN` | `20` | A page or field must have been seen this often before the profile judges it |
+| `ml.mode` | `ML_MODE` | `detect` | The ML classifier: `off`, `detect` (log only) or `block` |
+| `ml.threshold` | `ML_THRESHOLD` | `0.9` | Probability that counts as an attack |
+| `ml.skip_paths` | `ML_SKIP_PATHS` | none | Path prefixes the model ignores (e.g. `[/socket.io/]`) |
+| `prompt_guard.paths` | `PROMPT_GUARD_PATHS` | none | AI chat endpoints to protect from prompt injection |
+| `prompt_guard.mode` | `PROMPT_GUARD_MODE` | `block` | `block` or `detect` |
+| `prompt_guard.threshold` | `PROMPT_GUARD_THRESHOLD` | `5` | Score that counts as an injection |
+| `prompt_guard.canary` | `PROMPT_CANARY` | none | A secret word in your AI's hidden prompt; a reply containing it (even encoded) is withheld |
+| `honeypot.paths` | `HONEYPOT_PATHS` | built-in list | Trap paths (`/.env`, `/wp-admin`...); a hit bans the IP |
+| `honeypot.ban_minutes` | `HONEYPOT_BAN_MINUTES` | `60` | How long a trap hit, or flooding, bans the IP |
+
+**Why 920220 is excluded by default.** CRS rule 920220 looks for double URL
+encoding and also fires on any literal `%` in a query, such as a search for
+"50% off". Sentinel's own normalizer already decodes repeated encoding, so
+the rule adds false alarms and almost no detection (measured in
+[benchmarks.md](benchmarks.md)). Set `CRS_EXCLUDE` to something else, or to
+an empty list, to change this.
+
+### Exclusions (fixing false alarms)
+
+When a rule blocks something legitimate, switch that rule off **only where
+it misfires**, not everywhere. Click "Allow…" on the request in the
+dashboard, or write the file by hand:
+
+```yaml
+- rule: CRS-942100          # or SQLI-001, ML, PI-001, or a prefix like CRS-942*
+  path: /api/reviews        # requests whose path starts with this
+  field: comment            # only this field (query, form, JSON, header or cookie name)
+  note: reviews can mention SQL words
+```
+
+Each entry needs a path or a field (or both), so a rule can never be
+switched off everywhere by accident. `method:` narrows it further. The file
+is re-read on `SIGHUP`.
+
+## What the app sends back
+
+| File key | Variable | Default | Meaning |
+|---|---|---|---|
+| `response_check` | `RESPONSE_CHECK` | `block` (`detect` in monitor mode) | Check the app's responses for leaks: database errors, stack traces, private and cloud keys, directory listings (withheld in `block`, logged in `detect`), and payment card numbers (always masked to the last four digits). `off` turns it off |
+| `response_max_bytes` | `RESPONSE_MAX_BYTES` | `1048576` | Text responses up to this size are checked. Larger, binary and streaming responses (SSE, anything that flushes) pass through unchecked, so streaming never breaks |
+
+A database error in a response is often the first sign that an injection
+works, so withholding it takes away the attacker's feedback. To allow a leak
+type for some paths (a file server that lists folders on purpose), add an
+exclusion with the finding's ID, e.g. `rule: LEAK-LISTING`, `path: /files/`,
+`field: response`.
+
+## Bots
+
+| File key | Variable | Default | Meaning |
+|---|---|---|---|
+| `bot.block_scanners` | `BOT_BLOCK_SCANNERS` | on | Refuse requests whose User-Agent names an attack tool (sqlmap, nikto, nuclei, wpscan...) |
+| `bot.challenge` | `BOT_CHALLENGE` | `off` | A JavaScript check for browsers: `suspicious` (clients that look automated: no User-Agent, headless or automation tools, a "browser" without Accept-Language) or `all` (every visitor on the paths below) |
+| `bot.challenge_paths` | `BOT_CHALLENGE_PATHS` | `/` | Where the check applies, e.g. `[/login, /signup]` |
+| `bot.difficulty` | `BOT_DIFFICULTY` | `15` | Proof-of-work size; a browser needs about 0.1–0.5 s at 15, and each step up doubles it |
+
+The check is a short proof of work: a browser solves it once and gets a
+signed cookie for 24 hours, bound to its IP and User-Agent. Requests that
+don't ask for an HTML page (APIs, images) are never shown a check, so APIs
+keep working. Be realistic about what it stops: scripts and simple bots,
+not a determined attacker driving a real browser (modern headless browsers
+look like normal ones). With `all`, search engines can't index the checked
+paths, so use it for pages like `/login`, not your whole site.
+
+## Traffic limits and network
+
+| File key | Variable | Default | Meaning |
+|---|---|---|---|
+| `rate_limits` | `RATE_LIMITS` | `{/__sentinel/auth/: 10/1m, /: 600/1m}` | Requests per window by path prefix; logged-in users are counted by name. `off` turns it off. A client that sends 3× its limit within one window is flooding and its IP is banned (`honeypot.ban_minutes`) |
+| `login_fail_limit` | `LOGIN_FAIL_LIMIT` | `10` | Failed logins per account (from any IP) before a 15-minute pause; `0` = off |
+| `redis_url` | `REDIS_URL` | none (memory) | Share counters and bans between Sentinel instances |
+| `trusted_proxies` | `TRUSTED_PROXIES` | none | Your load balancer's CIDRs; only their `X-Forwarded-For` is believed |
+| `trust_proxy_headers` | `TRUST_PROXY_HEADERS` | `false` | Believe `X-Forwarded-For` from anyone (only when nothing can reach Sentinel except your proxy) |
+| `geo.file` | `GEOIP_FILE` | none | `cidr,country` CSV (convert any IP-to-country database) |
+| `geo.deny_countries` | `GEO_DENY_COUNTRIES` | none | e.g. `[KP]` |
+| `geo.allow_countries` | `GEO_ALLOW_COUNTRIES` | none | If set, only these countries (and private addresses) |
+| `ip.deny` / `ip.allow` | `IP_DENY` / `IP_ALLOW` | none | CIDRs always refused / the only ones allowed |
+
+## Monitoring and alerts
+
+| File key | Variable | Default | Meaning |
+|---|---|---|---|
+| `metrics_listen` | `METRICS_ADDR` | off | Serve Prometheus metrics at `http://<this>/metrics`, e.g. `:9090`. A separate port, so they are never public on the main one |
+| `alerts.webhook_url` | `ALERT_WEBHOOK_URL` | off | Where alerts go: a Slack or Discord webhook, a Telegram `https://api.telegram.org/bot<token>/sendMessage` URL, or any URL (JSON is posted) |
+| `alerts.telegram_chat_id` | `ALERT_TELEGRAM_CHAT_ID` | none | The chat to send to, for Telegram |
+| `alerts.burst` | `ALERT_BURST` | `20` | Stopped requests from one IP within a minute that make an "attack burst" alert |
+
+Alerts are sent for: a honeypot hit, an attack burst from one IP, password
+guessing on an account, a new admin account and a failed reload. Each subject alerts at most once per 10 minutes, with at most 20
+alerts a minute in total, so an attack can't flood your phone.
+
+Metrics: `sentinel_requests_total{outcome}`, `sentinel_rule_stops_total{rule}`,
+`sentinel_request_duration_seconds` (histogram), `sentinel_bans_active`,
+`sentinel_rules_loaded`, `sentinel_exclusions`, `sentinel_info{version,mode}`,
+plus uptime, memory and goroutines. A ready Grafana dashboard is in
+[`deploy/grafana/sentinel.json`](../deploy/grafana/sentinel.json).
+
+## The dashboard's login, API schema and HTTPS
+
+| File key | Variable | Default | Meaning |
+|---|---|---|---|
+| `secret` | `SENTINEL_SECRET` | made once and kept in the data folder | Master key for the dashboard's login tokens and encrypted 2FA secrets, at least 32 characters (`openssl rand -hex 32`) |
+| `database_url` | `DATABASE_URL` | none (accounts in the data folder) | PostgreSQL for the admin accounts and revoked tokens |
+| `api_spec.file` / `api_spec.prefix` | `API_SPEC_FILE` / `API_SPEC_PREFIX` | off | OpenAPI 3 spec; requests that don't match it are refused |
+| `tls.auto_domains` | `TLS_AUTO_DOMAINS` | none | **Automatic HTTPS**: certificates from Let's Encrypt for these domains, renewed automatically, e.g. `[shop.example.com]`. Ports 80 and 443 must be reachable from the internet; plain HTTP is redirected to HTTPS |
+| `tls.auto_email` | `TLS_AUTO_EMAIL` | none | Contact address for Let's Encrypt (expiry warnings) |
+| `tls.auto_cache` | `TLS_AUTO_CACHE` | `certs` in the data folder | Folder where certificates are kept (keep it on a volume, or Let's Encrypt's rate limits apply on every restart) |
+| `tls.listen` | `TLS_LISTEN_ADDR` | none (`:443` with automatic HTTPS) | e.g. `:8443` to also serve HTTPS |
+| `tls.cert_file` / `tls.key_file` | `TLS_CERT_FILE` / `TLS_KEY_FILE` | none | Server certificate and key |
+
+Logins for your own apps, access policies (RBAC/ABAC), mTLS for services,
+risk-based step-up and the tamper-evident audit log are part of Sentinel
+Pro. If one of their settings (`POLICY_FILE`, `MTLS_ROUTES`,
+`AUDIT_LOG_FILE`, ...) is set, the free edition refuses to start and says
+so, instead of quietly running without the protection you expected.

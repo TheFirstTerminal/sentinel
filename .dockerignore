@@ -1,0 +1,6 @@
+# Only the evaluation image is built from the repository root.
+.git
+logs
+eval-results
+lab/certs
+docs
