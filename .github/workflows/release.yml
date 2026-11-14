@@ -84,7 +84,7 @@ jobs:
           upload-release-assets: false
 
       - name: Scan the SBOM for known vulnerabilities (fail on critical)
-        uses: anchore/scan-action@v4
+        uses: anchore/scan-action@v7
         with:
           sbom: dist/sentinel-${{ env.VERSION }}.sbom.spdx.json
           fail-build: true
