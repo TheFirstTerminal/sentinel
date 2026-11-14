@@ -202,7 +202,7 @@ publishes binaries and a multi-arch image ([`release.yml`](.github/workflows/rel
 
 - Questions, bugs and false alarms: [GitHub issues](https://github.com/tsxmamii/sentinel/issues/new/choose).
 - Security problems: privately, as described in [`SECURITY.md`](SECURITY.md).
-- Contributing: [`CONTRIBUTING.md`](CONTRIBUTING.md).
+- Code review is welcome; code contributions are not accepted: [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Editions
 
