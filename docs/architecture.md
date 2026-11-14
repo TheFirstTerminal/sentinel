@@ -138,7 +138,7 @@ by side. The model is trained on generated data (23 attack families and
 many kinds of normal input, including look-alikes such as "Please select a
 size" or "O'Brien") and tested on fresh data and on evasion rewrites it never
 saw (encodings, comments, case, operator swaps, shell quote splitting...):
-see [`docs/ml-report.md`](docs/ml-report.md). Because the data is
+see [`docs/ml-report.md`](ml-report.md). Because the data is
 synthetic, start real deployments with `ML_MODE=detect`.
 
 **Security headers.** Responses get `X-Content-Type-Options: nosniff`, a
@@ -149,13 +149,13 @@ already sets them.
 replay of thousands of attacks, evasion variants and normal input, the time
 Sentinel adds, and sqlmap with and without its tamper scripts. The first run
 found a real bypass, which was fixed; see
-[`docs/evaluation.md`](docs/evaluation.md).
+[`docs/evaluation.md`](evaluation.md).
 
-**Standards and supply chain.** [`docs/asvs.md`](docs/asvs.md) maps
+**Standards and supply chain.** [`docs/asvs.md`](asvs.md) maps
 Sentinel to OWASP ASVS 4.0.3 requirement by requirement, including the gaps.
 Releases are built by GitHub Actions with an SBOM, a vulnerability scan
 (govulncheck, Grype) and keyless signatures (cosign) once the repository is
-public: [`docs/supply-chain.md`](docs/supply-chain.md).
+public: [`docs/supply-chain.md`](supply-chain.md).
 
 **Dashboard.** `/__sentinel/dashboard`, for admins who passed 2FA: requests
 and stops per minute, why requests were stopped, top attacking IPs and

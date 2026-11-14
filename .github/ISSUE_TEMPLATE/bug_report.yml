@@ -1,0 +1,39 @@
+name: Bug report
+description: Something doesn't work as documented
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Security problems (a way past Sentinel's checks, a crash an attacker could cause...) go through [SECURITY.md](https://github.com/tsxmamii/sentinel/blob/main/SECURITY.md), not here.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `sentinel version`, or the image tag
+    validations:
+      required: true
+  - type: dropdown
+    id: runs
+    attributes:
+      label: How Sentinel runs
+      options: [Docker, Binary, Helm / Kubernetes, The demo lab]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what you expected
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to reproduce
+      description: Settings (without secrets) and the request that shows the problem
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log lines
+      description: Sentinel's log for that request. Remove tokens, cookies and personal data.
+      render: json

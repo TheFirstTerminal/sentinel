@@ -1,7 +1,7 @@
 # Sentinel documents
 
-The latest version of every guide lives here, next to the code. When S
-publishes a new version, these files are updated at the same time.
+The guide for each version lives here, next to its code, and is updated
+with every release.
 
 | File | For | What it is |
 |---|---|---|
@@ -11,6 +11,7 @@ publishes a new version, these files are updated at the same time.
 | [`evaluation.md`](evaluation.md) | Everyone | Attacking the lab from outside (replay, overhead, sqlmap) and what it found |
 | [`asvs.md`](asvs.md) | Everyone | Sentinel mapped to OWASP ASVS 4.0.3, including the gaps |
 | [`supply-chain.md`](supply-chain.md) | Whoever releases or installs Sentinel | SBOM, vulnerability scans, signatures, how to verify |
+| [`../SECURITY.md`](../SECURITY.md) | Everyone | How to report a security problem privately |
 
 ## Updating your copy
 
@@ -19,5 +20,5 @@ bash lab/update.sh
 ```
 
 Pulls the latest version and restarts the lab. See [`CHANGELOG.md`](../CHANGELOG.md)
-for what changed. Only S edits and pushes; everyone else only pulls, so
-nothing conflicts. Any problem: talk to S.
+for what changed. Questions and bug reports: [GitHub issues](https://github.com/tsxmamii/sentinel/issues).
+Security problems: see [`SECURITY.md`](../SECURITY.md), not a public issue.

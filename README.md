@@ -3,12 +3,15 @@
 **A security gateway for web apps, APIs and AI endpoints that explains every decision.**
 
 [![CI](https://github.com/tsxmamii/sentinel/actions/workflows/ci.yml/badge.svg)](https://github.com/tsxmamii/sentinel/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/tsxmamii/sentinel)](https://github.com/tsxmamii/sentinel/releases)
+[![License: PolyForm Shield](https://img.shields.io/badge/license-PolyForm%20Shield%201.0.0-blue)](LICENSE.md)
 
 Sentinel sits in front of your app as a reverse proxy and checks every request
 before it gets through: attacks (its own rules, the OWASP Core Rule Set and a
 machine-learning model), abuse (rate limits, honeypots, password spraying),
-and prompt injection on AI endpoints. It's one Go binary, and it starts in **monitor mode**, so you
-can see what it would block before it blocks anything.
+and prompt injection on AI endpoints. It's one Go binary, and it starts in
+**monitor mode**, so you can see what it would block before it blocks
+anything.
 
 ![Sentinel in a terminal: normal requests pass, attacks are caught and explained](docs/demo.gif)
 
@@ -44,9 +47,10 @@ can see what it would block before it blocks anything.
 - **Checks your API's shape.** Give it your OpenAPI spec and requests with
   unknown fields, wrong types or extra parameters are refused before they
   reach your code.
-- **Fast and small.** Sentinel's own checks add about **0.2 ms** per request,
-  and CRS about 1.2 ms more. The image is a single static binary with no
-  shell.
+- **Fast and small.** Sentinel's own checks (rules + ML) add under **1 ms**
+  per request, and CRS about 1.7 ms more, even on a 2-core laptop
+  ([benchmarks](docs/benchmarks.md)). The image is a single static binary
+  with no shell.
 
 ## Quickstart
 
@@ -193,6 +197,12 @@ Dependencies are vendored, so builds need no network. CI runs formatting,
 vet, all tests, the CRS suite, fuzzing of every parser, the Helm chart and a
 real-container smoke test on every push ([`ci.yml`](.github/workflows/ci.yml)). Pushing a version tag
 publishes binaries and a multi-arch image ([`release.yml`](.github/workflows/release.yml)).
+
+## Getting help
+
+- Questions, bugs and false alarms: [GitHub issues](https://github.com/tsxmamii/sentinel/issues/new/choose).
+- Security problems: privately, as described in [`SECURITY.md`](SECURITY.md).
+- Contributing: [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Editions
 

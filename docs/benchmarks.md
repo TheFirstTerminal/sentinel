@@ -1,6 +1,6 @@
 # Sentinel benchmarks
 
-Made with `sentinel bench` (version 0.9.0) on 2026-11-11: 2 CPU cores, go1.24.7, linux/amd64. Run it yourself to get numbers for your hardware.
+Made with `sentinel bench` (version 0.11.0) on 2026-11-14, in Docker on a Windows laptop limited to 2 CPU cores (go1.24.13, linux/amd64). Run it yourself to get numbers for your hardware.
 
 ## 1. Detection
 
@@ -50,9 +50,9 @@ What a single user feels.
 
 | Setup | Median | p95 | p99 | Added by Sentinel (median) |
 |---|---|---|---|---|
-| App directly | 0.03 ms | 0.09 ms | 0.14 ms | |
-| Through Sentinel: rules + ML | 0.28 ms | 0.58 ms | 0.78 ms | 0.24 ms |
-| Through Sentinel: rules + OWASP CRS + ML | 1.47 ms | 2.39 ms | 3.57 ms | 1.43 ms |
+| App directly | 0.21 ms | 0.37 ms | 0.53 ms | |
+| Through Sentinel: rules + ML | 0.98 ms | 1.63 ms | 1.99 ms | 0.78 ms |
+| Through Sentinel: rules + OWASP CRS + ML | 2.69 ms | 4.70 ms | 7.00 ms | 2.48 ms |
 
 ### Throughput: 32 clients at once
 
@@ -60,69 +60,6 @@ The most requests per second this machine handles. The load generator shares the
 
 | Setup | Requests/s | Median | p99 |
 |---|---|---|---|
-| App directly | 40945 | 0.66 ms | 4.74 ms |
-| Through Sentinel: rules + ML | 6452 | 4.29 ms | 15.15 ms |
-| Through Sentinel: rules + OWASP CRS + ML | 1468 | 20.68 ms | 48.85 ms |
-
-## 3. OWASP Core Rule Set compatibility
-
-Sentinel runs CRS with its own engine (`gateway/internal/crs`), so CRS's own
-regression suite is the fairest test of it. CI clones CRS v4.8.0 and replays
-every request test (about 3,800) through the engine on every push.
-
-| | Result |
-|---|---|
-| CRS request rules loaded | 405 of 405 (none skipped) |
-| Regression tests passed | **3,765 of 3,794 (99.2%)** |
-| Requests Go's HTTP server rejects before any check (e.g. HTTP/3.0 on a TCP socket) | 6 |
-
-Of the 29 that differ, 7 are expected: 5 need argument-length limits that
-`crs-setup.conf` leaves off by default, and 2 test the blocking-evaluation
-rule 949110, whose job Sentinel does itself. The other 22 are edge cases
-(mostly in PHP and Java detection at higher paranoia levels); run the suite
-with `CRS_SHOW_FAILURES=1` to list them.
-
-Three places where Sentinel deliberately differs from ModSecurity:
-
-- **`%uXXXX` decoding keeps the character.** ModSecurity keeps only the low
-  byte, which turns Arabic "ا" (U+0627) into an apostrophe and makes ordinary
-  Arabic text look like SQL injection. Sentinel decodes it to the real
-  character (fullwidth ASCII still becomes ASCII).
-- **Arguments containing `;` are inspected.** Go's own parser drops them; a
-  WAF built on it would let a payload hide behind a semicolon.
-- **Rule 920220 is off by default** (`CRS_EXCLUDE`): it flags any literal `%`
-  ("50% off"), and Sentinel's normalizer already handles repeated encoding.
-  Excluding it took false alarms on the data above from 2.5% to 0.5% and cost
-  0.2 points of detection.
-
-## 4. How the speed was achieved
-
-- **Literal prefilters.** Go's regex engine has no DFA, so a CRS rule with
-  hundreds of alternatives is slow even when it doesn't match. From each
-  pattern's syntax tree Sentinel works out strings, or punctuation, of which
-  every match must contain one, and skips the regex when a value has none
-  (the idea behind RE2's FilteredRE2). It never skips a regex that would
-  match: the CRS suite passes identically with and without it, and a test
-  checks it on random inputs.
-- **Shared work.** Transformation chains and variable lists that many CRS
-  rules have in common are computed once per request.
-- **Allocation-free ML scoring.** Features are hashed in place; the
-  explanation data is only built for flagged requests. A test checks the
-  fast path gives exactly the same score.
-- **Matching before capturing.** Captures are only extracted after a match.
-- **One pass for phrase lists.** CRS's `@pm` lists (hundreds of file names,
-  commands and keywords) are matched with Aho-Corasick, in one pass over the
-  value instead of one search per phrase.
-
-CRS still costs about 1.2 ms per request on this machine, mostly in
-rules that can legitimately match plain words (Unix command names), which no
-prefilter may skip. Turn it off with `CRS_DIR=off` when every millisecond
-matters; Sentinel's own rules plus ML catch nearly as much on this data.
-
-## Reproduce
-
-```bash
-cd gateway
-go run ./cmd/sentinel bench --crs /path/to/coreruleset/rules --out ../docs/benchmarks.md
-CRS_TEST_DIR=/path/to/coreruleset/rules go test -v -run TestCRSRegressionSuite ./internal/crs/
-```
+| App directly | 12852 | 0.42 ms | 74.70 ms |
+| Through Sentinel: rules + ML | 3169 | 2.27 ms | 81.37 ms |
+| Through Sentinel: rules + OWASP CRS + ML | 861 | 11.73 ms | 105.10 ms |

@@ -8,7 +8,7 @@ a laptop, so anyone can see exactly how it was made.
 
 | Item | Where |
 |---|---|
-| Container image | `ghcr.io/<owner>/sentinel:<version>` (and `:latest`) |
+| Container image | `ghcr.io/tsxmamii/sentinel:<version>` (and `:latest`) |
 | Binaries (Linux amd64/arm64, Windows, macOS arm64) | GitHub release |
 | `checksums.txt` | GitHub release (SHA-256 of every binary) |
 | SBOM (SPDX JSON): every package inside the image | GitHub release, and attached to the image once signing is on |
@@ -38,18 +38,18 @@ on by itself when the repository is made public.
 
 ```bash
 # The image was built by this repository's release workflow:
-cosign verify ghcr.io/<owner>/sentinel:<version> \
-  --certificate-identity-regexp '^https://github.com/<owner>/sentinel/.github/workflows/release.yml@refs/tags/v' \
+cosign verify ghcr.io/tsxmamii/sentinel:<version> \
+  --certificate-identity-regexp '^https://github.com/tsxmamii/sentinel/.github/workflows/release.yml@refs/tags/v' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 
 # Its SBOM:
-cosign verify-attestation --type spdxjson ghcr.io/<owner>/sentinel:<version> \
-  --certificate-identity-regexp '^https://github.com/<owner>/sentinel/' \
+cosign verify-attestation --type spdxjson ghcr.io/tsxmamii/sentinel:<version> \
+  --certificate-identity-regexp '^https://github.com/tsxmamii/sentinel/' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 
 # A downloaded binary:
 cosign verify-blob checksums.txt --bundle checksums.txt.sigstore.json \
-  --certificate-identity-regexp '^https://github.com/<owner>/sentinel/' \
+  --certificate-identity-regexp '^https://github.com/tsxmamii/sentinel/' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 sha256sum --check --ignore-missing checksums.txt
 ```
@@ -61,6 +61,7 @@ git tag -a v0.11.0 -m "Sentinel v0.11.0"
 git push origin v0.11.0
 ```
 
-Then watch the **Actions** tab. The image appears under the organisation's
-**Packages**. Packages from a private repository are private too; give
-people access in the package's settings.
+Then watch the **Actions** tab. The binaries, checksums, SBOM and license
+files appear on the release, and the image at `ghcr.io/tsxmamii/sentinel`.
+The first time, open the package's settings on GitHub and make it public
+(new packages start private).

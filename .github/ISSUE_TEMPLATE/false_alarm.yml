@@ -1,0 +1,28 @@
+name: False alarm
+description: Sentinel refuses (or would refuse) a normal request
+labels: [false-alarm]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `sentinel version`, or the image tag
+    validations:
+      required: true
+  - type: input
+    id: app
+    attributes:
+      label: The app behind Sentinel
+      description: e.g. WordPress 6.6, a Django API, your own Node app
+  - type: textarea
+    id: log
+    attributes:
+      label: The log line
+      description: It names the rule, the field and the matched text. Remove anything private.
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why this request is normal

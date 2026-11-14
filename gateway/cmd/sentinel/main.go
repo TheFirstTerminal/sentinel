@@ -152,7 +152,7 @@ func main() {
 			fatal("users file", err)
 		}
 		store = fs
-		log.Info("logins: accounts are kept in the data folder", "file", filepath.Join(cfg.DataDir, "users.json"))
+		log.Info("dashboard: admin accounts are kept in the data folder", "file", filepath.Join(cfg.DataDir, "users.json"))
 	default:
 		store = auth.NewMemoryStore()
 	}

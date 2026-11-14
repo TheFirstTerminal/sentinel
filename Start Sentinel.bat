@@ -5,7 +5,7 @@ cd /d "%~dp0"
 set "MINTTY=%ProgramFiles%\Git\usr\bin\mintty.exe"
 if not exist "%MINTTY%" (
   echo Git Bash was not found. Install Git for Windows, then try again.
-  echo Any problem: talk to S.
+  echo Still stuck? Open an issue: https://github.com/tsxmamii/sentinel/issues
   pause
   exit /b 1
 )

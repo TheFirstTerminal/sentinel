@@ -14,7 +14,7 @@ echo "Getting the latest version from GitHub..."
 if ! git pull --ff-only; then
   echo
   echo "${RED}Could not update.${RESET} Usually a project file was changed by accident."
-  echo "Talk to S and send a screenshot of this window, with the output of:  git status"
+  echo "Run  git status  to see which files changed, or open an issue: https://github.com/tsxmamii/sentinel/issues"
   exit 1
 fi
 
