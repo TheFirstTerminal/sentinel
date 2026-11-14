@@ -2,7 +2,7 @@
 
 # Stage 1: compile. Dependencies are vendored (vendor/), so this step
 # needs no internet access.
-FROM golang:1.24-alpine AS build
+FROM golang:1.26.11-alpine AS build
 ARG VERSION=dev
 WORKDIR /src
 COPY . .

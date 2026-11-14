@@ -1,6 +1,6 @@
 # The evaluation container: the "evaluate" replay tool and sqlmap.
 # Built from the repository root: docker compose --profile eval build eval
-FROM golang:1.24-alpine AS build
+FROM golang:1.26.11-alpine AS build
 WORKDIR /src
 COPY gateway/ .
 RUN CGO_ENABLED=0 go build -mod=vendor -o /out/evaluate ./cmd/evaluate
