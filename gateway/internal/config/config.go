@@ -64,13 +64,14 @@ type Config struct {
 	Profile     string   // e.g. "wordpress"
 	ProfileData *Profile // its traps to remove and exclusions (nil = none)
 
-	ListenAddr   string   // where the gateway listens, e.g. ":8080"
-	UpstreamURL  *url.URL // the protected app we forward clean requests to
-	WAFMode      string   // "block" = stop attacks, "detect" = only log them
-	WAFThreshold int      // anomaly score at which a request is treated as an attack
-	RulesFile    string   // optional JSON file that replaces the built-in rules
-	MaxBodyBytes int64    // how much of a request body the WAF inspects
-	LogFile      string   // optional file for security events (JSON lines)
+	ListenAddr    string   // where the gateway listens, e.g. ":8080"
+	UpstreamURL   *url.URL // the protected app we forward clean requests to
+	WAFMode       string   // "block" = stop attacks, "detect" = only log them
+	SecondOpinion bool     // WAF_SECOND_OPINION: the ML model may let a borderline CRS-only detection through
+	WAFThreshold  int      // anomaly score at which a request is treated as an attack
+	RulesFile     string   // optional JSON file that replaces the built-in rules
+	MaxBodyBytes  int64    // how much of a request body the WAF inspects
+	LogFile       string   // optional file for security events (JSON lines)
 
 	// TrustProxyHeaders: only enable when another proxy sits in front of
 	// Sentinel. Otherwise attackers can fake X-Forwarded-For to dodge IP bans.
@@ -306,6 +307,7 @@ func Load() (*Config, error) {
 		Sites:             sites,
 		HealthCheck:       health,
 		HistoryDays:       historyDays,
+		SecondOpinion:     !strings.EqualFold(os.Getenv("WAF_SECOND_OPINION"), "off") && !strings.EqualFold(os.Getenv("WAF_SECOND_OPINION"), "false"),
 		GeoIPFile:         os.Getenv("GEOIP_FILE"),
 		GeoDenyCountries:  os.Getenv("GEO_DENY_COUNTRIES"),
 		GeoAllowCountries: os.Getenv("GEO_ALLOW_COUNTRIES"),

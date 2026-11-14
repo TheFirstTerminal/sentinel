@@ -360,7 +360,12 @@ func (sh *shared) sitePipeline(sc config.Site, s *site) error {
 	if mlMode == "detect" || mlMode == "block" {
 		p = guard(middleware.ML(sh.model, mlMode, cfg.MLThreshold, cfg.MLSkipPaths, cfg.MaxBodyBytes, sh.rec, log))(p) // 8
 	}
-	p = guard(middleware.WAF(sh.engine, wafMode, cfg.MaxBodyBytes, sh.rec, log))(p) // 7
+	var opinion middleware.SecondOpinion
+	if cfg.SecondOpinion && sh.model != nil {
+		model := sh.model
+		opinion = func(text string) float64 { p, _ := model.ScoreText(text); return p }
+	}
+	p = guard(middleware.WAFWithSecondOpinion(sh.engine, wafMode, cfg.MaxBodyBytes, opinion, sh.rec, log))(p) // 7
 	if len(cfg.PromptGuardPaths) > 0 {
 		pg := &promptguard.Guard{Threshold: cfg.PromptThreshold}
 		p = guard(middleware.PromptGuard(pg, cfg.PromptGuardPaths, cfg.PromptCanary, pgMode, cfg.MaxBodyBytes, sh.rec, log))(p)

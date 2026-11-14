@@ -80,6 +80,9 @@ func (e *Engine) CRS() *crs.Set {
 	return e.crs
 }
 
+// Threshold is the anomaly score at which a request is an attack.
+func (e *Engine) Threshold() int { return e.threshold }
+
 func NewEngine(rules []*Rule, threshold int) *Engine {
 	return &Engine{rules: rules, threshold: threshold}
 }

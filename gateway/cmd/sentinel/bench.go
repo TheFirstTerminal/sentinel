@@ -20,6 +20,7 @@ import (
 	"sentinel/gateway/internal/auth"
 	"sentinel/gateway/internal/config"
 	"sentinel/gateway/internal/crs"
+	"sentinel/gateway/internal/middleware"
 	"sentinel/gateway/internal/ml"
 	"sentinel/gateway/internal/ml/dataset"
 	"sentinel/gateway/internal/ml/evasion"
@@ -109,14 +110,18 @@ func runBench(w io.Writer, crsDir string, n int, dur time.Duration, conc int) er
 			req.Host = "shop.example.com"
 			req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0 Safari/537.36")
 			req.Header.Set("Accept", "text/html,application/xhtml+xml")
-			if e.Inspect(req, nil).Attack {
+			d := e.Inspect(req, nil)
+			if !l.m {
+				return d.Attack
+			}
+			// With ML on, the gateway also lets the model give a second
+			// opinion on borderline CRS-only detections (waf.second_opinion).
+			opinion := func(text string) float64 { p, _ := model.ScoreText(text); return p }
+			if d.Attack && !middleware.BenignBySecondOpinion(d, e.Threshold(), opinion) {
 				return true
 			}
-			if l.m {
-				p, _ := model.ScoreText(s)
-				return p >= 0.9
-			}
-			return false
+			p, _ := model.ScoreText(s)
+			return p >= 0.9
 		}
 		count := func(list []string) string {
 			c := 0

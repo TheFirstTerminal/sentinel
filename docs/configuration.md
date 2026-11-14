@@ -98,6 +98,7 @@ yourself still wins, and you can see exactly what a profile does in
 |---|---|---|---|
 | `waf.mode` | `WAF_MODE` | `block` | Inside protect mode: `block`, or `detect` to only log WAF findings |
 | `waf.threshold` | `WAF_THRESHOLD` | `5` | Anomaly score that counts as an attack (a critical match scores 5) |
+| `waf.second_opinion` | `WAF_SECOND_OPINION` | on | When only the OWASP Core Rule Set flags a request, its score is no higher than the threshold, and the ML model is at least 95% sure every value it flagged is harmless, the request is logged as `detected` instead of blocked. This removes typical CRS false alarms ("Node.js & Express", "phone case (large)") while Sentinel's own rules and clear CRS hits still block. Needs `ml.mode` detect or block. `off` blocks every CRS detection |
 | `waf.rules_file` | `RULES_FILE` | built-in | Replace Sentinel's own rules with a JSON file |
 | `waf.crs` | `CRS_DIR` | on if built in (the Docker image), else off | The OWASP Core Rule Set: `on`, `off`, or the path of a CRS `rules/` folder |
 | `waf.crs_paranoia` | `CRS_PARANOIA` | `1` | `1` (few false alarms) to `4` (strict; expect to tune) |
