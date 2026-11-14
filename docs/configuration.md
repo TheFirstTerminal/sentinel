@@ -27,7 +27,9 @@ In the file, nested keys map to one variable: `waf: {threshold: 7}` is
 | `mode` | `MODE` | `monitor` | `monitor`: every check runs and is logged, nothing is blocked. `protect`: refuse what the checks catch. Start in monitor, read the log for a few days, then switch. |
 | `profile` | `PROFILE` | none | A starting point for your kind of app: `wordpress`, `laravel`, `django`, `nextjs` or `ai` (see below) |
 | `upstream` | `UPSTREAM_URL` | `http://localhost:3000` | The app Sentinel protects |
-| `routes` | `UPSTREAMS` | `/` → `upstream` | Several apps by path prefix (longest wins): `{/api/: http://api:8000, /: http://web:3000}` |
+| `routes` | `UPSTREAMS` | `/` → `upstream` | Several apps by path prefix (longest wins): `{/api/: http://api:8000, /: http://web:3000}`. Several servers for one app share its traffic in turn: `{/: [http://web-1:3000, http://web-2:3000]}` (as a variable: `/=http://web-1:3000\|http://web-2:3000`) |
+| `health_check` | `HEALTH_CHECK` | none | A path Sentinel requests on every server every 10 seconds, e.g. `/healthz`. A server that fails it (no answer or a 5xx) gets no traffic until it passes again. A server that refuses a connection is skipped for 10 seconds even without this |
+| `sites` | `SITES` | none (one site for every host name) | Several websites or APIs by host name, each with its own servers and settings (as a variable: JSON): see [Several sites](#several-sites) |
 | `listen` | `LISTEN_ADDR` | `:8080` | Where Sentinel listens |
 | `data_dir` | `DATA_DIR` | `/var/lib/sentinel` in the Docker image, else `./sentinel-data` | Keeps what must survive a restart when there is no database: the secret key, accounts, exclusions and HTTPS certificates. Keep it on a volume. If it isn't writable, Sentinel says so and keeps them in memory |
 | `log_format` | `LOG_FORMAT` | automatic | `pretty` (one readable line per decision) in a terminal, `json` otherwise |
@@ -35,7 +37,45 @@ In the file, nested keys map to one variable: `waf: {threshold: 7}` is
 | `dashboard` | `DASHBOARD` | on | The dashboard, at `/__sentinel/dashboard` (admins with 2FA) |
 | `dashboard_listen` | `DASHBOARD_ADDR` | none (on the main port) | Give the dashboard its own port, e.g. `:9000`: then it opens at `http://<host>:9000` and is not reachable on the public port at all. Recommended: keep that port private (firewall or VPN) |
 | `security_headers` | `SECURITY_HEADERS` | on | Adds nosniff, Referrer-Policy, X-Frame-Options and (over HTTPS) HSTS when the app doesn't |
-| `timezone` | `TZ` | `UTC` | For quiet hours and office-hours rules |
+| `timezone` | `TZ` | `UTC` | Time zone for log times shown to people |
+
+## Several sites
+
+One Sentinel can protect several websites and APIs, chosen by the host
+name of each request. Each site has its own servers and can have its own
+mode, WAF mode, ML mode, rate limits and health check; anything a site
+leaves out uses the global setting.
+
+```yaml
+mode: protect
+sites:
+  - name: shop
+    hosts: [shop.example.com, www.shop.example.com]
+    upstreams: [http://shop-1:3000, http://shop-2:3000]   # shared in turn
+    health_check: /healthz
+    rate_limits: { /login: 10/1m, /: 600/1m }
+  - name: api
+    hosts: [api.example.com]
+    routes: { /v2/: http://api-v2:8000, /: http://api:8000 }
+    mode: monitor            # new API: watch it for a while first
+  - name: others
+    hosts: ["*.example.com"] # any other subdomain
+    upstreams: [http://static:80]
+```
+
+| Site key | Meaning |
+|---|---|
+| `name` | Lowercase letters, digits and `-`. Shown in the logs and on the dashboard |
+| `hosts` | Exact names (`shop.example.com`), wildcards (`*.example.com`, longest wins) or `*` for any host no other site has |
+| `upstreams` | The servers for `/`; several share the traffic |
+| `routes` | By path prefix within the site, like the global `routes` |
+| `health_check`, `mode`, `waf_mode`, `ml_mode`, `rate_limits` | As the global settings, for this site only. Rate limits are counted per site |
+
+A request whose host name matches no site gets `421 Misdirected Request`
+and is logged; add a site with `hosts: ["*"]` to catch the rest instead.
+Sentinel's own pages (the dashboard and its login) work on every host. As
+an environment variable, `SITES` is the same list as JSON:
+`SITES='[{"name":"shop","hosts":["shop.example.com"],"upstreams":["http://shop:3000"]}]'`.
 
 ### Profiles
 

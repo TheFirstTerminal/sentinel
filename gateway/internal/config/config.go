@@ -80,7 +80,9 @@ type Config struct {
 	HoneypotBan   time.Duration // how long a honeypot hit bans the IP
 
 	// Phase 2
-	Upstreams     string // "/staff/=http://staff-api:8000,/=http://juice-shop:3000"
+	Upstreams     string // "/api/=http://api:8000,/=http://web-1:3000|http://web-2:3000"
+	HealthCheck   string // path checked on every server, e.g. "/healthz" ("" = none)
+	Sites         []Site // per-domain settings (SITES); empty = one site for every host
 	DatabaseURL   string // PostgreSQL; empty = in-memory users (lost on restart)
 	Secret        string // SENTINEL_SECRET, master key for tokens and encryption
 	APISpecFile   string // OpenAPI spec; empty = schema validation off
@@ -207,6 +209,15 @@ func Load() (*Config, error) {
 		}
 	}
 
+	sites, err := ParseSites(os.Getenv("SITES"))
+	if err != nil {
+		return nil, err
+	}
+	health := os.Getenv("HEALTH_CHECK")
+	if health != "" && !strings.HasPrefix(health, "/") {
+		return nil, fmt.Errorf("HEALTH_CHECK must be a path like /healthz")
+	}
+
 	pgMode := strings.ToLower(env("PROMPT_GUARD_MODE", "block"))
 	if pgMode != "block" && pgMode != "detect" {
 		return nil, fmt.Errorf("PROMPT_GUARD_MODE must be 'block' or 'detect'")
@@ -286,6 +297,8 @@ func Load() (*Config, error) {
 		TrustedProxies:    os.Getenv("TRUSTED_PROXIES"),
 		RedisURL:          os.Getenv("REDIS_URL"),
 		RateLimits:        os.Getenv("RATE_LIMITS"),
+		Sites:             sites,
+		HealthCheck:       health,
 		GeoIPFile:         os.Getenv("GEOIP_FILE"),
 		GeoDenyCountries:  os.Getenv("GEO_DENY_COUNTRIES"),
 		GeoAllowCountries: os.Getenv("GEO_ALLOW_COUNTRIES"),

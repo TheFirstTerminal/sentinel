@@ -27,7 +27,7 @@ type Event struct {
 	Related   []string  `json:"related,omitempty"` // other rules on that field
 	User      string    `json:"user,omitempty"`
 	Role      string    `json:"role,omitempty"`
-	Risk      int       `json:"risk"`
+	Site      string    `json:"site,omitempty"`
 	Duration  float64   `json:"duration_ms"`
 }
 

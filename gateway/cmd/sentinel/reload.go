@@ -57,8 +57,8 @@ func redactURL(u string) string {
 	return "(set)"
 }
 
-// saveProfile saves the app profile on shutdown (learn mode).
-var saveProfile func()
+// saveProfiles save each site's app profile on shutdown (learn mode).
+var saveProfiles []func()
 
 // currentBans is the running gateway's ban list (for metrics).
 var currentBans *blocklist.List

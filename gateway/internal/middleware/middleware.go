@@ -44,7 +44,7 @@ func ClientIPFrom(ctx context.Context) string  { return reqctx.From(ctx).ClientI
 func RequestContext(trust ProxyTrust) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			info := &reqctx.Info{ID: newID(), ClientIP: clientIP(r, trust), Risk: -1}
+			info := &reqctx.Info{ID: newID(), ClientIP: clientIP(r, trust)}
 			w.Header().Set("X-Request-ID", info.ID)
 			next.ServeHTTP(w, r.WithContext(reqctx.With(r.Context(), info)))
 		})
@@ -93,8 +93,8 @@ func AccessLog(log *slog.Logger, hub *events.Hub) func(http.Handler) http.Handle
 			if info.Country != "" {
 				attrs = append(attrs, "country", info.Country)
 			}
-			if info.Risk >= 0 {
-				attrs = append(attrs, "risk", info.Risk)
+			if info.Site != "" {
+				attrs = append(attrs, "site", info.Site)
 			}
 			log.Info("request", attrs...)
 			stopped := events.Event{Outcome: out.Kind}.Stopped() || out.Kind == "monitored" || out.Kind == "detected"
@@ -103,7 +103,7 @@ func AccessLog(log *slog.Logger, hub *events.Hub) func(http.Handler) http.Handle
 				ev := events.Event{
 					Time: start, RequestID: info.ID, ClientIP: info.ClientIP, Country: info.Country,
 					Method: r.Method, Path: r.URL.Path, Status: rec.status, Outcome: out.Kind,
-					Reason: out.Reason, Rule: out.Rule, Detail: out.Detail, Risk: info.Risk,
+					Reason: out.Reason, Rule: out.Rule, Detail: out.Detail, Site: info.Site,
 					Field: out.Field, Related: out.Related,
 					Duration: float64(time.Since(start).Microseconds()) / 1000,
 				}

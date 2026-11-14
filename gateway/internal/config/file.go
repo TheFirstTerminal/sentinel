@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
@@ -54,7 +55,7 @@ var ProVariables = []string{"POLICY_FILE", "SEED_USERS_FILE", "AUDIT_LOG_FILE", 
 // Variables is every setting Sentinel reads. A file key that maps to none
 // of them is a mistake (usually a typo) and stops the start.
 var Variables = []string{
-	"MODE", "PROFILE", "APP_PROFILE", "APP_PROFILE_MIN_SEEN", "DASHBOARD_ADDR", "DATA_DIR", "RESPONSE_CHECK", "RESPONSE_MAX_BYTES", "BOT_BLOCK_SCANNERS", "BOT_CHALLENGE", "BOT_CHALLENGE_PATHS", "BOT_DIFFICULTY", "LISTEN_ADDR", "METRICS_ADDR", "ALERT_WEBHOOK_URL", "ALERT_TELEGRAM_CHAT_ID", "ALERT_BURST", "UPSTREAM_URL", "UPSTREAMS", "SENTINEL_SECRET", "TZ",
+	"MODE", "PROFILE", "APP_PROFILE", "APP_PROFILE_MIN_SEEN", "DASHBOARD_ADDR", "DATA_DIR", "RESPONSE_CHECK", "RESPONSE_MAX_BYTES", "BOT_BLOCK_SCANNERS", "BOT_CHALLENGE", "BOT_CHALLENGE_PATHS", "BOT_DIFFICULTY", "LISTEN_ADDR", "METRICS_ADDR", "ALERT_WEBHOOK_URL", "ALERT_TELEGRAM_CHAT_ID", "ALERT_BURST", "UPSTREAM_URL", "UPSTREAMS", "SITES", "HEALTH_CHECK", "SENTINEL_SECRET", "TZ",
 	"WAF_MODE", "WAF_THRESHOLD", "RULES_FILE", "CRS_DIR", "CRS_PARANOIA", "CRS_EXCLUDE", "EXCLUSIONS_FILE", "MAX_BODY_BYTES", "WAF_MAX_FIELD_BYTES",
 	"LOG_FILE", "LOG_FORMAT", "AUDIT_LOG_FILE", "TRUST_PROXY_HEADERS", "TRUSTED_PROXIES",
 	"HONEYPOT_PATHS", "HONEYPOT_BAN_MINUTES",
@@ -142,6 +143,16 @@ func ParseFile(data []byte) (map[string]string, error) {
 // scalar writes a file value the way its variable expects it: lists are
 // comma separated, maps become "key=value,...", booleans become true/off.
 func scalar(name string, v any) (string, error) {
+	if name == "SITES" { // a list of sites: kept as JSON
+		if str, ok := v.(string); ok {
+			return str, nil
+		}
+		b, err := json.Marshal(v)
+		if err != nil {
+			return "", fmt.Errorf("sites: %v", err)
+		}
+		return string(b), nil
+	}
 	switch x := v.(type) {
 	case nil:
 		return "", nil

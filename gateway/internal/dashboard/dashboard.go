@@ -51,7 +51,26 @@ type Info struct {
 	Started    string   `json:"started"`
 }
 
+// SiteStatus is one site and its servers, for the dashboard.
+type SiteStatus struct {
+	Name       string         `json:"name"`
+	Hosts      []string       `json:"hosts"`
+	Mode       string         `json:"mode"`
+	WAFMode    string         `json:"waf_mode"`
+	MLMode     string         `json:"ml_mode"`
+	RateLimits []string       `json:"rate_limits"`
+	Servers    []ServerStatus `json:"servers"`
+}
+
+// ServerStatus is one server behind a site.
+type ServerStatus struct {
+	Prefix string `json:"prefix"`
+	URL    string `json:"url"`
+	Up     bool   `json:"up"`
+}
+
 type Dashboard struct {
+	Sites  func() []SiteStatus // nil = not available
 	Hub    *events.Hub
 	Bans   *blocklist.List
 	Rec    Recorder
@@ -114,6 +133,12 @@ func (d *Dashboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		reply(w, map[string]any{"unbanned": ip})
 	case path == "info" && r.Method == "GET":
 		reply(w, d.Info)
+	case path == "sites" && r.Method == "GET":
+		if d.Sites == nil {
+			reply(w, []SiteStatus{})
+			return
+		}
+		reply(w, d.Sites())
 	case path == "reload" && r.Method == "POST" && d.Reload != nil:
 		if err := d.Reload("dashboard (" + u.Username + ")"); err != nil {
 			jsonError(w, http.StatusUnprocessableEntity, "reload failed, the old rules stay active: "+err.Error(), info.ID)

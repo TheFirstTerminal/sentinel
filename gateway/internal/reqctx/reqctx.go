@@ -35,8 +35,7 @@ type Info struct {
 	ID       string
 	ClientIP string
 	Country  string // set by the geo check: "IQ", "LAN", "" = unknown
-	Risk     int    // risk score 0-100 (check 4), -1 = not assessed
-	RiskWhy  string // e.g. "45: new country DE (+35), new IP (+10)"
+	Site     string // the site (SITES) the request is for; "" = the only one
 	Login    string // username a login attempt was for (set by the login API)
 
 	mu           sync.Mutex

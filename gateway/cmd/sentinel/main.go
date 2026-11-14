@@ -7,33 +7,22 @@
 package main
 
 import (
-	"sentinel/gateway/internal/ml/profile"
-
 	"errors"
 
 	"path/filepath"
 
-	"crypto/sha256"
-	"sentinel/gateway/internal/bot"
-
 	"crypto/tls"
-	"golang.org/x/crypto/acme/autocert"
 
-	"sentinel/gateway/internal/alert"
+	"golang.org/x/crypto/acme/autocert"
 
 	"math"
 	"sentinel/gateway/internal/metrics"
-
-	"slices"
-
-	"sentinel/gateway/internal/exclude"
 
 	"sentinel/gateway/internal/crs"
 
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io"
 	stdlog "log"
@@ -48,19 +37,12 @@ import (
 	"time"
 
 	"sentinel/gateway/internal/auth"
-	"sentinel/gateway/internal/blocklist"
 	"sentinel/gateway/internal/certs"
 	"sentinel/gateway/internal/config"
 	"sentinel/gateway/internal/dashboard"
-	"sentinel/gateway/internal/events"
-	"sentinel/gateway/internal/geo"
 	"sentinel/gateway/internal/kv"
 	"sentinel/gateway/internal/middleware"
 	"sentinel/gateway/internal/ml"
-	"sentinel/gateway/internal/promptguard"
-	"sentinel/gateway/internal/proxy"
-	"sentinel/gateway/internal/ratelimit"
-	"sentinel/gateway/internal/schema"
 	"sentinel/gateway/internal/waf"
 	"sentinel/gateway/internal/watch"
 )
@@ -329,8 +311,8 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
-	if saveProfile != nil {
-		saveProfile()
+	for _, save := range saveProfiles {
+		save()
 	}
 	sctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -339,275 +321,6 @@ func main() {
 		tlsSrv.Shutdown(sctx)
 	}
 	log.Info("sentinel stopped")
-}
-
-// NewHandler wires the pipeline. Order matters: outermost runs first.
-//
-//	RequestContext -> AccessLog -> Signals -> [health] ->
-//	1 IPBlock -> Geo -> Honeypot -> Bots -> 3 Authenticate (Sentinel's own
-//	pages) -> 2 RateLimit -> LoginGuard -> StripIdentityHeaders -> 6 Schema ->
-//	PromptGuard -> 7 WAF -> 8 ML -> AppProfile ->
-//	(Sentinel login API and dashboard | reverse proxy -> app)
-//
-// Rate limiting runs after Authenticate so logged-in users are counted by
-// name. rec may be nil (audit logging off).
-func NewHandler(cfg *config.Config, engine *waf.Engine, authSvc *auth.Service, rec middleware.Recorder, log *slog.Logger) (http.Handler, error) {
-	routes, err := proxy.ParseRoutes(cfg.Upstreams)
-	if err != nil {
-		return nil, err
-	}
-	spec, err := schema.Load(cfg.APISpecFile, cfg.APISpecPrefix)
-	if err != nil {
-		return nil, err
-	}
-
-	trust := middleware.ProxyTrust{All: cfg.TrustProxyHeaders}
-	if trust.Nets, err = geo.ParsePrefixes(cfg.TrustedProxies); err != nil {
-		return nil, fmt.Errorf("TRUSTED_PROXIES: %w", err)
-	}
-	store := cfg.KV
-	if store == nil {
-		store = kv.NewMemory()
-	}
-
-	geoDB, err := geo.Load(cfg.GeoIPFile)
-	if err != nil {
-		return nil, fmt.Errorf("GEOIP_FILE: %w", err)
-	}
-	filter := &geo.Filter{
-		DenyCountries:  geo.ParseCountries(cfg.GeoDenyCountries),
-		AllowCountries: geo.ParseCountries(cfg.GeoAllowCountries),
-	}
-	if filter.DenyIPs, err = geo.ParsePrefixes(cfg.IPDeny); err != nil {
-		return nil, fmt.Errorf("IP_DENY: %w", err)
-	}
-	if filter.AllowIPs, err = geo.ParsePrefixes(cfg.IPAllow); err != nil {
-		return nil, fmt.Errorf("IP_ALLOW: %w", err)
-	}
-
-	var limiter *ratelimit.Limiter
-	if !strings.EqualFold(cfg.RateLimits, "off") {
-		spec := cfg.RateLimits
-		if spec == "" {
-			spec = ratelimit.DefaultRules
-		}
-		rules, err := ratelimit.Parse(spec)
-		if err != nil {
-			return nil, err
-		}
-		limiter = ratelimit.New(rules, store)
-	}
-
-	loginFails := &middleware.LoginFailures{Store: store, Window: 15 * time.Minute}
-
-	respMode := cfg.ResponseCheck
-	if cfg.Mode == "monitor" && respMode == "block" {
-		respMode = "detect"
-	}
-	upstream := middleware.ResponseGuard(respMode, cfg.ResponseMaxBytes, log)(proxy.NewRouter(routes, log))
-	authAPI := auth.NewHandlers(authSvc, rec, log)
-	bans := blocklist.New()
-	currentBans = bans
-	hub := events.NewHub(5000)
-	if cfg.AlertWebhookURL != "" {
-		host, _ := os.Hostname()
-		currentAlerter = &alert.Alerter{URL: cfg.AlertWebhookURL, ChatID: cfg.AlertTelegramChat, Burst: cfg.AlertBurst, Log: log, Name: host}
-		go currentAlerter.Watch(context.Background(), hub)
-		log.Info("alerts on", "to", redactURL(cfg.AlertWebhookURL), "burst", cfg.AlertBurst)
-	}
-
-	excl, err := exclude.Load(cfg.ExclusionsFile)
-	if err != nil {
-		return nil, fmt.Errorf("exclusions: %w", err)
-	}
-	if p := cfg.ProfileData; p != nil {
-		var list []exclude.Exclusion
-		for _, pe := range p.Exclusions {
-			for _, rule := range pe.Rules {
-				list = append(list, exclude.Exclusion{Rule: rule, Path: pe.Path, Field: pe.Field, Note: pe.Note, By: "profile: " + cfg.Profile})
-			}
-		}
-		if err := excl.AddPreset(list); err != nil {
-			return nil, fmt.Errorf("profile %s: %w", cfg.Profile, err)
-		}
-		log.Info("profile applied", "profile", cfg.Profile, "about", p.Description)
-	}
-	middleware.Exclusions = excl
-	if n := len(excl.List()); n > 0 {
-		log.Info("exclusions loaded", "file", cfg.ExclusionsFile, "count", n)
-	}
-
-	var dash http.Handler
-	if cfg.Dashboard {
-		info := dashboard.Info{Version: Version, Mode: cfg.Mode, WAFMode: cfg.WAFMode, ML: mlDescribe(cfg), Rules: engine.RuleCount() + crsRules(engine), Store: store.Name(),
-			Started: time.Now().Format(time.RFC3339), PromptPath: cfg.PromptGuardPaths}
-		if limiter != nil {
-			info.RateLimits = limiter.Describe()
-		}
-		info.Geo = fmt.Sprintf("%d ranges; deny %s; allow %s", geoDB.Size(), orNone(cfg.GeoDenyCountries), orNone(cfg.GeoAllowCountries))
-		dash = &dashboard.Dashboard{Hub: hub, Bans: bans, Rec: rec, Log: log, Info: info, Excl: excl, Reload: func(why string) error {
-			if reloadFunc == nil {
-				return fmt.Errorf("reload is only available in the running gateway")
-			}
-			return reloadFunc(why)
-		}}
-	}
-
-	// First run: no accounts yet, so print a one-time link to create the admin.
-	setupState, setupToken, err := authSvc.NewSetup(context.Background())
-	if err != nil {
-		return nil, err
-	}
-	setup := &dashboard.Setup{Svc: authSvc, State: setupState, Log: log, Rec: rec, OnCreated: func(user, ip string) {
-		currentAlerter.Send("admin:"+user, alert.Message{Title: "Admin account created",
-			Text: fmt.Sprintf("The first-run setup created the admin account %q (from %s). If that wasn't you, stop Sentinel now.", user, ip)})
-	}}
-	if setupToken != "" {
-		log.Warn("FIRST RUN: no accounts yet. Create the admin account (the link works once):",
-			"url", setupURL(adminAddr(cfg))+dashboard.SetupPath+"#"+setupToken)
-	}
-
-	traps := cfg.HoneypotPaths
-	if len(traps) == 0 {
-		traps = middleware.DefaultHoneypots
-		if p := cfg.ProfileData; p != nil {
-			// Pages that are real in this kind of app must not be traps.
-			traps = slices.DeleteFunc(slices.Clone(traps), func(t string) bool { return slices.Contains(p.RemoveTraps, t) })
-		}
-	}
-	banFor := cfg.HoneypotBan
-	if banFor <= 0 {
-		banFor = time.Hour
-	}
-
-	// The end of the chain: Sentinel's own login API, or the protected apps.
-	var model *ml.Model
-	if cfg.MLMode == "detect" || cfg.MLMode == "block" {
-		if model, err = ml.Default(); err != nil {
-			return nil, err
-		}
-	}
-
-	// In monitor mode every check that can refuse a request runs in shadow:
-	// it logs what it would refuse, and the request goes on anyway.
-	// The WAF, ML and prompt guard have their own log-only mode, which keeps
-	// their logs accurate ("detected", not "blocked").
-	wafMode, mlMode, pgMode := cfg.WAFMode, cfg.MLMode, cfg.PromptGuardMode
-	if cfg.Mode == "monitor" {
-		wafMode, pgMode = "detect", "detect"
-		if mlMode == "block" {
-			mlMode = "detect"
-		}
-	}
-	guard := func(mw func(http.Handler) http.Handler) func(http.Handler) http.Handler {
-		if cfg.Mode == "monitor" {
-			return middleware.Shadow(mw)
-		}
-		return mw
-	}
-
-	var pipeline http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		adminPath := strings.HasPrefix(r.URL.Path, dashboard.SetupPath) || strings.HasPrefix(r.URL.Path, dashboard.APIPrefix) ||
-			strings.HasPrefix(r.URL.Path, dashboard.PagePath)
-		if cfg.DashboardAddr != "" {
-			if onAdminPort(r) {
-				// The admin port serves only Sentinel's own pages.
-				if !adminPath && !strings.HasPrefix(r.URL.Path, auth.Prefix) {
-					http.Redirect(w, r, dashboard.PagePath, http.StatusFound)
-					return
-				}
-			} else if adminPath {
-				// Not on the public port: the dashboard has its own.
-				http.NotFound(w, r)
-				return
-			}
-		}
-		if strings.HasPrefix(r.URL.Path, auth.Prefix) {
-			authAPI.ServeHTTP(w, r)
-			return
-		}
-		if strings.HasPrefix(r.URL.Path, dashboard.SetupPath) {
-			setup.ServeHTTP(w, r)
-			return
-		}
-		if dash != nil && (strings.HasPrefix(r.URL.Path, dashboard.APIPrefix) || strings.HasPrefix(r.URL.Path, dashboard.PagePath)) {
-			dash.ServeHTTP(w, r)
-			return
-		}
-		upstream.ServeHTTP(w, r)
-	})
-	if cfg.AppProfile != "off" {
-		mode := cfg.AppProfile
-		if cfg.Mode == "monitor" && mode == "block" {
-			mode = "detect"
-		}
-		file := filepath.Join(cfg.DataDir, "app-profile.json")
-		prof, err := profile.Load(file)
-		if err != nil {
-			return nil, err
-		}
-		n, pages, fields := prof.Stats()
-		log.Info("app profile", "mode", mode, "learned_from", n, "pages", pages, "fields", fields, "file", file)
-		if mode == "learn" {
-			go func() {
-				for range time.Tick(30 * time.Second) {
-					if err := prof.Save(file); err != nil {
-						log.Warn("app profile not saved", "error", err.Error())
-					}
-				}
-			}()
-			saveProfile = func() { prof.Save(file) }
-		}
-		pipeline = middleware.AppProfile(prof, mode, cfg.AppProfileMinSeen, cfg.MaxBodyBytes, log)(pipeline)
-	}
-	if model != nil {
-		pipeline = guard(middleware.ML(model, mlMode, cfg.MLThreshold, cfg.MLSkipPaths, cfg.MaxBodyBytes, rec, log))(pipeline) // 8
-	}
-	pipeline = guard(middleware.WAF(engine, wafMode, cfg.MaxBodyBytes, rec, log))(pipeline) // 7
-	if len(cfg.PromptGuardPaths) > 0 {
-		pg := &promptguard.Guard{Threshold: cfg.PromptThreshold}
-		pipeline = guard(middleware.PromptGuard(pg, cfg.PromptGuardPaths, cfg.PromptCanary, pgMode, cfg.MaxBodyBytes, rec, log))(pipeline)
-	}
-	pipeline = guard(middleware.Schema(spec, cfg.MaxBodyBytes, rec, log))(pipeline) // 6
-	pipeline = middleware.StripIdentityHeaders(pipeline)
-	waf.MaxFieldBytes = cfg.MaxFieldBytes
-	pipeline = guard(middleware.LoginGuard(loginFails, cfg.LoginFailLimit, rec, log))(pipeline)
-	if limiter != nil {
-		pipeline = guard(middleware.RateLimitBan(limiter, bans, cfg.HoneypotBan, rec, log))(pipeline) // 2
-	}
-	pipeline = middleware.Authenticate(authSvc)(pipeline) // 3
-	if cfg.Mode != "monitor" {
-		pipeline = middleware.BodyLimit(cfg.MaxBodyBytes, rec, log)(pipeline)
-	}
-	botKey := sha256.Sum256([]byte("sentinel-bot-challenge|" + cfg.Secret))
-	if cfg.Secret == "" {
-		rand.Read(botKey[:]) // passes end when Sentinel restarts
-	}
-	pipeline = guard(middleware.Bots(middleware.BotOptions{
-		BlockScanners: cfg.BotBlockScanners,
-		Challenge:     cfg.BotChallenge,
-		Paths:         cfg.BotPaths,
-		Challenger:    &bot.Challenger{Key: botKey[:], Difficulty: cfg.BotDifficulty, PassFor: 24 * time.Hour},
-	}, log))(pipeline)
-	pipeline = guard(middleware.Honeypot(traps, bans, banFor, rec, log))(pipeline)
-	pipeline = guard(middleware.Geo(geoDB, filter, rec, log))(pipeline)
-	pipeline = guard(middleware.IPBlock(bans, log))(pipeline) // 1
-
-	// Sentinel's health endpoint skips the pipeline.
-	root := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/__sentinel/health" {
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]any{"status": "ok", "mode": cfg.Mode, "waf_mode": cfg.WAFMode, "version": Version})
-			return
-		}
-		pipeline.ServeHTTP(w, r)
-	})
-
-	var inner http.Handler = middleware.CountLoginFailures(loginFails)(root)
-	if cfg.SecurityHeaders {
-		inner = middleware.SecurityHeaders(inner)
-	}
-	return middleware.RequestContext(trust)(middleware.AccessLog(log, hub)(inner)), nil
 }
 
 type adminPortKey struct{}

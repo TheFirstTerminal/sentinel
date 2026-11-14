@@ -67,9 +67,18 @@ func Parse(s string) ([]Rule, error) {
 type Limiter struct {
 	rules []Rule
 	store kv.Store
+	ns    string // keeps each site's counters apart
 }
 
 func New(rules []Rule, store kv.Store) *Limiter { return &Limiter{rules: rules, store: store} }
+
+// ForSite is a limiter whose counters are separate from other sites'.
+func (l *Limiter) ForSite(site string) *Limiter {
+	if site == "" {
+		return l
+	}
+	return &Limiter{rules: l.rules, store: l.store, ns: site + "|"}
+}
 
 // Result of one check.
 type Result struct {
@@ -94,7 +103,7 @@ func (l *Limiter) CheckWeighted(ctx context.Context, path, subject string, weigh
 	if rule == nil {
 		return Result{Allowed: true}, nil
 	}
-	key := "rl:" + rule.Prefix + ":" + subject
+	key := "rl:" + l.ns + rule.Prefix + ":" + subject
 	n, err := l.store.IncrBy(ctx, key, max(weight, 1), rule.Window)
 	if err != nil {
 		return Result{Rule: rule, Allowed: true}, err
