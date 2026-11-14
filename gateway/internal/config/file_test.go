@@ -117,10 +117,31 @@ func TestDocumentedKeysParse(t *testing.T) {
 			}
 		}
 	}
+	pro := map[string]bool{}
+	for _, v := range ProVariables {
+		pro[v] = true
+	}
 	for _, v := range Variables {
-		if !documented[v] {
+		if !documented[v] && !pro[v] { // Pro settings are refused, not documented
 			t.Errorf("variable %s is not in docs/configuration.md", v)
 		}
+	}
+}
+
+// Every Pro setting stops the free edition with a clear message.
+func TestProSettingsAreRefused(t *testing.T) {
+	for _, v := range ProVariables {
+		t.Run(v, func(t *testing.T) {
+			t.Setenv(v, "x")
+			_, err := Load()
+			if err == nil || !strings.Contains(err.Error(), "Sentinel Pro") {
+				t.Errorf("%s=x: want a Sentinel Pro error, got %v", v, err)
+			}
+		})
+	}
+	t.Setenv("RISK", "off") // switching a Pro feature off is fine
+	if _, err := Load(); err != nil {
+		t.Errorf("RISK=off: %v", err)
 	}
 }
 

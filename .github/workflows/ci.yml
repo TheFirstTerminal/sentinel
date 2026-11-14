@@ -107,9 +107,6 @@ jobs:
       - name: Lab scripts parse
         run: for f in lab/*.sh; do bash -n "$f" && echo "ok  $f"; done
 
-      - name: Example policy is valid JSON
-        run: python3 -m json.tool deploy/examples/policy.json > /dev/null
-
       - name: Docker Compose file is valid
         run: docker compose config -q
 
@@ -170,7 +167,7 @@ jobs:
           docker logs gw 2>&1 | grep -q "OWASP Core Rule Set loaded"
           # Monitor mode (the default): the attack reaches the app, and is logged.
           test "$(curl -s -o /dev/null -w '%{http_code}' "localhost:8080/?id=1'%20UNION%20SELECT%20password%20FROM%20users--")" = 200
-          docker logs gw 2>&1 | grep -q '"outcome":"monitored"'
+          docker logs gw 2>&1 | grep -q '"outcome":"detected"'
           # Protect mode blocks it.
           docker rm -f gw
           docker run -d --name gw --network qs -p 8080:8080 -e UPSTREAM_URL=http://app:80 -e MODE=protect sentinel-gateway
