@@ -25,7 +25,9 @@ anything.
   letters). The OWASP Core Rule Set runs in a built-in engine that passes
   **99.2%** of CRS's own regression suite. An ML model catches what no rule
   was written for. Together they caught **99.8%** of the attacks and evasion
-  variants in our tests ([benchmarks](docs/benchmarks.md)).
+  variants in our tests, with no normal input wrongly blocked: when only the
+  Core Rule Set fires on something the model is sure is harmless, it is
+  logged instead of blocked ([benchmarks](docs/benchmarks.md)).
 - **Protection for AI endpoints.** A prompt-injection guard normalises
   look-alike letters, spacing and base64 tricks. A canary check withholds any
   reply that leaks your hidden prompt, even reversed or encoded.
@@ -48,7 +50,7 @@ anything.
   unknown fields, wrong types or extra parameters are refused before they
   reach your code.
 - **Fast and small.** Sentinel's own checks (rules + ML) add under **1 ms**
-  per request, and CRS about 1.7 ms more, even on a 2-core laptop
+  per request, and CRS about 1.2 ms more, even on a 2-core laptop
   ([benchmarks](docs/benchmarks.md)). The image is a single static binary
   with no shell.
 

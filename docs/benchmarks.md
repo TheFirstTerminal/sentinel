@@ -1,6 +1,6 @@
 # Sentinel benchmarks
 
-Made with `sentinel bench` (version 0.11.0) on 2026-11-14, in Docker on a Windows laptop limited to 2 CPU cores (go1.24.13, linux/amd64). Run it yourself to get numbers for your hardware.
+Made with `sentinel bench` (version 0.12.0) on 2026-11-14, in Docker on a Windows laptop limited to 2 CPU cores (go1.26.11, linux/amd64). With ML on, the gateway's second opinion on borderline Core Rule Set detections (`waf.second_opinion`) is applied, as in production. Run it yourself to get numbers for your hardware.
 
 ## 1. Detection
 
@@ -11,7 +11,7 @@ Made with `sentinel bench` (version 0.11.0) on 2026-11-14, in Docker on a Window
 | Sentinel rules | 67.9% | 65.9% | 0.0% |
 | Sentinel rules + ML | 99.7% | 99.6% | 0.0% |
 | Sentinel rules + OWASP CRS | 94.9% | 86.9% | 0.5% |
-| Sentinel rules + OWASP CRS + ML | 99.8% | 99.8% | 0.5% |
+| Sentinel rules + OWASP CRS + ML | 99.8% | 99.8% | 0.0% |
 
 The data is generated, so treat these as a comparison between layers, not a promise for real traffic. That is why new installs start in monitor mode.
 
@@ -50,9 +50,9 @@ What a single user feels.
 
 | Setup | Median | p95 | p99 | Added by Sentinel (median) |
 |---|---|---|---|---|
-| App directly | 0.21 ms | 0.37 ms | 0.53 ms | |
-| Through Sentinel: rules + ML | 0.98 ms | 1.63 ms | 1.99 ms | 0.78 ms |
-| Through Sentinel: rules + OWASP CRS + ML | 2.69 ms | 4.70 ms | 7.00 ms | 2.48 ms |
+| App directly | 0.18 ms | 0.28 ms | 0.41 ms | |
+| Through Sentinel: rules + ML | 0.62 ms | 1.03 ms | 1.34 ms | 0.43 ms |
+| Through Sentinel: rules + OWASP CRS + ML | 1.79 ms | 2.46 ms | 3.05 ms | 1.60 ms |
 
 ### Throughput: 32 clients at once
 
@@ -60,6 +60,6 @@ The most requests per second this machine handles. The load generator shares the
 
 | Setup | Requests/s | Median | p99 |
 |---|---|---|---|
-| App directly | 12852 | 0.42 ms | 74.70 ms |
-| Through Sentinel: rules + ML | 3169 | 2.27 ms | 81.37 ms |
-| Through Sentinel: rules + OWASP CRS + ML | 861 | 11.73 ms | 105.10 ms |
+| App directly | 33250 | 0.84 ms | 3.52 ms |
+| Through Sentinel: rules + ML | 5594 | 5.17 ms | 15.29 ms |
+| Through Sentinel: rules + OWASP CRS + ML | 1496 | 20.21 ms | 46.86 ms |
