@@ -78,7 +78,7 @@ jobs:
       # requests) through Sentinel's CRS engine. The test fails below 95%.
       - name: OWASP CRS regression suite
         run: |
-          git clone --quiet --depth 1 --branch v4.8.0 https://github.com/coreruleset/coreruleset.git /tmp/crs
+          git clone --quiet --depth 1 --branch v4.25.2 https://github.com/coreruleset/coreruleset.git /tmp/crs
           CRS_TEST_DIR=/tmp/crs/rules go test -count=1 -v -run 'TestCRSRegressionSuite|TestCompareWithCRS' ./internal/crs/ | grep -E 'suite|PL[0-9]|^(ok|FAIL|---)'
 
       # Reports known vulnerabilities in the Go code and dependencies that

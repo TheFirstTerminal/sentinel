@@ -11,8 +11,8 @@ RUN CGO_ENABLED=0 go build -mod=vendor -trimpath -ldflags="-s -w -X main.Version
 # Stage 2: the OWASP Core Rule Set, pinned to an exact commit. A changed
 # tag on GitHub makes the build fail instead of shipping unknown rules.
 FROM alpine:3.20 AS crs
-ARG CRS_VERSION=v4.8.0
-ARG CRS_COMMIT=3dc7e0dbc971a6622ecc273a34c7febc14145b1c
+ARG CRS_VERSION=v4.25.2
+ARG CRS_COMMIT=b9818c3718bc75b99403aed6c4b23773004c5412
 RUN apk add --no-cache git \
  && git clone --quiet --depth 1 --branch "${CRS_VERSION}" https://github.com/coreruleset/coreruleset.git /crs \
  && test "$(git -C /crs rev-parse HEAD)" = "${CRS_COMMIT}" \

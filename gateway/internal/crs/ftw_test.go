@@ -140,7 +140,7 @@ func TestCRSRegressionSuite(t *testing.T) {
 			t.Log(f)
 		}
 	}
-	if min := 0.95; float64(pass)/float64(total) < min {
+	if min := 0.98; float64(pass)/float64(total) < min {
 		t.Errorf("pass rate below %.0f%%", min*100)
 	}
 }

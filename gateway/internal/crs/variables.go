@@ -201,6 +201,10 @@ func newTx(r *http.Request, body []byte) *Tx {
 	}
 	tx.single["REQUEST_URI"] = uri
 	tx.single["REQUEST_URI_RAW"] = uri
+	// As in ModSecurity, the path variables are URL-decoded (once).
+	if dec, err := url.PathUnescape(file); err == nil {
+		file = dec
+	}
 	tx.single["REQUEST_FILENAME"] = file
 	tx.single["REQUEST_BASENAME"] = path.Base("/" + file)
 	if strings.HasSuffix(file, "/") {

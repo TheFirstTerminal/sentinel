@@ -6,7 +6,7 @@ or, for the OWASP Core Rule Set, in the image at `/etc/sentinel/crs/LICENSE`.
 
 | Component | Version | License |
 |---|---|---|
-| [OWASP Core Rule Set](https://github.com/coreruleset/coreruleset) (in the Docker image) | 4.8.0 | Apache-2.0 |
+| [OWASP Core Rule Set](https://github.com/coreruleset/coreruleset) (in the Docker image) | 4.25.2 (LTS) | Apache-2.0 |
 | [github.com/corazawaf/libinjection-go](https://github.com/corazawaf/libinjection-go) | 0.2.2 | BSD-3-Clause |
 | [github.com/jackc/pgx/v5](https://github.com/jackc/pgx) | 5.9.2 | MIT |
 | [github.com/jackc/pgpassfile](https://github.com/jackc/pgpassfile) | 1.0.0 | MIT |

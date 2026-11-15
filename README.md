@@ -27,7 +27,7 @@ anything.
 - **Three layers of attack detection.** Sentinel's own rules decode
   evasions first (URL, HTML and Unicode encodings, SQL comments, fullwidth
   letters). The OWASP Core Rule Set runs in a built-in engine that passes
-  **99.2%** of CRS's own regression suite. An ML model catches what no rule
+  **99.3%** of CRS's own regression suite. An ML model catches what no rule
   was written for. Together they caught **99.8%** of the attacks and evasion
   variants in our tests, with no normal input wrongly blocked: when only the
   Core Rule Set fires on something the model is sure is harmless, it is

@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- **OWASP Core Rule Set 4.25.2 (LTS)** (was 4.8.0), with XML attribute values inspected too. The built-in engine passes 99.3% of its regression suite; path variables are now URL-decoded as in ModSecurity.
 - **Dashboard**: change a site's host names, servers and health check without a restart.
 - Editions build on extension points instead of changing shared files.
 

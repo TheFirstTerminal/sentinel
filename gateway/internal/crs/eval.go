@@ -31,6 +31,9 @@ func (s *Set) Evaluate(r *http.Request, body []byte) Result {
 	tx.tx["crs_setup_version"] = "480"
 	tx.tx["blocking_paranoia_level"] = pl
 	tx.tx["detection_paranoia_level"] = pl
+	// Inspect XML attribute values too (CRS 4.25 LTS leaves it off unless
+	// crs-setup.conf opts in): attacks must not hide in attributes.
+	tx.tx["crs_xml_attr_inspect"] = "1"
 
 	for _, phase := range s.phases {
 		skipTo := ""
