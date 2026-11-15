@@ -55,8 +55,9 @@ jobs:
         run: |
           go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.43.0
           for arch in amd64 arm64; do
+            mkdir -p build && cp dist/sentinel-$VERSION-linux-$arch build/sentinel
             for fmt in deb rpm; do
-              ARCH=$arch BINARY=dist/sentinel-$VERSION-linux-$arch                 nfpm package --config deploy/packages/nfpm.yaml --packager $fmt --target dist/
+              ARCH=$arch nfpm package --config deploy/packages/nfpm.yaml --packager $fmt --target dist/
             done
           done
           cd dist && sha256sum sentinel-* sentinel_* sentinel-*.rpm 2>/dev/null | sort -u -k2 > checksums.txt
