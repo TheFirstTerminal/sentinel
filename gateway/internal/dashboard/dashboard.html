@@ -68,7 +68,7 @@ td.n { text-align: right; font-variant-numeric: tabular-nums; }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .row input { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); width: 150px; }
 .row input[type=checkbox] { width: auto; padding: 0; margin: 0 6px 0 0; vertical-align: -2px; }
-select { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); }
+select, textarea { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); }
 .sites { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
 .site { border: 1px solid var(--line); border-radius: 9px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
 .site .top { display: flex; align-items: center; gap: 8px; }
@@ -166,6 +166,30 @@ body:not(.multi) .site-col { display: none; }
   <div class="card" style="margin-top:14px" id="sites-card">
     <h2>Sites <span class="muted" style="font-weight:400;font-size:13px;text-transform:none;letter-spacing:0">monitor logs only · protect blocks</span></h2>
     <div class="sites" id="sites"></div>
+    <form id="se-form" class="hidden" style="margin-top:14px">
+      <h2 id="se-title" style="margin-bottom:6px">Edit site</h2>
+      <p class="muted" style="margin:0 0 8px">Changes apply right away and are kept in the data folder; they win over the config file. Empty = as in the config file.</p>
+      <div class="grid three">
+        <div><label for="se-waf">WAF</label><select id="se-waf"><option value="">as configured</option><option value="block">block</option><option value="detect">detect (log only)</option></select></div>
+        <div><label for="se-ml">ML model</label><select id="se-ml"><option value="">as configured</option><option value="off">off</option><option value="detect">detect (log only)</option><option value="block">block</option></select></div>
+        <div><label for="se-mode">Mode</label><select id="se-mode"><option value="">as configured</option><option value="protect">protect</option><option value="monitor">monitor</option></select></div>
+      </div>
+      <label for="se-limits">Rate limits, one per line: path requests/window (e.g. <span class="mono">/login 10/1m</span>). Empty = as configured.</label>
+      <textarea id="se-limits" class="mono" rows="4" style="width:100%"></textarea>
+      <div class="row" style="margin-top:10px"><button class="primary" type="submit">Save</button><button type="button" id="se-reset">Back to the config file</button><button type="button" id="se-cancel">Cancel</button><span class="err" id="se-err"></span></div>
+    </form>
+  </div>
+
+  <div class="card" style="margin-top:14px" id="alerts-card">
+    <h2>Alerts <span class="muted" style="font-weight:400;font-size:13px;text-transform:none;letter-spacing:0" id="al-state"></span></h2>
+    <form id="al-form">
+      <div class="grid three">
+        <div><label for="al-url">Webhook URL (Slack, Discord, Telegram or any)</label><input id="al-url" class="mono" placeholder="https://hooks.slack.com/..."></div>
+        <div><label for="al-chat">Telegram chat ID</label><input id="al-chat" class="mono" placeholder="only for Telegram"></div>
+        <div><label for="al-burst">Alert after this many stops from one IP in a minute</label><input id="al-burst" type="number" min="1" max="100000"></div>
+      </div>
+      <div class="row" style="margin-top:10px"><button class="primary" type="submit">Save</button><button type="button" id="al-off">Turn alerts off</button><span class="err" id="al-err"></span></div>
+    </form>
   </div>
 
   <div class="grid two" style="margin-top:14px">
@@ -351,7 +375,7 @@ function start() {
   $("login").classList.add("hidden"); $("app").classList.remove("hidden");
   ["live", "who", "logout"].forEach(id => $(id).classList.remove("hidden"));
   try { const c = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))); $("who").textContent = c.sub + " · admin · 2FA"; } catch (e) {}
-  refresh(); loadSites(); loadEvents(); stream(); loadInfo(); loadExclusions(); defaultHistoryRange();
+  refresh(); loadSites(); loadEvents(); stream(); loadInfo(); loadExclusions(); loadAlerts(); defaultHistoryRange();
   if (location.hash === "#console") setTimeout(() => { conFull(true); }, 300);
 }
 
@@ -393,6 +417,7 @@ document.addEventListener("click", async (e) => {
     if (b.dataset.unban) { await api("bans/" + encodeURIComponent(b.dataset.unban), { method: "DELETE" }); refresh(); }
     if (b.dataset.allow && EVENTS.has(b.dataset.allow)) openAllow(EVENTS.get(b.dataset.allow));
     if (b.dataset.unexcl) { await api("exclusions/" + encodeURIComponent(b.dataset.unexcl), { method: "DELETE" }); loadExclusions(); }
+    if (b.dataset.edit !== undefined) openSiteEdit(b.dataset.edit);
     if (b.dataset.mode) {
       const name = b.dataset.site;
       if (b.dataset.mode === "protect" || confirm("Switch " + siteName(name) + " to monitor? Attacks will be logged but no longer blocked.")) {
@@ -604,18 +629,74 @@ function siteCard(s) {
     (x.prefix !== "/" ? " <span class='muted'>for " + esc(x.prefix) + "</span>" : "") + "</div>").join("");
   const btn = (m, label) => "<button type='button' class='" + m + (s.mode === m ? " on" : "") + "' data-site='" + esc(s.name) + "' data-mode='" + m + "'" +
     (s.mode === m ? " aria-pressed='true' disabled" : " aria-pressed='false'") + ">" + label + "</button>";
-  const changed = s.mode !== s.config_mode ? "<div class='note'>Changed on the dashboard; the config file says " + esc(s.config_mode) + ".</div>" : "";
+  const ed = s.edited || {};
+  const changed = (ed.mode || ed.waf_mode || ed.ml_mode || (ed.rate_limits && Object.keys(ed.rate_limits).length))
+    ? "<div class='note'>Changed on the dashboard" + (s.mode !== s.config_mode ? "; the config file says " + esc(s.config_mode) : "") + ".</div>" : "";
+  const limits = (s.rate_limits || []).length ? "<div class='note mono'>" + (s.rate_limits || []).map(esc).join(" · ") + "</div>" : "";
   return "<div class='site'><div class='top'><span class='name'>" + esc(siteName(s.name)) + "</span><span class='sp' style='flex:1'></span>" +
-    "<span class='seg' role='group' aria-label='Mode of " + esc(siteName(s.name)) + "'>" + btn("monitor", "Monitor") + btn("protect", "Protect") + "</span></div>" +
+    "<span class='seg' role='group' aria-label='Mode of " + esc(siteName(s.name)) + "'>" + btn("monitor", "Monitor") + btn("protect", "Protect") + "</span>" +
+    "<button type='button' class='small' data-edit='" + esc(s.name) + "'>Edit</button></div>" +
     "<div class='hosts'>" + (s.hosts || []).map(h => h === "*" ? "any host" : esc(h)).join(", ") + "</div>" +
     "<div class='servers'>" + servers + "</div>" +
-    "<div class='note'>" + up + " of " + all + " server" + (all === 1 ? "" : "s") + " up · WAF " + esc(s.waf_mode) + " · ML " + esc(s.ml_mode) + "</div>" + changed + "</div>";
+    "<div class='note'>" + up + " of " + all + " server" + (all === 1 ? "" : "s") + " up · WAF " + esc(s.waf_mode) + " · ML " + esc(s.ml_mode) + "</div>" + limits + changed + "</div>";
 }
 $("site-sel").onchange = () => {
   SITE = $("site-sel").value; try { localStorage.setItem("sentinel_site", SITE); } catch (e) {}
   refilter(); refresh();
 };
 setInterval(() => { if (token) loadSites(); }, 10000);
+
+let EDITING = null;
+function openSiteEdit(name) {
+  const s = SITES.find(x => x.name === name); if (!s) return;
+  EDITING = name;
+  const ed = s.edited || {};
+  $("se-title").textContent = "Edit " + siteName(name);
+  $("se-waf").value = ed.waf_mode || ""; $("se-ml").value = ed.ml_mode || ""; $("se-mode").value = ed.mode || "";
+  $("se-limits").value = Object.entries(ed.rate_limits || {}).map(([p, v]) => p + " " + v).join("\n");
+  $("se-limits").placeholder = Object.entries(s.config_rate_limits || {}).map(([p, v]) => p + " " + v).join("\n") || (s.rate_limits || []).join("\n");
+  $("se-err").textContent = "";
+  $("se-form").classList.remove("hidden"); $("se-waf").focus();
+}
+async function saveSite(body) {
+  try {
+    await api("sites/" + encodeURIComponent(EDITING === "" ? "_" : EDITING) + "/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    $("se-form").classList.add("hidden"); loadSites(); loadInfo();
+  } catch (x) { $("se-err").textContent = x.message; }
+}
+$("se-form").onsubmit = (ev) => {
+  ev.preventDefault();
+  const rate_limits = {};
+  for (const line of $("se-limits").value.split("\n")) {
+    const t = line.trim(); if (!t) continue;
+    const [p, v] = t.split(/\s+|=/);
+    if (!p || !v) { $("se-err").textContent = "Write each limit as: /path 10/1m"; return; }
+    rate_limits[p] = v;
+  }
+  const body = { waf_mode: $("se-waf").value, ml_mode: $("se-ml").value, mode: $("se-mode").value, rate_limits };
+  if (body.mode === "monitor" && !confirm("Switch " + siteName(EDITING) + " to monitor? Attacks will be logged but no longer blocked.")) return;
+  saveSite(body);
+};
+$("se-reset").onclick = () => saveSite({});
+$("se-cancel").onclick = () => $("se-form").classList.add("hidden");
+
+// ---- Alerts --------------------------------------------------------------
+async function loadAlerts() {
+  let a; try { a = await api("alerts"); } catch (e) { $("alerts-card").classList.add("hidden"); return; }
+  $("al-state").textContent = a.on ? "on, sending to " + a.webhook_url : "off";
+  $("al-url").value = ""; $("al-url").placeholder = a.on ? a.webhook_url + " (leave empty to keep)" : "https://hooks.slack.com/...";
+  $("al-chat").value = a.telegram_chat_id || ""; $("al-burst").value = a.burst || 20;
+}
+$("al-form").onsubmit = async (ev) => {
+  ev.preventDefault(); $("al-err").textContent = "";
+  try { await api("alerts", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ webhook_url: $("al-url").value.trim(), telegram_chat_id: $("al-chat").value.trim(), burst: +$("al-burst").value || 20 }) }); loadAlerts(); }
+  catch (x) { $("al-err").textContent = x.message; }
+};
+$("al-off").onclick = async () => {
+  if (!confirm("Turn alerts off?")) return;
+  try { await api("alerts", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ off: true }) }); loadAlerts(); }
+  catch (x) { $("al-err").textContent = x.message; }
+};
 
 // ---- History -------------------------------------------------------------
 function localInput(d) { const z = new Date(d.getTime() - d.getTimezoneOffset() * 60000); return z.toISOString().slice(0, 16); }

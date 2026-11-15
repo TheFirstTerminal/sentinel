@@ -80,6 +80,12 @@ Sentinel's own pages (the dashboard and its login) work on every host. As
 an environment variable, `SITES` is the same list as JSON:
 `SITES='[{"name":"shop","hosts":["shop.example.com"],"upstreams":["http://shop:3000"]}]'`.
 
+**Changing a site on the dashboard.** Each site's **Edit** button changes its
+mode, WAF mode, ML mode and rate limits while Sentinel runs. The changes are
+kept in `site-settings.json` in the data folder and win over the config file;
+**Back to the config file** removes them. Host names and servers are changed
+in the config file.
+
 ### Profiles
 
 A profile fills in settings that suit a kind of app. Anything you set
@@ -202,6 +208,10 @@ paths, so use it for pages like `/login`, not your whole site.
 Alerts are sent for: a honeypot hit, an attack burst from one IP, password
 guessing on an account, a new admin account and a failed reload. Each subject alerts at most once per 10 minutes, with at most 20
 alerts a minute in total, so an attack can't flood your phone.
+
+The **Alerts** card on the dashboard sets the webhook, Telegram chat and
+burst size while Sentinel runs (kept in `alerts.json` in the data folder,
+winning over the config file), and can turn alerts off.
 
 Metrics: `sentinel_requests_total{outcome}`, `sentinel_rule_stops_total{rule}`,
 `sentinel_request_duration_seconds` (histogram), `sentinel_bans_active`,

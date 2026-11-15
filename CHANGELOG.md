@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.13.0 · unreleased
+- **Exclusions per site**: an exclusion can name one site; **Allow…** fills it in.
+- **API spec and prompt guard per site** (`api_spec_file`, `api_spec_prefix`, `prompt_guard_paths`, `prompt_canary` in a site).
+- **Automatic HTTPS for every site**: `tls.auto_domains: [sites]` gets certificates for every site's host names.
+- **Dashboard editing**: change a site's mode, WAF mode, ML mode and rate limits, and where alerts go, without a restart. Kept in the data folder.
+
 ## 0.12.0 · 2026-11-14
 - **Several sites** (`sites`): one Sentinel for several websites and APIs, chosen by host name (exact, `*.example.com` or `*`), each with its own servers, routes, mode, WAF mode, ML mode, rate limits and health check. Unknown hosts get 421.
 - **Several servers per app**, sharing traffic in turn. A server that refuses connections is skipped for 10 seconds; with `health_check`, failing servers get no traffic until they pass again.

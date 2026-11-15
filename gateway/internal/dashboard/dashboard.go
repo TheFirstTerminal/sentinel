@@ -61,6 +61,33 @@ type SiteStatus struct {
 	MLMode     string         `json:"ml_mode"`
 	RateLimits []string       `json:"rate_limits"`
 	Servers    []ServerStatus `json:"servers"`
+	// Edited is what was changed on the dashboard; ConfigLimits are the
+	// rate limits in the config file.
+	Edited       SiteSettings      `json:"edited"`
+	ConfigLimits map[string]string `json:"config_rate_limits,omitempty"`
+}
+
+// SiteSettings are a site's settings that can be changed on the dashboard.
+// Empty fields keep the config file's value.
+type SiteSettings struct {
+	Mode       string            `json:"mode,omitempty"`
+	WAFMode    string            `json:"waf_mode,omitempty"`
+	MLMode     string            `json:"ml_mode,omitempty"`
+	RateLimits map[string]string `json:"rate_limits,omitempty"` // path prefix -> "10/1m"
+}
+
+// Empty: nothing changed.
+func (s SiteSettings) Empty() bool {
+	return s.Mode == "" && s.WAFMode == "" && s.MLMode == "" && len(s.RateLimits) == 0
+}
+
+// AlertSettings are where alerts go.
+type AlertSettings struct {
+	WebhookURL   string `json:"webhook_url"`
+	TelegramChat string `json:"telegram_chat_id,omitempty"`
+	Burst        int    `json:"burst"`
+	On           bool   `json:"on,omitempty"`  // shown: alerts are being sent
+	Off          bool   `json:"off,omitempty"` // sent: turn alerts off
 }
 
 // ServerStatus is one server behind a site.
@@ -71,15 +98,18 @@ type ServerStatus struct {
 }
 
 type Dashboard struct {
-	Sites   func() []SiteStatus           // nil = not available
-	SetMode func(site, mode string) error // switch a site between monitor and protect
-	Hub     *events.Hub
-	Bans    *blocklist.List
-	Rec     Recorder
-	Log     *slog.Logger
-	Info    Info
-	Excl    *exclude.Set           // false-alarm exclusions (nil = feature off)
-	Reload  func(why string) error // reloads rules, CRS and exclusions
+	Sites     func() []SiteStatus                     // nil = not available
+	SetMode   func(site, mode string) error           // switch a site between monitor and protect
+	SetSite   func(site string, s SiteSettings) error // change a site's modes and rate limits
+	Alerts    func() AlertSettings
+	SetAlerts func(AlertSettings) error
+	Hub       *events.Hub
+	Bans      *blocklist.List
+	Rec       Recorder
+	Log       *slog.Logger
+	Info      Info
+	Excl      *exclude.Set           // false-alarm exclusions (nil = feature off)
+	Reload    func(why string) error // reloads rules, CRS and exclusions
 }
 
 func (d *Dashboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -176,6 +206,38 @@ func (d *Dashboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		d.audit(r, "dashboard_mode", map[string]any{"site": name, "mode": in.Mode, "by": u.Username})
 		reply(w, map[string]any{"site": name, "mode": in.Mode})
+	case strings.HasPrefix(path, "sites/") && strings.HasSuffix(path, "/settings") && r.Method == "PUT" && d.SetSite != nil:
+		name := strings.TrimSuffix(strings.TrimPrefix(path, "sites/"), "/settings")
+		if name == "_" {
+			name = ""
+		}
+		var in SiteSettings
+		dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&in); err != nil {
+			jsonError(w, http.StatusBadRequest, `send {"mode","waf_mode","ml_mode","rate_limits":{"/login":"10/1m"}}`, info.ID)
+			return
+		}
+		if err := d.SetSite(name, in); err != nil {
+			jsonError(w, http.StatusBadRequest, err.Error(), info.ID)
+			return
+		}
+		d.audit(r, "dashboard_site_settings", map[string]any{"site": name, "settings": in, "by": u.Username})
+		reply(w, map[string]any{"site": name, "settings": in})
+	case path == "alerts" && r.Method == "GET" && d.Alerts != nil:
+		reply(w, d.Alerts())
+	case path == "alerts" && r.Method == "PUT" && d.SetAlerts != nil:
+		var in AlertSettings
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<10)).Decode(&in); err != nil {
+			jsonError(w, http.StatusBadRequest, `send {"webhook_url","telegram_chat_id","burst"} or {"off":true}`, info.ID)
+			return
+		}
+		if err := d.SetAlerts(in); err != nil {
+			jsonError(w, http.StatusBadRequest, err.Error(), info.ID)
+			return
+		}
+		d.audit(r, "dashboard_alerts", map[string]any{"off": in.Off, "burst": in.Burst, "by": u.Username})
+		reply(w, d.Alerts())
 	case path == "sites" && r.Method == "GET":
 		if d.Sites == nil {
 			reply(w, []SiteStatus{})

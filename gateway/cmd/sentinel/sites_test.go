@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -278,5 +279,84 @@ func TestSchemaAndPromptGuardPerSite(t *testing.T) {
 	}
 	if _, err := config.ParseSites(`[{"name":"a","hosts":["a.test"],"upstreams":["http://a"],"api_spec_file":"x.json"}]`); err == nil {
 		t.Error("api_spec_file without api_spec_prefix must be refused")
+	}
+}
+
+func TestSiteSettingsAndAlertsFromDashboard(t *testing.T) {
+	dir := t.TempDir()
+	sitesJSON := `[{"name":"shop","hosts":["*"],"upstreams":["{shop}"]}]`
+	gw, _ := sitesLabIn(t, dir, sitesJSON, "shop")
+	l := &lab{t: t, gw: gw, logBuf: &strings.Builder{}}
+	admin := l.login("admin", "Admin#2026")
+
+	// WAF to detect: the attack is logged but forwarded.
+	if code, out := l.do("PUT", "/__sentinel/api/sites/shop/settings", admin, `{"waf_mode":"detect","rate_limits":{"/limited":"2/1m"}}`); code != 200 {
+		t.Fatalf("edit site: %d %v", code, out)
+	}
+	if code, _ := hostGet(t, gw, "shop.test", attack); code != 200 {
+		t.Errorf("waf_mode detect: attack got %d, want it forwarded", code)
+	}
+	last := 0
+	for i := 0; i < 4; i++ {
+		last, _ = hostGet(t, gw, "shop.test", "/limited")
+	}
+	if last != 429 {
+		t.Errorf("rate limit 2/1m on /limited: 4th request got %d, want 429", last)
+	}
+	for body, why := range map[string]string{
+		`{"waf_mode":"off"}`:           "bad waf mode",
+		`{"rate_limits":{"x":"2/1m"}}`: "path without /",
+		`{"rate_limits":{"/":"lots"}}`: "bad limit",
+		`{"colour":"red"}`:             "unknown field",
+	} {
+		if code, _ := l.do("PUT", "/__sentinel/api/sites/shop/settings", admin, body); code != 400 {
+			t.Errorf("%s (%s): got %d, want 400", body, why, code)
+		}
+	}
+	// A refused change keeps the working settings.
+	if code, _ := hostGet(t, gw, "shop.test", attack); code != 200 {
+		t.Errorf("after refused edits: attack got %d, want the saved detect mode", code)
+	}
+
+	// Alerts: turned on from the dashboard, the URL shown shortened.
+	hooks := make(chan string, 10)
+	hook := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		hooks <- string(b)
+	}))
+	defer hook.Close()
+	if code, out := l.do("PUT", "/__sentinel/api/alerts", admin, `{"webhook_url":"`+hook.URL+`/secret-token","burst":5}`); code != 200 {
+		t.Fatalf("set alerts: %d %v", code, out)
+	} else if s := fmt.Sprint(out); strings.Contains(s, "secret-token") {
+		t.Errorf("the webhook URL must not be shown in full: %v", out)
+	}
+	select {
+	case m := <-hooks:
+		if !strings.Contains(m, "Alerts set up") {
+			t.Errorf("first alert: %s", m)
+		}
+	case <-time.After(5 * time.Second):
+		t.Error("no alert reached the new webhook")
+	}
+	if code, _ := l.do("PUT", "/__sentinel/api/alerts", admin, `{"webhook_url":"ftp://x"}`); code != 400 {
+		t.Errorf("a non-http webhook must be refused: %d", code)
+	}
+
+	// Both survive a restart.
+	gw2, _ := sitesLabIn(t, dir, sitesJSON, "shop")
+	if code, _ := hostGet(t, gw2, "shop.test", attack); code != 200 {
+		t.Errorf("after a restart: attack got %d, want the dashboard's detect mode", code)
+	}
+	l2 := &lab{t: t, gw: gw2, logBuf: &strings.Builder{}}
+	admin2 := l2.login("admin", "Admin#2026")
+	if code, out := l2.do("GET", "/__sentinel/api/alerts", admin2, ""); code != 200 || fmt.Sprint(out) == "" || !strings.Contains(fmt.Sprint(out), "on:true") {
+		t.Errorf("alerts after a restart: %d %v", code, out)
+	}
+	// Back to the config file.
+	if code, _ := l2.do("PUT", "/__sentinel/api/sites/shop/settings", admin2, `{}`); code != 200 {
+		t.Fatal("reset failed")
+	}
+	if code, _ := hostGet(t, gw2, "shop.test", attack); code != 403 {
+		t.Errorf("after reset: attack got %d, want 403", code)
 	}
 }

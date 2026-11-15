@@ -38,6 +38,33 @@ type Alerter struct {
 	hits  map[string][]time.Time // IP -> recent stop times
 	sent  []time.Time            // for the global cap
 	once  sync.Once
+	cmu   sync.RWMutex // guards URL, ChatID and Burst (changed on the dashboard)
+}
+
+// Set changes where alerts go and the burst size while Sentinel runs. An
+// empty url turns alerts off.
+func (a *Alerter) Set(url, chatID string, burst int) {
+	a.cmu.Lock()
+	defer a.cmu.Unlock()
+	if burst <= 0 {
+		burst = 20
+	}
+	a.URL, a.ChatID, a.Burst = url, chatID, burst
+}
+
+// Settings returns the webhook URL, Telegram chat and burst size.
+func (a *Alerter) Settings() (url, chatID string, burst int) {
+	if a == nil {
+		return "", "", 0
+	}
+	a.cmu.RLock()
+	defer a.cmu.RUnlock()
+	return a.URL, a.ChatID, a.Burst
+}
+
+func (a *Alerter) on() bool {
+	u, _, _ := a.Settings()
+	return u != ""
 }
 
 // Message is one alert.
@@ -60,9 +87,11 @@ func (a *Alerter) init() {
 		if a.Cooldown <= 0 {
 			a.Cooldown = 10 * time.Minute
 		}
+		a.cmu.Lock()
 		if a.Burst <= 0 {
 			a.Burst = 20
 		}
+		a.cmu.Unlock()
 		go a.sender()
 	})
 }
@@ -70,7 +99,7 @@ func (a *Alerter) init() {
 // Send queues an alert about subject unless one was sent within the
 // cooldown. It never blocks.
 func (a *Alerter) Send(subject string, m Message) {
-	if a == nil || a.URL == "" {
+	if a == nil || !a.on() {
 		return
 	}
 	a.init()
@@ -102,9 +131,10 @@ func (a *Alerter) Send(subject string, m Message) {
 	}
 }
 
-// Watch turns live events into alerts until ctx ends.
+// Watch turns live events into alerts until ctx ends. Events are ignored
+// while alerts are off (no URL), so alerts can be turned on later.
 func (a *Alerter) Watch(ctx context.Context, hub *events.Hub) {
-	if a == nil || a.URL == "" {
+	if a == nil {
 		return
 	}
 	a.init()
@@ -115,7 +145,9 @@ func (a *Alerter) Watch(ctx context.Context, hub *events.Hub) {
 		case <-ctx.Done():
 			return
 		case e := <-ch:
-			a.handle(e)
+			if a.on() {
+				a.handle(e)
+			}
 		}
 	}
 }
@@ -154,7 +186,7 @@ func (a *Alerter) handle(e events.Event) {
 			}
 		}
 		a.mu.Unlock()
-		if n == a.Burst {
+		if _, _, burst := a.Settings(); n == burst {
 			a.Send("burst:"+e.ClientIP, Message{
 				Title: "Attack burst",
 				Text:  fmt.Sprintf("%d requests from %s stopped in the last minute. Latest: %s, %s %s.%s", n, e.ClientIP, where, e.Rule, e.Reason, country(e)),
@@ -192,7 +224,11 @@ func (a *Alerter) sender() {
 }
 
 func (a *Alerter) post(body []byte, ctype string) error {
-	res, err := a.Client.Post(a.URL, ctype, bytes.NewReader(body))
+	target, _, _ := a.Settings()
+	if target == "" {
+		return nil // turned off while the alert waited
+	}
+	res, err := a.Client.Post(target, ctype, bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
@@ -210,7 +246,8 @@ func (a *Alerter) payload(m Message) ([]byte, string) {
 		name += " (" + a.Name + ")"
 	}
 	text := "🚨 " + name + ": " + m.Title + "\n" + m.Text
-	u, _ := url.Parse(a.URL)
+	target, chatID, _ := a.Settings()
+	u, _ := url.Parse(target)
 	host := ""
 	if u != nil {
 		host = strings.ToLower(u.Host)
@@ -222,7 +259,7 @@ func (a *Alerter) payload(m Message) ([]byte, string) {
 	case strings.HasSuffix(host, "discord.com") || strings.HasSuffix(host, "discordapp.com"):
 		v = map[string]any{"content": text}
 	case host == "api.telegram.org":
-		v = map[string]any{"chat_id": a.ChatID, "text": text}
+		v = map[string]any{"chat_id": chatID, "text": text}
 	default:
 		v = map[string]any{"source": name, "title": m.Title, "text": m.Text, "event": m.Event}
 	}

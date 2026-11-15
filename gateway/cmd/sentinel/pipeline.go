@@ -71,6 +71,7 @@ type site struct {
 	waf    string
 	ml     string
 	limits []string
+	edited dashboard.SiteSettings // changes made on the dashboard
 	router *proxy.Router
 	prof   *profile.Profile  // app profile, kept across rebuilds
 	spec   *schema.Validator // the site's own API spec, if it has one
@@ -104,6 +105,9 @@ func NewHandler(cfg *config.Config, engine *waf.Engine, authSvc *auth.Service, r
 	if d, ok := sh.admin.(*adminPages); ok && d.dash != nil {
 		d.dash.Sites = func() []dashboard.SiteStatus { return siteStatus(sites, cfg.Mode) }
 		d.dash.SetMode = func(name, mode string) error { return sh.setSiteMode(sites, name, mode) }
+		d.dash.SetSite = func(name string, in dashboard.SiteSettings) error { return sh.setSite(sites, name, in) }
+		d.dash.Alerts = sh.alertSettings
+		d.dash.SetAlerts = sh.setAlerts
 	}
 
 	trust := middleware.ProxyTrust{All: cfg.TrustProxyHeaders}
@@ -162,11 +166,17 @@ func newShared(cfg *config.Config, engine *waf.Engine, authSvc *auth.Service, re
 			log.Info("history: kept on disk", "dir", cfg.HistoryDir, "days", cfg.HistoryDays, "loaded", len(sh.hub.Recent(0)))
 		}
 	}
-	if cfg.AlertWebhookURL != "" {
+	{
 		host, _ := os.Hostname()
 		currentAlerter = &alert.Alerter{URL: cfg.AlertWebhookURL, ChatID: cfg.AlertTelegramChat, Burst: cfg.AlertBurst, Log: log, Name: host}
+		if saved, ok := loadAlertSettings(sh.settingsFile("alerts.json")); ok {
+			currentAlerter.Set(saved.WebhookURL, saved.TelegramChat, saved.Burst)
+			log.Info("alert settings from the dashboard", "file", sh.settingsFile("alerts.json"))
+		}
 		go currentAlerter.Watch(context.Background(), sh.hub)
-		log.Info("alerts on", "to", redactURL(cfg.AlertWebhookURL), "burst", cfg.AlertBurst)
+		if u, _, burst := currentAlerter.Settings(); u != "" {
+			log.Info("alerts on", "to", redactURL(u), "burst", burst)
+		}
 	}
 
 	excl, err := exclude.Load(cfg.ExclusionsFile)
@@ -244,13 +254,14 @@ func (sh *shared) buildSites() ([]*site, error) {
 	if len(list) == 0 {
 		list = []config.Site{{Hosts: []string{"*"}, Spec: cfg.Upstreams, HealthCheck: cfg.HealthCheck}}
 	}
-	overrides := loadModeOverrides(sh.modesFile())
+	edits := sh.loadSiteSettings()
 	var out []*site
 	for _, sc := range list {
 		s := &site{name: sc.Name, hosts: sc.Hosts, conf: sc}
-		if m, ok := overrides[sc.Name]; ok {
-			sc.Mode = m
-			sh.log.Info("site mode set on the dashboard", "site", siteLabel(sc.Name), "mode", m, "file", sh.modesFile())
+		if ed, ok := edits[sc.Name]; ok {
+			s.edited = ed
+			sc = withEdits(sc, ed)
+			sh.log.Info("site settings changed on the dashboard", "site", siteLabel(sc.Name), "file", sh.settingsFile("site-settings.json"))
 		}
 		err := sh.sitePipeline(sc, s)
 		if err != nil {
@@ -414,73 +425,6 @@ func (sh *shared) sitePipeline(sc config.Site, s *site) error {
 	if len(sh.cfg.Sites) > 0 {
 		log.Info("site", "name", sc.Name, "hosts", sc.Hosts, "upstreams", sc.Spec, "mode", mode, "waf_mode", wafM, "ml_mode", mlM)
 	}
-	return nil
-}
-
-// modesFile keeps modes set on the dashboard ("" = no data folder).
-func (sh *shared) modesFile() string {
-	if sh.cfg.DataDir == "" || !usableDir(sh.cfg.DataDir) {
-		return ""
-	}
-	return filepath.Join(sh.cfg.DataDir, "site-modes.json")
-}
-
-func loadModeOverrides(file string) map[string]string {
-	out := map[string]string{}
-	if file == "" {
-		return out
-	}
-	if b, err := os.ReadFile(file); err == nil {
-		json.Unmarshal(b, &out)
-	}
-	for k, v := range out {
-		if v != "monitor" && v != "protect" {
-			delete(out, k)
-		}
-	}
-	return out
-}
-
-// setSiteMode switches a site between monitor and protect from the
-// dashboard, saves the choice (it wins over the config file) and rebuilds
-// the site's pipeline. Choosing the configured mode again removes the saved
-// choice.
-func (sh *shared) setSiteMode(sites []*site, name, mode string) error {
-	if mode != "monitor" && mode != "protect" {
-		return fmt.Errorf("mode must be monitor or protect")
-	}
-	var s *site
-	for _, x := range sites {
-		if x.name == name {
-			s = x
-		}
-	}
-	if s == nil {
-		return fmt.Errorf("no site %q", name)
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	sc := s.conf
-	configured := pick(sc.Mode, sh.cfg.Mode)
-	sc.Mode = mode
-	if err := sh.sitePipeline(sc, s); err != nil {
-		return err
-	}
-	if file := sh.modesFile(); file != "" {
-		overrides := loadModeOverrides(file)
-		if mode == configured {
-			delete(overrides, name)
-		} else {
-			overrides[name] = mode
-		}
-		b, _ := json.MarshalIndent(overrides, "", "  ")
-		if err := os.WriteFile(file, b, 0o600); err != nil {
-			sh.log.Warn("site mode not saved: it lasts until Sentinel restarts", "file", file, "error", err.Error())
-		}
-	}
-	sh.log.Warn("site mode changed on the dashboard", "site", siteLabel(name), "mode", mode)
-	currentAlerter.Send("mode:"+name, alert.Message{Title: "Site mode changed",
-		Text: fmt.Sprintf("Site %q is now in %s mode (changed on the dashboard).", siteLabel(name), mode)})
 	return nil
 }
 
@@ -662,7 +606,7 @@ func siteStatus(sites []*site, defaultMode string) []dashboard.SiteStatus {
 	out := make([]dashboard.SiteStatus, 0, len(sites))
 	for _, s := range sites {
 		s.mu.Lock()
-		st := dashboard.SiteStatus{Name: s.name, Hosts: s.hosts, Mode: s.mode, ConfigMode: pick(s.conf.Mode, defaultMode), WAFMode: s.waf, MLMode: s.ml, RateLimits: s.limits}
+		st := dashboard.SiteStatus{Name: s.name, Hosts: s.hosts, Mode: s.mode, ConfigMode: pick(s.conf.Mode, defaultMode), Edited: s.edited, ConfigLimits: s.conf.RateLimits, WAFMode: s.waf, MLMode: s.ml, RateLimits: s.limits}
 		s.mu.Unlock()
 		for _, u := range s.router.Status() {
 			st.Servers = append(st.Servers, dashboard.ServerStatus{Prefix: u.Prefix, URL: u.URL, Up: u.Up})
