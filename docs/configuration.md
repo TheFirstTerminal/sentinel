@@ -71,6 +71,8 @@ sites:
 | `upstreams` | The servers for `/`; several share the traffic |
 | `routes` | By path prefix within the site, like the global `routes` |
 | `health_check`, `mode`, `waf_mode`, `ml_mode`, `rate_limits` | As the global settings, for this site only. Rate limits are counted per site |
+| `api_spec_file`, `api_spec_prefix` | This site's OpenAPI spec and the path it covers, instead of the global `api_spec`. Both or neither |
+| `prompt_guard_paths`, `prompt_canary` | This site's AI chat endpoints (and canary), instead of the global `prompt_guard` |
 
 A request whose host name matches no site gets `421 Misdirected Request`
 and is logged; add a site with `hosts: ["*"]` to catch the rest instead.

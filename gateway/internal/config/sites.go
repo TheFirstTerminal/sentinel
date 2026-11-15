@@ -30,6 +30,12 @@ type Site struct {
 	WAFMode     string            `json:"waf_mode,omitempty"` // block or detect
 	MLMode      string            `json:"ml_mode,omitempty"`  // off, detect or block
 	RateLimits  map[string]string `json:"rate_limits,omitempty"`
+	// The app's OpenAPI spec and its AI chat endpoints, when they differ
+	// from the global api_spec and prompt_guard settings.
+	APISpecFile      string   `json:"api_spec_file,omitempty"`
+	APISpecPrefix    string   `json:"api_spec_prefix,omitempty"`
+	PromptGuardPaths []string `json:"prompt_guard_paths,omitempty"`
+	PromptCanary     string   `json:"prompt_canary,omitempty"`
 	// Spec is Routes and Upstreams in the UPSTREAMS form ("/api/=http://a|http://b,/=http://c").
 	Spec string `json:"-"`
 }
@@ -83,6 +89,14 @@ func ParseSites(raw string) ([]Site, error) {
 		s.Spec = spec
 		if s.HealthCheck != "" && !strings.HasPrefix(s.HealthCheck, "/") {
 			return nil, fmt.Errorf("%s: health_check must be a path like /healthz", where)
+		}
+		if (s.APISpecFile == "") != (s.APISpecPrefix == "") {
+			return nil, fmt.Errorf("%s: api_spec_file and api_spec_prefix go together", where)
+		}
+		for _, p := range s.PromptGuardPaths {
+			if !strings.HasPrefix(p, "/") {
+				return nil, fmt.Errorf("%s: prompt_guard_paths: %q must start with /", where, p)
+			}
 		}
 		if err := oneOf(s.Mode, "monitor", "protect"); err != nil {
 			return nil, fmt.Errorf("%s: mode %v", where, err)

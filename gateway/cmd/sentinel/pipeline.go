@@ -72,8 +72,9 @@ type site struct {
 	ml     string
 	limits []string
 	router *proxy.Router
-	prof   *profile.Profile // app profile, kept across rebuilds
-	h      atomic.Value     // http.Handler: the current pipeline
+	prof   *profile.Profile  // app profile, kept across rebuilds
+	spec   *schema.Validator // the site's own API spec, if it has one
+	h      atomic.Value      // http.Handler: the current pipeline
 }
 
 func (s *site) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -366,11 +367,25 @@ func (sh *shared) sitePipeline(sc config.Site, s *site) error {
 		opinion = func(text string) float64 { p, _ := model.ScoreText(text); return p }
 	}
 	p = guard(middleware.WAFWithSecondOpinion(sh.engine, wafMode, cfg.MaxBodyBytes, opinion, sh.rec, log))(p) // 7
-	if len(cfg.PromptGuardPaths) > 0 {
-		pg := &promptguard.Guard{Threshold: cfg.PromptThreshold}
-		p = guard(middleware.PromptGuard(pg, cfg.PromptGuardPaths, cfg.PromptCanary, pgMode, cfg.MaxBodyBytes, sh.rec, log))(p)
+	pgPaths, canary := cfg.PromptGuardPaths, cfg.PromptCanary
+	if len(sc.PromptGuardPaths) > 0 {
+		pgPaths, canary = sc.PromptGuardPaths, pick(sc.PromptCanary, cfg.PromptCanary)
 	}
-	p = guard(middleware.Schema(sh.spec, cfg.MaxBodyBytes, sh.rec, log))(p) // 6
+	if len(pgPaths) > 0 {
+		pg := &promptguard.Guard{Threshold: cfg.PromptThreshold}
+		p = guard(middleware.PromptGuard(pg, pgPaths, canary, pgMode, cfg.MaxBodyBytes, sh.rec, log))(p)
+	}
+	spec := sh.spec
+	if sc.APISpecFile != "" {
+		if s.spec == nil {
+			var err error
+			if s.spec, err = schema.Load(sc.APISpecFile, sc.APISpecPrefix); err != nil {
+				return fmt.Errorf("api_spec_file: %w", err)
+			}
+		}
+		spec = s.spec
+	}
+	p = guard(middleware.Schema(spec, cfg.MaxBodyBytes, sh.rec, log))(p) // 6
 	p = middleware.StripIdentityHeaders(p)
 	p = guard(middleware.LoginGuard(sh.loginFails, cfg.LoginFailLimit, sh.rec, log))(p)
 	if limiter != nil {
