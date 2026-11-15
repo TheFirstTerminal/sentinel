@@ -15,6 +15,10 @@ anything.
 
 ![Sentinel in a terminal: normal requests pass, attacks are caught and explained](docs/demo.gif)
 
+![The dashboard: requests, stopped requests and bans, each site with its servers and mode, alerts and why requests were stopped](docs/dashboard.png)
+
+![The dashboard's console: every stopped request with its rule, the field and the text that matched](docs/console.png)
+
 ## Why Sentinel
 
 - **Every decision is explained.** Each request gets one log line with what

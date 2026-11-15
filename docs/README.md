@@ -1,5 +1,18 @@
 # Sentinel documents
 
+Sentinel is a security gateway for web apps, APIs and AI endpoints. It sits
+in front of your app, checks every request (its own rules, the OWASP Core
+Rule Set and an ML model, plus rate limits, honeypots and a prompt-injection
+guard) and explains each decision. It starts in monitor mode, so you see what
+it would block before it blocks anything.
+
+![The dashboard](dashboard.png)
+
+**Try it:** `docker run --rm -it -p 8080:8080 -v sentinel-data:/var/lib/sentinel -e UPSTREAM_URL=http://host.docker.internal:3000 --add-host=host.docker.internal:host-gateway ghcr.io/tsxmamii/sentinel`,
+then open the `FIRST RUN` link it prints. On a Linux server:
+`curl -fsSL https://raw.githubusercontent.com/tsxmamii/sentinel/main/deploy/install.sh | sudo sh`.
+More in the [README on GitHub](https://github.com/tsxmamii/sentinel#quickstart).
+
 The guide for each version lives here, next to its code, and is updated
 with every release.
 
