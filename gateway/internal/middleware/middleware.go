@@ -170,7 +170,7 @@ func WAFWithSecondOpinion(engine *waf.Engine, mode string, maxBody int64, opinio
 			decision := engine.Inspect(r, body)
 			if !Exclusions.Empty() {
 				decision = engine.Without(decision, func(m waf.Match) bool {
-					return Exclusions.Excluded(m.RuleID, r.Method, r.URL.Path, fieldName(m))
+					return Exclusions.ExcludedOn(info.Site, m.RuleID, r.Method, r.URL.Path, fieldName(m))
 				})
 			}
 			secondOpinion := BenignBySecondOpinion(decision, engine.Threshold(), opinion)

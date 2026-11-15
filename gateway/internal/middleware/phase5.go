@@ -39,7 +39,7 @@ func ML(m *ml.Model, mode string, threshold float64, skip []string, maxBody int6
 				if in.Target == waf.TargetPath || in.Field == "(raw)" || in.Name || len(in.Value) < 3 {
 					continue
 				}
-				if Exclusions.Excluded("ML", r.Method, r.URL.Path, in.Field) {
+				if Exclusions.ExcludedOn(reqctx.From(r.Context()).Site, "ML", r.Method, r.URL.Path, in.Field) {
 					continue
 				}
 				if in.Target == waf.TargetHeaders && strings.EqualFold(in.Field, "Content-Type") {

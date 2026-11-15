@@ -194,7 +194,7 @@ func (d *Dashboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case path == "exclusions" && r.Method == "POST" && d.Excl != nil:
 		var in exclude.Exclusion
 		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8192)).Decode(&in); err != nil {
-			jsonError(w, http.StatusBadRequest, "send JSON: {rule, path, field, method, note}", info.ID)
+			jsonError(w, http.StatusBadRequest, "send JSON: {rule, path, field, method, site, note}", info.ID)
 			return
 		}
 		in.By, in.ID = u.Username, ""

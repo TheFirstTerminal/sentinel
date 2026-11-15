@@ -159,7 +159,7 @@ func (h *holdWriter) finish(r *http.Request, mode string, log *slog.Logger) {
 	}
 	var findings []leak.Finding
 	for _, f := range leak.Check(string(text)) {
-		if !Exclusions.Excluded(f.ID, r.Method, r.URL.Path, "response") {
+		if !Exclusions.ExcludedOn(reqctx.From(r.Context()).Site, f.ID, r.Method, r.URL.Path, "response") {
 			findings = append(findings, f)
 		}
 	}

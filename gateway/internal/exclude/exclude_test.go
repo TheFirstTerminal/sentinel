@@ -74,3 +74,23 @@ func TestSaveAndReload(t *testing.T) {
 		t.Error("invalid file accepted")
 	}
 }
+
+func TestExcludedOnOneSite(t *testing.T) {
+	s, _ := Load("")
+	if _, err := s.Add(Exclusion{Rule: "SQLI-001", Path: "/search", Site: "shop"}); err != nil {
+		t.Fatal(err)
+	}
+	if !s.ExcludedOn("shop", "SQLI-001", "GET", "/search", "q") {
+		t.Error("the exclusion should apply on its own site")
+	}
+	if s.ExcludedOn("api", "SQLI-001", "GET", "/search", "q") {
+		t.Error("an exclusion for one site must not apply on another")
+	}
+	if s.Excluded("SQLI-001", "GET", "/search", "q") {
+		t.Error("without a site, only exclusions for every site count")
+	}
+	s.Add(Exclusion{Rule: "XSS-001", Path: "/x"})
+	if !s.ExcludedOn("api", "XSS-001", "GET", "/x", "q") {
+		t.Error("an exclusion without a site applies on every site")
+	}
+}

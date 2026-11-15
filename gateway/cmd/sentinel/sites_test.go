@@ -224,3 +224,21 @@ func TestSiteModeFromDashboard(t *testing.T) {
 		t.Errorf("after a restart: attack got %d, want 403 (the dashboard's choice must be kept)", code)
 	}
 }
+
+func TestExclusionsPerSite(t *testing.T) {
+	gw, _ := sitesLab(t, `[
+		{"name":"shop","hosts":["shop.test"],"upstreams":["{shop}"]},
+		{"name":"api","hosts":["api.test"],"upstreams":["{api}"]}
+	]`, "shop", "api")
+	l := &lab{t: t, gw: gw, logBuf: &strings.Builder{}}
+	admin := l.login("admin", "Admin#2026")
+	if code, out := l.do("POST", "/__sentinel/api/exclusions", admin, `{"rule":"SQLI-001","path":"/","field":"q","site":"shop","note":"test"}`); code != 200 {
+		t.Fatalf("add exclusion: %d %v", code, out)
+	}
+	if code, _ := hostGet(t, gw, "shop.test", "/?q=1'+UNION+SELECT+1--"); code != 200 {
+		t.Errorf("shop: the excluded rule should no longer block, got %d", code)
+	}
+	if code, _ := hostGet(t, gw, "api.test", "/?q=1'+UNION+SELECT+1--"); code != 403 {
+		t.Errorf("api: an exclusion for shop must not apply here, got %d", code)
+	}
+}

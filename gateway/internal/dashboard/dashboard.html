@@ -230,6 +230,7 @@ body:not(.multi) .site-col { display: none; }
         <div><label for="x-rule">Rules (comma separated)</label><input id="x-rule" class="mono" required></div>
         <div><label for="x-path">Path starts with</label><input id="x-path" class="mono" placeholder="any path"></div>
         <div><label for="x-field">Field</label><input id="x-field" class="mono" placeholder="any field"></div>
+        <div class="site-col"><label for="x-site">Site</label><input id="x-site" class="mono" placeholder="every site"></div>
       </div>
       <label for="x-note">Why (for whoever reads this later)</label><input id="x-note" placeholder="e.g. reviews can mention SQL words">
       <div class="row" style="margin-top:10px"><button class="primary" type="submit">Save exclusion</button><button type="button" id="x-cancel">Cancel</button><span class="err" id="x-err"></span></div>
@@ -436,7 +437,7 @@ function allowBtn(e) {
 }
 function openAllow(e) {
   $("x-rule").value = [e.rule, ...(e.related || [])].join(", ");
-  $("x-path").value = e.path; $("x-field").value = e.field || ""; $("x-note").value = ""; $("x-err").textContent = "";
+  $("x-path").value = e.path; $("x-field").value = e.field || ""; $("x-site").value = e.site || ""; $("x-note").value = ""; $("x-err").textContent = "";
   $("excl-form").classList.remove("hidden"); $("excl-card").scrollIntoView({ behavior: "smooth" }); $("x-note").focus();
 }
 $("reload-btn").onclick = async () => {
@@ -451,7 +452,7 @@ $("excl-form").onsubmit = async (ev) => {
   try {
     for (const rule of rules) {
       await api("exclusions", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rule, path: $("x-path").value.trim(), field: $("x-field").value.trim(), note: $("x-note").value.trim() }) });
+        body: JSON.stringify({ rule, path: $("x-path").value.trim(), field: $("x-field").value.trim(), site: $("x-site").value.trim(), note: $("x-note").value.trim() }) });
     }
     $("excl-form").classList.add("hidden"); loadExclusions();
   } catch (x) { $("x-err").textContent = x.message; }
@@ -460,10 +461,10 @@ async function loadExclusions() {
   let out;
   try { out = await api("exclusions"); } catch (x) { $("excl-card").classList.add("hidden"); return; }
   const list = out.exclusions || [];
-  $("t-excl").innerHTML = "<tr><th>Rule</th><th>Path</th><th>Field</th><th>Why</th><th>By</th><th></th></tr>" + (list.length ? list.map(x =>
-    "<tr><td class='mono'>" + esc(x.rule) + "</td><td class='mono'>" + esc(x.path || "any") + "</td><td class='mono'>" + esc(x.field || "any") +
+  $("t-excl").innerHTML = "<tr><th>Rule</th><th class='site-col'>Site</th><th>Path</th><th>Field</th><th>Why</th><th>By</th><th></th></tr>" + (list.length ? list.map(x =>
+    "<tr><td class='mono'>" + esc(x.rule) + "</td><td class='site-col'>" + esc(x.site || "every") + "</td><td class='mono'>" + esc(x.path || "any") + "</td><td class='mono'>" + esc(x.field || "any") +
     "</td><td>" + esc(x.note) + "</td><td>" + esc(x.by) + "</td><td><button class='small' data-unexcl='" + esc(x.id) + "'>Remove</button></td></tr>").join("")
-    : "<tr><td colspan='6' class='muted'>None. Use \"Allow…\" on a stopped request that was a false alarm.</td></tr>");
+    : "<tr><td colspan='7' class='muted'>None. Use \"Allow…\" on a stopped request that was a false alarm.</td></tr>");
   $("excl-file").textContent = out.file ? "Saved in " + out.file + " (you can edit it by hand)." : "Not saved to a file: set exclusions_file to keep them after a restart.";
 }
 

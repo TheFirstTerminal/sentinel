@@ -56,7 +56,7 @@ func AppProfile(p *profile.Profile, mode string, minSeen int, maxBody int64, log
 				}
 				info.SetOutcome(reqctx.Outcome{Kind: kind, Rule: "APP-PROFILE", Field: a.Field,
 					Reason: "unusual for this app: " + a.Field + " " + a.Reason, Detail: "value: " + cut(a.Value, 80)})
-				if mode == "block" && !Exclusions.Excluded("APP-PROFILE", r.Method, r.URL.Path, a.Field) {
+				if mode == "block" && !Exclusions.ExcludedOn(reqctx.From(r.Context()).Site, "APP-PROFILE", r.Method, r.URL.Path, a.Field) {
 					writeBlocked(w, info.ID)
 					return
 				}

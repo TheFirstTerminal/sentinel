@@ -48,7 +48,7 @@ func PromptGuard(g *promptguard.Guard, prefixes []string, canary, mode string, m
 				fields = append(fields, promptguard.Field{Name: "(all fields)", Text: strings.Join(parts, " ")})
 			}
 			res := g.InspectExcept(fields, func(rule, field string) bool {
-				return Exclusions.Excluded(rule, r.Method, r.URL.Path, field)
+				return Exclusions.ExcludedOn(reqctx.From(r.Context()).Site, rule, r.Method, r.URL.Path, field)
 			})
 			if g.Attack(res) {
 				m := res.Matches[0]

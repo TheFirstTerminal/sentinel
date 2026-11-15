@@ -31,6 +31,7 @@ type Exclusion struct {
 	Path   string    `yaml:"path,omitempty" json:"path,omitempty"` // path prefix
 	Field  string    `yaml:"field,omitempty" json:"field,omitempty"`
 	Method string    `yaml:"method,omitempty" json:"method,omitempty"`
+	Site   string    `yaml:"site,omitempty" json:"site,omitempty"` // one site (SITES name); empty = every site
 	Note   string    `yaml:"note,omitempty" json:"note,omitempty"`
 	By     string    `yaml:"by,omitempty" json:"by,omitempty"`
 	Added  time.Time `yaml:"added,omitempty" json:"added,omitempty"`
@@ -102,6 +103,7 @@ func check(e *Exclusion) error {
 	e.Rule = strings.TrimSpace(e.Rule)
 	e.Field = strings.TrimSpace(e.Field)
 	e.Method = strings.ToUpper(strings.TrimSpace(e.Method))
+	e.Site = strings.TrimSpace(e.Site)
 	if e.Path != "" && !strings.HasPrefix(e.Path, "/") {
 		return errors.New("path must start with /")
 	}
@@ -117,8 +119,15 @@ func check(e *Exclusion) error {
 	return nil
 }
 
-// Excluded reports whether rule may not act on field of this request.
+// Excluded reports whether rule may not act on field of this request, on
+// any site (exclusions for one site don't count).
 func (s *Set) Excluded(rule, method, path, field string) bool {
+	return s.ExcludedOn("", rule, method, path, field)
+}
+
+// ExcludedOn is Excluded for a request to one site: exclusions without a
+// site, and those for this site, count.
+func (s *Set) ExcludedOn(site, rule, method, path, field string) bool {
 	if s == nil {
 		return false
 	}
@@ -133,6 +142,9 @@ func (s *Set) Excluded(rule, method, path, field string) bool {
 			continue
 		}
 		if e.Method != "" && e.Method != method {
+			continue
+		}
+		if e.Site != "" && e.Site != site {
 			continue
 		}
 		if e.Path != "" && !strings.HasPrefix(path, e.Path) {

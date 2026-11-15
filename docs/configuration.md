@@ -139,8 +139,10 @@ dashboard, or write the file by hand:
 ```
 
 Each entry needs a path or a field (or both), so a rule can never be
-switched off everywhere by accident. `method:` narrows it further. The file
-is re-read on `SIGHUP`.
+switched off everywhere by accident. `method:` narrows it further, and
+`site:` (a name from `sites`) limits it to one site; without it the entry
+counts on every site. "Allow…" fills in the site of the request. The file is
+re-read on `SIGHUP`.
 
 ## What the app sends back
 
