@@ -1,0 +1,22 @@
+[Unit]
+Description=Sentinel security gateway
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=sentinel
+ExecStart=/usr/bin/sentinel -config /etc/sentinel/sentinel.yaml
+ExecReload=/bin/kill -HUP $MAINPID
+Environment=DATA_DIR=/var/lib/sentinel
+Restart=on-failure
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/sentinel
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

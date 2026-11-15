@@ -54,7 +54,7 @@ anything.
   unknown fields, wrong types or extra parameters are refused before they
   reach your code.
 - **Fast and small.** Sentinel's own checks (rules + ML) add under **1 ms**
-  per request, and CRS about 1.2 ms more, even on a 2-core laptop
+  per request, and CRS about 1.3 ms more, on a laptop
   ([benchmarks](docs/benchmarks.md)). The image is a single static binary
   with no shell.
 
@@ -125,6 +125,16 @@ checksum (and its signature, if `cosign` is installed), and prints the link to
 create the admin account. Run it again to update. Config:
 `/etc/sentinel/sentinel.yaml`. Read the script first if you like:
 [`deploy/install.sh`](deploy/install.sh).
+
+### Packages
+
+- **Debian/Ubuntu:** download `sentinel_<version>_amd64.deb` (or `arm64`) from the
+  [releases](https://github.com/tsxmamii/sentinel/releases), then `sudo apt install ./sentinel_*.deb`
+- **Fedora/RHEL/Rocky:** `sudo dnf install ./sentinel-*.rpm`
+- **macOS/Linux with Homebrew:** `brew tap tsxmamii/sentinel https://github.com/tsxmamii/sentinel && brew install sentinel`
+
+The packages install a `sentinel` systemd service and `/etc/sentinel/sentinel.yaml`;
+set `upstream:` in it, then `sudo systemctl start sentinel`.
 
 ### Binary
 

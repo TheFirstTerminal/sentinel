@@ -4,3 +4,4 @@ lab/certs/
 eval-results/
 *.test
 sentinel-data/
+/build/

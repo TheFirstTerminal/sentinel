@@ -44,13 +44,23 @@ jobs:
         working-directory: gateway
         run: |
           mkdir -p ../dist
-          for target in linux/amd64 linux/arm64 windows/amd64 darwin/arm64; do
+          for target in linux/amd64 linux/arm64 windows/amd64 darwin/arm64 darwin/amd64; do
             os=${target%/*}; arch=${target#*/}; ext=""; [ "$os" = windows ] && ext=.exe
             CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -mod=vendor -trimpath \
               -ldflags="-s -w -X main.Version=$VERSION" -o "../dist/sentinel-$VERSION-$os-$arch$ext" ./cmd/sentinel
           done
           cp ../LICENSE.md ../NOTICE ../THIRD_PARTY_LICENSES.md ../dist/
-          cd ../dist && sha256sum sentinel-* > checksums.txt
+
+      - name: Linux packages (.deb, .rpm)
+        run: |
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.43.0
+          for arch in amd64 arm64; do
+            for fmt in deb rpm; do
+              ARCH=$arch BINARY=dist/sentinel-$VERSION-linux-$arch                 nfpm package --config deploy/packages/nfpm.yaml --packager $fmt --target dist/
+            done
+          done
+          cd dist && sha256sum sentinel-* sentinel_* sentinel-*.rpm 2>/dev/null | sort -u -k2 > checksums.txt
+          cat checksums.txt
 
       - uses: docker/setup-qemu-action@v3   # build the arm64 image too
       - uses: docker/setup-buildx-action@v3
@@ -111,3 +121,14 @@ jobs:
           body: |
             Image: `${{ env.IMAGE }}:${{ env.VERSION }}` (digest `${{ steps.build.outputs.digest }}`)
             What changed: see CHANGELOG.md. How to verify: docs/supply-chain.md.
+
+      - name: Homebrew formula (public repository only)
+        if: github.repository == 'tsxmamii/sentinel'
+        run: |
+          git fetch -q origin main && git checkout -q -B main origin/main
+          mkdir -p Formula
+          sh deploy/packages/formula.sh "$VERSION" dist/checksums.txt > Formula/sentinel.rb
+          git config user.name tsxmamii
+          git config user.email tsxmami@gmail.com
+          git add Formula/sentinel.rb
+          git diff --cached --quiet || { git commit -qm "Homebrew formula for $VERSION" && git push -q origin main; }

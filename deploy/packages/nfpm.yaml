@@ -1,0 +1,26 @@
+# .deb and .rpm packages, built by the release workflow with nfpm.
+name: sentinel
+arch: ${ARCH}
+platform: linux
+version: ${VERSION}
+maintainer: Saif Zahid
+description: Security gateway for web apps, APIs and AI endpoints that explains every decision.
+homepage: https://github.com/tsxmamii/sentinel
+license: PolyForm-Shield-1.0.0
+contents:
+  - src: build/sentinel   # the release workflow copies the binary here
+    dst: /usr/bin/sentinel
+    file_info: { mode: 0755 }
+  - src: deploy/packages/sentinel.service
+    dst: /lib/systemd/system/sentinel.service
+    file_info: { mode: 0644 }
+  - dst: /etc/sentinel
+    type: dir
+  - dst: /var/lib/sentinel
+    type: dir
+    file_info: { mode: 0700 }
+  - src: LICENSE.md
+    dst: /usr/share/doc/sentinel/LICENSE.md
+scripts:
+  postinstall: deploy/packages/postinstall.sh
+  preremove: deploy/packages/preremove.sh
