@@ -54,6 +54,22 @@ anything.
   ([benchmarks](docs/benchmarks.md)). The image is a single static binary
   with no shell.
 
+## How it compares
+
+|  | Sentinel | ModSecurity + CRS | Coraza + CRS | Cloud WAF (free plans) |
+|---|---|---|---|---|
+| Runs on your own server, traffic stays with you | ✅ | ✅ | ✅ | ❌ |
+| OWASP Core Rule Set | ✅ built in | ✅ | ✅ | limited |
+| ML model for attacks no rule describes | ✅ | ❌ | ❌ | paid plans |
+| Prompt-injection guard for AI endpoints | ✅ | ❌ | ❌ | paid plans |
+| Dashboard with one-click false-alarm fixes | ✅ | ❌ (logs) | ❌ (logs) | ✅ |
+| Each decision explained (rule, field, matched text) | ✅ | partly, in audit logs | partly, in audit logs | partly |
+| Rate limits, bans, honeypots, bot check | ✅ | via other modules | via other modules | ✅ |
+| Install | one binary or image | web server module | Go library / Caddy, Envoy plugins | DNS change |
+
+ModSecurity and Coraza are rule engines you build a WAF from; Sentinel is a
+complete gateway that uses the same Core Rule Set.
+
 ## Quickstart
 
 ### Docker (one command)

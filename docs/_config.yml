@@ -1,0 +1,19 @@
+# The documentation site: https://tsxmamii.github.io/sentinel/
+title: Sentinel
+description: A security gateway for web apps, APIs and AI endpoints that explains every decision.
+remote_theme: just-the-docs/just-the-docs@v0.10.1
+color_scheme: dark
+search_enabled: true
+aux_links:
+  "Sentinel on GitHub": "https://github.com/tsxmamii/sentinel"
+  "Releases": "https://github.com/tsxmamii/sentinel/releases"
+footer_content: "Sentinel Free, © 2026 Saif Zahid. PolyForm Shield 1.0.0."
+plugins:
+  - jekyll-remote-theme
+  - jekyll-relative-links
+  - jekyll-optional-front-matter
+  - jekyll-readme-index
+  - jekyll-titles-from-headings
+relative_links:
+  enabled: true
+  collections: false
