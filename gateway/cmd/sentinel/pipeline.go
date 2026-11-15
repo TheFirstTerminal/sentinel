@@ -25,6 +25,7 @@ import (
 	"sentinel/gateway/internal/dashboard"
 	"sentinel/gateway/internal/events"
 	"sentinel/gateway/internal/exclude"
+	"sentinel/gateway/internal/export"
 	"sentinel/gateway/internal/geo"
 	"sentinel/gateway/internal/kv"
 	"sentinel/gateway/internal/middleware"
@@ -177,6 +178,25 @@ func newShared(cfg *config.Config, engine *waf.Engine, authSvc *auth.Service, re
 		if u, _, burst := currentAlerter.Settings(); u != "" {
 			log.Info("alerts on", "to", redactURL(u), "burst", burst)
 		}
+	}
+
+	if cfg.ExportSyslog != "" {
+		sl, err := export.ParseSyslog(cfg.ExportSyslog)
+		if err != nil {
+			return nil, fmt.Errorf("export.syslog: %w", err)
+		}
+		sl.All, sl.Log = cfg.ExportAll, log
+		go sl.Watch(context.Background(), sh.hub)
+		log.Info("events exported to syslog", "to", cfg.ExportSyslog)
+	}
+	if cfg.ExportOTLP != "" {
+		o, err := export.ParseOTLP(cfg.ExportOTLP, cfg.ExportOTLPHeaders)
+		if err != nil {
+			return nil, fmt.Errorf("export.otlp: %w", err)
+		}
+		o.All, o.Log = cfg.ExportAll, log
+		go o.Watch(context.Background(), sh.hub)
+		log.Info("events exported to OpenTelemetry", "to", o.Endpoint)
 	}
 
 	excl, err := exclude.Load(cfg.ExclusionsFile)

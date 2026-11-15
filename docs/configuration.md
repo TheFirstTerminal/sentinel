@@ -204,6 +204,10 @@ paths, so use it for pages like `/login`, not your whole site.
 | `alerts.webhook_url` | `ALERT_WEBHOOK_URL` | off | Where alerts go: a Slack or Discord webhook, a Telegram `https://api.telegram.org/bot<token>/sendMessage` URL, or any URL (JSON is posted) |
 | `alerts.telegram_chat_id` | `ALERT_TELEGRAM_CHAT_ID` | none | The chat to send to, for Telegram |
 | `alerts.burst` | `ALERT_BURST` | `20` | Stopped requests from one IP within a minute that make an "attack burst" alert |
+| `export.syslog` | `EXPORT_SYSLOG` | off | Send security events to a syslog server (RFC 5424, facility *log audit*): `udp://host:514`, `tcp://host:601` or `tls://host:6514` |
+| `export.otlp` | `EXPORT_OTLP` | off | Send security events to an OpenTelemetry collector as log records (OTLP over HTTP, JSON), e.g. `http://otel-collector:4318` |
+| `export.otlp_headers` | `EXPORT_OTLP_HEADERS` | none | Headers sent to the collector, e.g. `api-key=...` (several: `A=1,B=2`) |
+| `export.all` | `EXPORT_ALL` | `false` | Also export plain allowed requests, not only blocked, flagged and login events |
 
 Alerts are sent for: a honeypot hit, an attack burst from one IP, password
 guessing on an account, a new admin account and a failed reload. Each subject alerts at most once per 10 minutes, with at most 20
@@ -212,6 +216,12 @@ alerts a minute in total, so an attack can't flood your phone.
 The **Alerts** card on the dashboard sets the webhook, Telegram chat and
 burst size while Sentinel runs (kept in `alerts.json` in the data folder,
 winning over the config file), and can turn alerts off.
+
+Exported events carry the outcome, client IP, method, path, status, rule,
+reason, site, country, user and request ID, so a SIEM (Splunk, Elastic,
+Graylog, Wazuh, Grafana Loki through a collector) can search and alert on
+them. Delivery never slows requests down: if the other side is down,
+events are dropped and the count is logged every minute.
 
 Metrics: `sentinel_requests_total{outcome}`, `sentinel_rule_stops_total{rule}`,
 `sentinel_request_duration_seconds` (histogram), `sentinel_bans_active`,

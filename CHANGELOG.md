@@ -4,6 +4,7 @@
 - **Exclusions per site**: an exclusion can name one site; **Allow…** fills it in.
 - **API spec and prompt guard per site** (`api_spec_file`, `api_spec_prefix`, `prompt_guard_paths`, `prompt_canary` in a site).
 - **Automatic HTTPS for every site**: `tls.auto_domains: [sites]` gets certificates for every site's host names.
+- **Log export**: security events to syslog (`export.syslog`, UDP, TCP or TLS) and to OpenTelemetry collectors (`export.otlp`).
 - **Dashboard editing**: change a site's mode, WAF mode, ML mode and rate limits, and where alerts go, without a restart. Kept in the data folder.
 
 ## 0.12.0 · 2026-11-14

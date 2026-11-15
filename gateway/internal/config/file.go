@@ -67,6 +67,7 @@ var Variables = []string{
 	"DASHBOARD", "SECURITY_HEADERS",
 	"PROMPT_GUARD_PATHS", "PROMPT_GUARD_MODE", "PROMPT_GUARD_THRESHOLD", "PROMPT_CANARY",
 	"ML_MODE", "ML_THRESHOLD", "ML_SKIP_PATHS",
+	"EXPORT_SYSLOG", "EXPORT_OTLP", "EXPORT_OTLP_HEADERS", "EXPORT_ALL",
 }
 
 // ApplyFile reads a YAML config file and sets every variable it defines that

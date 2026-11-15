@@ -59,7 +59,11 @@ type Config struct {
 
 	AlertWebhookURL   string // Slack, Discord, Telegram or any webhook ("" = no alerts)
 	AlertTelegramChat string
-	AlertBurst        int // stopped requests from one IP in a minute that make an alert
+	AlertBurst        int    // stopped requests from one IP in a minute that make an alert
+	ExportSyslog      string // udp://host:514, tcp://... or tls://... ("" = off)
+	ExportOTLP        string // OpenTelemetry collector, e.g. http://collector:4318 ("" = off)
+	ExportOTLPHeaders string // Name=value,... sent with every OTLP request
+	ExportAll         bool   // also export plain allowed requests
 
 	Profile     string   // e.g. "wordpress"
 	ProfileData *Profile // its traps to remove and exclusions (nil = none)
@@ -283,6 +287,10 @@ func Load() (*Config, error) {
 		AlertWebhookURL:   os.Getenv("ALERT_WEBHOOK_URL"),
 		AlertTelegramChat: os.Getenv("ALERT_TELEGRAM_CHAT_ID"),
 		AlertBurst:        burst,
+		ExportSyslog:      os.Getenv("EXPORT_SYSLOG"),
+		ExportOTLP:        os.Getenv("EXPORT_OTLP"),
+		ExportOTLPHeaders: os.Getenv("EXPORT_OTLP_HEADERS"),
+		ExportAll:         os.Getenv("EXPORT_ALL") == "true",
 		Profile:           strings.ToLower(os.Getenv("PROFILE")),
 		ProfileData:       profile,
 		CRSDir:            os.Getenv("CRS_DIR"),
