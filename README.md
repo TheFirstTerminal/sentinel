@@ -94,6 +94,18 @@ dashboard off the public port, give it its own: `-e DASHBOARD_ADDR=:9000
 -p 9000:9000`, then open http://localhost:9000. The account, the exclusions and the secret
 key are kept in the `sentinel-data` volume, so they survive restarts.
 
+### Linux server (one line)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/tsxmamii/sentinel/main/deploy/install.sh | sudo UPSTREAM=http://localhost:3000 sh
+```
+
+It installs the latest release as a systemd service, after checking its
+checksum (and its signature, if `cosign` is installed), and prints the link to
+create the admin account. Run it again to update. Config:
+`/etc/sentinel/sentinel.yaml`. Read the script first if you like:
+[`deploy/install.sh`](deploy/install.sh).
+
 ### Binary
 
 Download a binary for Linux, macOS or Windows from the
