@@ -189,3 +189,32 @@ func oneOf(v string, allowed ...string) error {
 	}
 	return fmt.Errorf("%q must be one of %s", v, strings.Join(allowed, ", "))
 }
+
+// AutoDomains expands the TLS_AUTO_DOMAINS list: the entry "sites" stands
+// for every exact host name of every site (wildcards and "*" can't get a
+// certificate this way and are left out). Duplicates are removed.
+func AutoDomains(list []string, sites []Site) []string {
+	var out []string
+	seen := map[string]bool{}
+	add := func(h string) {
+		h = strings.ToLower(strings.TrimSpace(h))
+		if h != "" && !seen[h] {
+			seen[h] = true
+			out = append(out, h)
+		}
+	}
+	for _, d := range list {
+		if strings.EqualFold(strings.TrimSpace(d), "sites") {
+			for _, s := range sites {
+				for _, h := range s.Hosts {
+					if !strings.Contains(h, "*") {
+						add(h)
+					}
+				}
+			}
+			continue
+		}
+		add(d)
+	}
+	return out
+}

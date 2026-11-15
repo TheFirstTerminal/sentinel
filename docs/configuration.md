@@ -216,7 +216,7 @@ plus uptime, memory and goroutines. A ready Grafana dashboard is in
 | `secret` | `SENTINEL_SECRET` | made once and kept in the data folder | Master key for the dashboard's login tokens and encrypted 2FA secrets, at least 32 characters (`openssl rand -hex 32`) |
 | `database_url` | `DATABASE_URL` | none (accounts in the data folder) | PostgreSQL for the admin accounts and revoked tokens |
 | `api_spec.file` / `api_spec.prefix` | `API_SPEC_FILE` / `API_SPEC_PREFIX` | off | OpenAPI 3 spec; requests that don't match it are refused |
-| `tls.auto_domains` | `TLS_AUTO_DOMAINS` | none | **Automatic HTTPS**: certificates from Let's Encrypt for these domains, renewed automatically, e.g. `[shop.example.com]`. Ports 80 and 443 must be reachable from the internet; plain HTTP is redirected to HTTPS |
+| `tls.auto_domains` | `TLS_AUTO_DOMAINS` | none | **Automatic HTTPS**: certificates from Let's Encrypt for these domains, renewed automatically, e.g. `[shop.example.com]`. The entry `sites` stands for every exact host name of every site (`[sites]` covers them all). Ports 80 and 443 must be reachable from the internet; plain HTTP is redirected to HTTPS |
 | `tls.auto_email` | `TLS_AUTO_EMAIL` | none | Contact address for Let's Encrypt (expiry warnings) |
 | `tls.auto_cache` | `TLS_AUTO_CACHE` | `certs` in the data folder | Folder where certificates are kept (keep it on a volume, or Let's Encrypt's rate limits apply on every restart) |
 | `tls.listen` | `TLS_LISTEN_ADDR` | none (`:443` with automatic HTTPS) | e.g. `:8443` to also serve HTTPS |

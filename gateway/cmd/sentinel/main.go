@@ -217,6 +217,7 @@ func main() {
 	// Optional HTTPS listener, which is also where mTLS clients connect.
 	var tlsSrv *http.Server
 	var autoTLS *tls.Config
+	cfg.TLSAutoDomains = config.AutoDomains(cfg.TLSAutoDomains, cfg.Sites)
 	if len(cfg.TLSAutoDomains) > 0 {
 		// Automatic HTTPS: certificates from Let's Encrypt, renewed before
 		// they expire. The plain HTTP listener answers the ACME challenges
