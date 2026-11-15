@@ -67,6 +67,8 @@ type SiteStatus struct {
 	// rate limits in the config file.
 	Edited       SiteSettings      `json:"edited"`
 	ConfigLimits map[string]string `json:"config_rate_limits,omitempty"`
+	Config       SiteSettings      `json:"config"`   // hosts, servers and health check in the config file
+	Editable     bool              `json:"editable"` // hosts and servers can be changed here (named sites)
 }
 
 // SiteSettings are a site's settings that can be changed on the dashboard.
@@ -76,11 +78,16 @@ type SiteSettings struct {
 	WAFMode    string            `json:"waf_mode,omitempty"`
 	MLMode     string            `json:"ml_mode,omitempty"`
 	RateLimits map[string]string `json:"rate_limits,omitempty"` // path prefix -> "10/1m"
+	// Where the site is and where its traffic goes (only with named sites).
+	Hosts       []string `json:"hosts,omitempty"`        // e.g. shop.example.com, *.example.com
+	Upstreams   []string `json:"upstreams,omitempty"`    // servers for "/", shared in turn
+	HealthCheck string   `json:"health_check,omitempty"` // e.g. /healthz
 }
 
 // Empty: nothing changed.
 func (s SiteSettings) Empty() bool {
-	return s.Mode == "" && s.WAFMode == "" && s.MLMode == "" && len(s.RateLimits) == 0
+	return s.Mode == "" && s.WAFMode == "" && s.MLMode == "" && len(s.RateLimits) == 0 &&
+		len(s.Hosts) == 0 && len(s.Upstreams) == 0 && s.HealthCheck == ""
 }
 
 // AlertSettings are where alerts go.

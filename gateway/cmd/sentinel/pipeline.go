@@ -53,6 +53,7 @@ type shared struct {
 	bans       *blocklist.List
 	hub        *events.Hub
 	loginFails *middleware.LoginFailures
+	hosts      *hostRouter             // picks the site by host name
 	logins     middleware.LoginCounter // what LoginGuard asks (loginFails unless an edition replaces it)
 	ext        any                     // the edition's own state (see edition.go)
 	spec       *schema.Validator
@@ -66,19 +67,20 @@ type shared struct {
 
 // site is one built site: its settings and its pipeline.
 type site struct {
-	name   string
-	hosts  []string
-	conf   config.Site // as configured (before dashboard changes)
-	mu     sync.Mutex  // rebuilds
-	mode   string
-	waf    string
-	ml     string
-	limits []string
-	edited dashboard.SiteSettings // changes made on the dashboard
-	router *proxy.Router
-	prof   *profile.Profile  // app profile, kept across rebuilds
-	spec   *schema.Validator // the site's own API spec, if it has one
-	h      atomic.Value      // http.Handler: the current pipeline
+	name    string
+	hosts   []string
+	conf    config.Site // as configured (before dashboard changes)
+	mu      sync.Mutex  // rebuilds
+	mode    string
+	waf     string
+	ml      string
+	limits  []string
+	edited  dashboard.SiteSettings // changes made on the dashboard
+	router  *proxy.Router
+	servers string            // what router was built from (serversKey)
+	prof    *profile.Profile  // app profile, kept across rebuilds
+	spec    *schema.Validator // the site's own API spec, if it has one
+	h       atomic.Value      // http.Handler: the current pipeline
 }
 
 func (s *site) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -105,6 +107,7 @@ func NewHandler(cfg *config.Config, engine *waf.Engine, authSvc *auth.Service, r
 	}
 	hostRouter := newHostRouter(sites)
 	hostRouter.admin = sh.adminPort
+	sh.hosts = hostRouter
 	if d, ok := sh.admin.(*adminPages); ok && d.dash != nil {
 		d.dash.Sites = func() []dashboard.SiteStatus { return siteStatus(sites, cfg.Mode) }
 		d.dash.SetMode = func(name, mode string) error { return sh.setSiteMode(sites, name, mode) }
@@ -286,12 +289,21 @@ func (sh *shared) buildSites() ([]*site, error) {
 		list = []config.Site{{Hosts: []string{"*"}, Spec: cfg.Upstreams, HealthCheck: cfg.HealthCheck}}
 	}
 	edits := sh.loadSiteSettings()
+	effective, err := sh.effectiveSites(edits)
+	if err != nil {
+		sh.log.Warn("site settings from the dashboard ignored: they don't fit the config file any more", "error", err.Error(), "file", sh.settingsFile("site-settings.json"))
+		edits, effective = nil, nil
+	}
 	var out []*site
-	for _, sc := range list {
+	for i, sc := range list {
 		s := &site{name: sc.Name, hosts: sc.Hosts, conf: sc}
 		if ed, ok := edits[sc.Name]; ok {
 			s.edited = ed
 			sc = withEdits(sc, ed)
+			if effective != nil {
+				sc = effective[i]
+				s.hosts = sc.Hosts
+			}
 			sh.log.Info("site settings changed on the dashboard", "site", siteLabel(sc.Name), "file", sh.settingsFile("site-settings.json"))
 		}
 		err := sh.sitePipeline(sc, s)
@@ -319,6 +331,7 @@ func (sh *shared) sitePipeline(sc config.Site, s *site) error {
 			return err
 		}
 		s.router = proxy.NewRouter(routes, proxy.Options{HealthPath: pick(sc.HealthCheck, cfg.HealthCheck)}, log)
+		s.servers = serversKey(sc, cfg)
 	}
 	var limits []string
 
@@ -558,42 +571,48 @@ func (a *adminPages) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // hostRouter picks the site by the request's Host: an exact name first,
-// then the longest "*.example.com" match, then the "*" site.
+// then the longest "*.example.com" match, then the "*" site. Its index is
+// rebuilt when a site's host names change on the dashboard.
 type hostRouter struct {
+	idx   atomic.Pointer[hostIndex]
+	admin http.Handler // the dashboard port
+}
+
+type hostIndex struct {
 	exact    map[string]*site
-	wildcard []struct {
-		suffix string
-		s      *site
-	}
+	wildcard []hostSuffix
 	fallback *site
 	first    *site
-	admin    http.Handler // the dashboard port
+}
+
+type hostSuffix struct {
+	suffix string
+	s      *site
 }
 
 func newHostRouter(sites []*site) *hostRouter {
-	hr := &hostRouter{exact: map[string]*site{}, first: sites[0]}
+	hr := &hostRouter{}
+	hr.rebuild(sites)
+	return hr
+}
+
+// rebuild indexes the sites' current host names.
+func (hr *hostRouter) rebuild(sites []*site) {
+	ix := &hostIndex{exact: map[string]*site{}, first: sites[0]}
 	for _, s := range sites {
-		for _, h := range s.hosts {
+		for _, h := range s.hostNames() {
 			switch {
 			case h == "*":
-				hr.fallback = s
+				ix.fallback = s
 			case strings.HasPrefix(h, "*."):
-				hr.wildcard = append(hr.wildcard, struct {
-					suffix string
-					s      *site
-				}{h[1:], s})
+				ix.wildcard = append(ix.wildcard, hostSuffix{h[1:], s})
 			default:
-				hr.exact[h] = s
+				ix.exact[h] = s
 			}
 		}
 	}
-	slices.SortFunc(hr.wildcard, func(a, b struct {
-		suffix string
-		s      *site
-	}) int {
-		return len(b.suffix) - len(a.suffix)
-	})
-	return hr
+	slices.SortFunc(ix.wildcard, func(a, b hostSuffix) int { return len(b.suffix) - len(a.suffix) })
+	hr.idx.Store(ix)
 }
 
 func (hr *hostRouter) find(host string) *site {
@@ -601,15 +620,16 @@ func (hr *hostRouter) find(host string) *site {
 		host = h
 	}
 	host = strings.TrimSuffix(strings.ToLower(host), ".")
-	if s, ok := hr.exact[host]; ok {
+	ix := hr.idx.Load()
+	if s, ok := ix.exact[host]; ok {
 		return s
 	}
-	for _, w := range hr.wildcard {
+	for _, w := range ix.wildcard {
 		if strings.HasSuffix(host, w.suffix) {
 			return w.s
 		}
 	}
-	return hr.fallback
+	return ix.fallback
 }
 
 func (hr *hostRouter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -624,7 +644,7 @@ func (hr *hostRouter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s := hr.find(r.Host)
 	if s == nil {
 		if isAdminPath(r.URL.Path) {
-			s = hr.first // Sentinel's own pages work on any host
+			s = hr.idx.Load().first // Sentinel's own pages work on any host
 		} else {
 			info := reqctx.From(r.Context())
 			info.SetOutcome(reqctx.Outcome{Kind: "denied", Reason: "no site is configured for host " + r.Host, Rule: "sites"})
@@ -639,7 +659,8 @@ func siteStatus(sites []*site, defaultMode string) []dashboard.SiteStatus {
 	out := make([]dashboard.SiteStatus, 0, len(sites))
 	for _, s := range sites {
 		s.mu.Lock()
-		st := dashboard.SiteStatus{Name: s.name, Hosts: s.hosts, Mode: s.mode, ConfigMode: pick(s.conf.Mode, defaultMode), Edited: s.edited, ConfigLimits: s.conf.RateLimits, WAFMode: s.waf, MLMode: s.ml, RateLimits: s.limits}
+		st := dashboard.SiteStatus{Name: s.name, Hosts: s.hosts, Editable: s.name != "",
+			Config: dashboard.SiteSettings{Hosts: s.conf.Hosts, Upstreams: s.conf.Upstreams, HealthCheck: s.conf.HealthCheck}, Mode: s.mode, ConfigMode: pick(s.conf.Mode, defaultMode), Edited: s.edited, ConfigLimits: s.conf.RateLimits, WAFMode: s.waf, MLMode: s.ml, RateLimits: s.limits}
 		s.mu.Unlock()
 		for _, u := range s.router.Status() {
 			st.Servers = append(st.Servers, dashboard.ServerStatus{Prefix: u.Prefix, URL: u.URL, Up: u.Up})

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -117,7 +118,47 @@ func withEdits(sc config.Site, ed dashboard.SiteSettings) config.Site {
 	if len(ed.RateLimits) > 0 {
 		sc.RateLimits = ed.RateLimits
 	}
+	if len(ed.Hosts) > 0 {
+		sc.Hosts = ed.Hosts
+	}
+	if len(ed.Upstreams) > 0 {
+		sc.Upstreams = ed.Upstreams
+	}
+	if ed.HealthCheck != "" {
+		sc.HealthCheck = ed.HealthCheck
+	}
 	return sc
+}
+
+// effectiveSites is the configured sites with the dashboard's changes,
+// checked as a whole the way the config file is (host names used twice,
+// server URLs), with their routes worked out. nil when there are no named
+// sites.
+func (sh *shared) effectiveSites(edits map[string]dashboard.SiteSettings) ([]config.Site, error) {
+	if len(sh.cfg.Sites) == 0 {
+		return nil, nil
+	}
+	list := make([]config.Site, len(sh.cfg.Sites))
+	for i, sc := range sh.cfg.Sites {
+		sc.Hosts = append([]string(nil), sc.Hosts...)
+		list[i] = withEdits(sc, edits[sc.Name])
+	}
+	b, err := json.Marshal(list)
+	if err != nil {
+		return nil, err
+	}
+	out, err := config.ParseSites(string(b))
+	if err != nil {
+		return nil, fmt.Errorf("%s", strings.TrimPrefix(err.Error(), "SITES: "))
+	}
+	return out, nil
+}
+
+// hostNames is the site's current host names.
+func (s *site) hostNames() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.hosts
 }
 
 func findSite(sites []*site, name string) (*site, error) {
@@ -142,14 +183,41 @@ func (sh *shared) setSite(sites []*site, name string, ed dashboard.SiteSettings)
 	if err != nil {
 		return err
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if err := sh.sitePipeline(withEdits(s.conf, ed), s); err != nil {
-		return err
+	if (len(ed.Hosts) > 0 || len(ed.Upstreams) > 0 || ed.HealthCheck != "") && name == "" {
+		return fmt.Errorf("host names and servers can be changed here once sites are set up (sites: in the config file)")
 	}
-	s.edited = ed
 	all := sh.loadSiteSettings()
 	all[name] = ed
+	sc := withEdits(s.conf, ed)
+	if effective, err := sh.effectiveSites(all); err != nil {
+		return err
+	} else if effective != nil {
+		for _, e := range effective {
+			if e.Name == name {
+				sc = e
+			}
+		}
+	}
+	s.mu.Lock()
+	old := s.router
+	newServers := s.servers != serversKey(sc, sh.cfg)
+	if newServers {
+		s.router = nil // sitePipeline builds a new one
+	}
+	if err := sh.sitePipeline(sc, s); err != nil {
+		s.router = old
+		s.mu.Unlock()
+		return err
+	}
+	if newServers && old != nil {
+		old.Close()
+	}
+	s.edited = ed
+	s.hosts = sc.Hosts
+	s.mu.Unlock()
+	if sh.hosts != nil {
+		sh.hosts.rebuild(sites)
+	}
 	sh.saveSiteSettings(all)
 	sh.log.Warn("site settings changed on the dashboard", "site", siteLabel(name), "mode", s.mode, "waf_mode", s.waf, "ml_mode", s.ml, "rate_limits", s.limits)
 	currentAlerter.Send("settings:"+name, alert.Message{Title: "Site settings changed",
@@ -171,6 +239,7 @@ func (sh *shared) setSiteMode(sites []*site, name, mode string) error {
 	ed := s.edited
 	configured := pick(s.conf.Mode, sh.cfg.Mode)
 	s.mu.Unlock()
+	ed.RateLimits = maps.Clone(ed.RateLimits)
 	ed.Mode = mode
 	if mode == configured {
 		ed.Mode = ""
@@ -224,4 +293,9 @@ func (sh *shared) setAlerts(in dashboard.AlertSettings) error {
 	sh.log.Warn("alert settings changed on the dashboard", "to", redactURL(u), "burst", burst)
 	currentAlerter.Send("alerts-changed", alert.Message{Title: "Alerts set up", Text: "This channel now gets Sentinel's alerts."})
 	return nil
+}
+
+// serversKey identifies the servers and health check a site's router uses.
+func serversKey(sc config.Site, cfg *config.Config) string {
+	return sc.Spec + " health=" + pick(sc.HealthCheck, cfg.HealthCheck)
 }

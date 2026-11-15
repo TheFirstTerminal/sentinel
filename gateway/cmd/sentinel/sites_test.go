@@ -360,3 +360,53 @@ func TestSiteSettingsAndAlertsFromDashboard(t *testing.T) {
 		t.Errorf("after reset: attack got %d, want 403", code)
 	}
 }
+
+func TestSiteHostsAndServersFromDashboard(t *testing.T) {
+	dir := t.TempDir()
+	newApp := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "new-server") }))
+	defer newApp.Close()
+	sitesJSON := `[{"name":"shop","hosts":["shop.test"],"upstreams":["{shop}"]},{"name":"api","hosts":["api.test"],"upstreams":["{api}"]}]`
+	gw, _ := sitesLabIn(t, dir, sitesJSON, "shop", "api")
+	l := &lab{t: t, gw: gw, logBuf: &strings.Builder{}}
+	admin := l.login("admin", "Admin#2026")
+
+	body := `{"hosts":["store.test","*.store.test"],"upstreams":["` + newApp.URL + `"]}`
+	if code, out := l.do("PUT", "/__sentinel/api/sites/shop/settings", admin, body); code != 200 {
+		t.Fatalf("edit hosts and servers: %d %v", code, out)
+	}
+	for host, want := range map[string]string{"store.test": "new-server", "eu.store.test": "new-server", "api.test": "api"} {
+		if code, got := hostGet(t, gw, host, "/"); code != 200 || got != want {
+			t.Errorf("%s: %d %q, want %q", host, code, got, want)
+		}
+	}
+	if code, _ := hostGet(t, gw, "shop.test", "/"); code != 421 {
+		t.Errorf("the old host name must no longer reach the site: %d", code)
+	}
+	for b, why := range map[string]string{
+		`{"hosts":["api.test"]}`:     "already used",
+		`{"upstreams":["ftp://x"]}`:  "expected http",
+		`{"hosts":["bad host"]}`:     "host",
+		`{"health_check":"healthz"}`: "health_check",
+	} {
+		code, out := l.do("PUT", "/__sentinel/api/sites/shop/settings", admin, b)
+		if code != 400 || !strings.Contains(fmt.Sprint(out), why) {
+			t.Errorf("%s: %d %v, want an error about %q", b, code, out, why)
+		}
+	}
+	if code, got := hostGet(t, gw, "store.test", "/"); code != 200 || got != "new-server" {
+		t.Errorf("a refused edit must keep the working settings: %d %q", code, got)
+	}
+	// Survives a restart.
+	gw2, _ := sitesLabIn(t, dir, sitesJSON, "shop", "api")
+	if code, got := hostGet(t, gw2, "store.test", "/"); code != 200 || got != "new-server" {
+		t.Errorf("after a restart: %d %q", code, got)
+	}
+	// Back to the config file.
+	l2 := &lab{t: t, gw: gw2, logBuf: &strings.Builder{}}
+	if code, _ := l2.do("PUT", "/__sentinel/api/sites/shop/settings", l2.login("admin", "Admin#2026"), `{}`); code != 200 {
+		t.Fatal("reset failed")
+	}
+	if code, got := hostGet(t, gw2, "shop.test", "/"); code != 200 || got != "shop" {
+		t.Errorf("after reset: %d %q", code, got)
+	}
+}

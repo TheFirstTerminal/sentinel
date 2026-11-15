@@ -89,7 +89,7 @@ select, textarea { font: inherit; padding: 4px 8px; border: 1px solid var(--line
 .hist-form label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
 .hist-form input { width: 100%; font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); }
 #excl-form label, #se-form label, #al-form label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
-#excl-form input, #se-form select, #se-form textarea, #al-form input { width: 100%; font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); }
+#excl-form input, #se-form select, #se-form textarea, #se-form input, #al-form input { width: 100%; font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); }
 .hist-form input[type=checkbox] { width: auto; }
 .empty { color: var(--muted); padding: 10px 6px; }
 body:not(.multi) .site-col { display: none; }
@@ -178,6 +178,13 @@ body:not(.multi) .site-col { display: none; }
         <div><label for="se-waf">WAF</label><select id="se-waf"><option value="">as configured</option><option value="block">block</option><option value="detect">detect (log only)</option></select></div>
         <div><label for="se-ml">ML model</label><select id="se-ml"><option value="">as configured</option><option value="off">off</option><option value="detect">detect (log only)</option><option value="block">block</option></select></div>
         <div><label for="se-mode">Mode</label><select id="se-mode"><option value="">as configured</option><option value="protect">protect</option><option value="monitor">monitor</option></select></div>
+      </div>
+      <div id="se-where">
+        <div class="grid three">
+          <div><label for="se-hosts">Host names (comma separated)</label><input id="se-hosts" class="mono"></div>
+          <div><label for="se-servers">Servers for / (one per line, shared in turn)</label><textarea id="se-servers" class="mono" rows="2"></textarea></div>
+          <div><label for="se-health">Health check path</label><input id="se-health" class="mono"></div>
+        </div>
       </div>
       <label for="se-limits">Rate limits, one per line: path requests/window (e.g. <span class="mono">/login 10/1m</span>). Empty = as configured.</label>
       <textarea id="se-limits" class="mono" rows="4" style="width:100%"></textarea>
@@ -667,6 +674,11 @@ function openSiteEdit(name) {
   $("se-title").textContent = "Edit " + siteName(name);
   $("se-waf").value = ed.waf_mode || ""; $("se-ml").value = ed.ml_mode || ""; $("se-mode").value = ed.mode || "";
   $("se-limits").value = Object.entries(ed.rate_limits || {}).map(([p, v]) => p + " " + v).join("\n");
+  const cf = s.config || {};
+  $("se-where").classList.toggle("hidden", !s.editable);
+  $("se-hosts").value = (ed.hosts || []).join(", "); $("se-hosts").placeholder = (cf.hosts || []).join(", ");
+  $("se-servers").value = (ed.upstreams || []).join("\n"); $("se-servers").placeholder = (cf.upstreams || []).join("\n") || "routes from the config file";
+  $("se-health").value = ed.health_check || ""; $("se-health").placeholder = cf.health_check || "none";
   $("se-limits").placeholder = Object.entries(s.config_rate_limits || {}).map(([p, v]) => p + " " + v).join("\n") || (s.rate_limits || []).join("\n");
   $("se-err").textContent = "";
   $("se-form").classList.remove("hidden"); $("se-waf").focus();
@@ -686,7 +698,9 @@ $("se-form").onsubmit = (ev) => {
     if (!p || !v) { $("se-err").textContent = "Write each limit as: /path 10/1m"; return; }
     rate_limits[p] = v;
   }
-  const body = { waf_mode: $("se-waf").value, ml_mode: $("se-ml").value, mode: $("se-mode").value, rate_limits };
+  const list = (v, sep) => v.split(sep).map(x => x.trim()).filter(Boolean);
+  const body = { waf_mode: $("se-waf").value, ml_mode: $("se-ml").value, mode: $("se-mode").value, rate_limits,
+    hosts: list($("se-hosts").value, ","), upstreams: list($("se-servers").value, "\n"), health_check: $("se-health").value.trim() };
   if (body.mode === "monitor" && !confirm("Switch " + siteName(EDITING) + " to monitor? Attacks will be logged but no longer blocked.")) return;
   saveSite(body);
 };

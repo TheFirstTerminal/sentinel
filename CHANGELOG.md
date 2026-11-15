@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+- **Dashboard**: change a site's host names, servers and health check without a restart.
+- Editions build on extension points instead of changing shared files.
+
 ## 0.13.0 · 2026-11-15
 - **Exclusions per site**: an exclusion can name one site; **Allow…** fills it in.
 - **API spec and prompt guard per site** (`api_spec_file`, `api_spec_prefix`, `prompt_guard_paths`, `prompt_canary` in a site).

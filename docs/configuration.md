@@ -81,10 +81,12 @@ an environment variable, `SITES` is the same list as JSON:
 `SITES='[{"name":"shop","hosts":["shop.example.com"],"upstreams":["http://shop:3000"]}]'`.
 
 **Changing a site on the dashboard.** Each site's **Edit** button changes its
-mode, WAF mode, ML mode and rate limits while Sentinel runs. The changes are
-kept in `site-settings.json` in the data folder and win over the config file;
-**Back to the config file** removes them. Host names and servers are changed
-in the config file.
+mode, WAF mode, ML mode, rate limits, host names, servers and health check
+while Sentinel runs. Changes are checked like the config file is (a host name
+used by two sites, a server that isn't a URL) and refused with the reason.
+They are kept in `site-settings.json` in the data folder and win over the
+config file; **Back to the config file** removes them. Adding or removing a
+site is done in the config file.
 
 ### Profiles
 
