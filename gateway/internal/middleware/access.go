@@ -22,6 +22,11 @@ type Authenticator interface {
 // by adding "X-Sentinel-Role: admin" to their request.
 var identityHeaders = []string{"X-Sentinel-User", "X-Sentinel-Role", "X-Sentinel-Department", "X-Sentinel-MFA", "X-Sentinel-Client"}
 
+// AuthenticateApps: also read tokens on requests for the protected apps,
+// not only on Sentinel's own pages (set by editions that log users in to
+// the apps).
+var AuthenticateApps bool
+
 // Authenticate (check 3) reads "Authorization: Bearer <token>" on Sentinel's
 // own pages (/__sentinel/...: the dashboard and its login). A valid token
 // attaches the admin to the request; an invalid one is only remembered.
@@ -30,7 +35,7 @@ var identityHeaders = []string{"X-Sentinel-User", "X-Sentinel-Role", "X-Sentinel
 func Authenticate(a Authenticator) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if !strings.HasPrefix(r.URL.Path, "/__sentinel/") {
+			if !AuthenticateApps && !strings.HasPrefix(r.URL.Path, "/__sentinel/") {
 				next.ServeHTTP(w, r)
 				return
 			}

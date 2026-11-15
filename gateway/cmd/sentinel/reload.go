@@ -115,6 +115,12 @@ func (rl *reloader) reload(why string) error {
 	if err != nil {
 		return fail(err)
 	}
+	var apply func()
+	if edition.Reload != nil {
+		if apply, err = edition.Reload(cfg); err != nil {
+			return fail(err)
+		}
+	}
 	if middleware.Exclusions != nil {
 		if err := middleware.Exclusions.Reload(); err != nil {
 			return fail(err)
@@ -122,6 +128,9 @@ func (rl *reloader) reload(why string) error {
 	}
 	// Everything loaded: switch over.
 	rl.engine.Swap(next)
+	if apply != nil {
+		apply()
+	}
 	n := 0
 	if middleware.Exclusions != nil {
 		n = len(middleware.Exclusions.List())

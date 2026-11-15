@@ -105,6 +105,13 @@ func RateLimitBan(l *ratelimit.Limiter, bans *blocklist.List, banFor time.Durati
 	}
 }
 
+// LoginCounter tells LoginGuard how many logins failed for an account
+// recently, and how long until they stop counting.
+type LoginCounter interface {
+	Count(ctx context.Context, user string) int64
+	Period() time.Duration
+}
+
 // LoginFailures counts failed logins per account, whatever IP they come
 // from, for LoginGuard. Long names are hashed: the name comes from the
 // client, and a megabyte-long one must not become a megabyte-long key.
@@ -128,6 +135,9 @@ func (l *LoginFailures) Failed(ctx context.Context, user string) {
 		l.Store.Incr(ctx, l.key(user), l.Window)
 	}
 }
+
+// Period is how long a failure counts.
+func (l *LoginFailures) Period() time.Duration { return l.Window }
 
 // Count is the number of recent failures for an account.
 func (l *LoginFailures) Count(ctx context.Context, user string) int64 {
@@ -161,7 +171,7 @@ func CountLoginFailures(l *LoginFailures) func(http.Handler) http.Handler {
 // Per-IP rate limits can't stop an attacker who spreads guesses over many
 // addresses (password spraying); this can. Unknown usernames are counted
 // the same way, so the answer reveals nothing about which accounts exist.
-func LoginGuard(e *LoginFailures, limit int64, rec Recorder, log *slog.Logger) func(http.Handler) http.Handler {
+func LoginGuard(e LoginCounter, limit int64, rec Recorder, log *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if limit <= 0 || r.Method != http.MethodPost || r.URL.Path != "/__sentinel/auth/login" {
@@ -180,7 +190,7 @@ func LoginGuard(e *LoginFailures, limit int64, rec Recorder, log *slog.Logger) f
 			if in.Username != "" && e.Count(r.Context(), in.Username) >= limit {
 				info := reqctx.From(r.Context())
 				info.Login = in.Username
-				w.Header().Set("Retry-After", strconv.Itoa(int(e.Window/time.Second)))
+				w.Header().Set("Retry-After", strconv.Itoa(int(e.Period()/time.Second)))
 				deny(w, r, rec, log, http.StatusTooManyRequests, "rate_limited",
 					fmt.Sprintf("%d failed logins for this account recently", limit), "login-guard",
 					"too many failed logins for this account, try again later")

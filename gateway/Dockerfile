@@ -22,11 +22,14 @@ RUN apk add --no-cache git \
 # no compiler). Less inside means less for an attacker who gets in.
 FROM gcr.io/distroless/static-debian12:nonroot
 ARG VERSION=dev
+ARG DESCRIPTION="Security gateway for web apps, APIs and AI endpoints: WAF + OWASP CRS + ML"
+ARG SOURCE="https://github.com/tsxmamii/sentinel"
+ARG LICENSE="LicenseRef-PolyForm-Shield-1.0.0"
 LABEL org.opencontainers.image.title="Sentinel" \
-      org.opencontainers.image.description="Security gateway for web apps, APIs and AI endpoints: WAF + OWASP CRS + ML" \
+      org.opencontainers.image.description="${DESCRIPTION}" \
       org.opencontainers.image.version="${VERSION}" \
-      org.opencontainers.image.source="https://github.com/tsxmamii/sentinel" \
-      org.opencontainers.image.licenses="LicenseRef-PolyForm-Shield-1.0.0"
+      org.opencontainers.image.source="${SOURCE}" \
+      org.opencontainers.image.licenses="${LICENSE}"
 COPY --from=build /out/sentinel /sentinel
 COPY --from=crs /out/crs /etc/sentinel/crs
 # Accounts, the secret key, exclusions and certificates. Mount a volume here

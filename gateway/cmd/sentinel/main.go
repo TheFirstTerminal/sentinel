@@ -53,6 +53,9 @@ var Version = "0.12.0"
 
 func main() {
 	if len(os.Args) > 1 {
+		if cmd, ok := edition.Commands[os.Args[1]]; ok {
+			os.Exit(cmd(os.Args[2:], os.Stdout))
+		}
 		switch os.Args[1] {
 		case "watch":
 			os.Exit(watchCmd(os.Args[2:], os.Stdout))
@@ -105,8 +108,8 @@ func main() {
 		fatal("rules", err)
 	}
 
-	// Security events from the checks go to the access log and the dashboard;
-	// rec stays nil in the free edition.
+	// Security events from the checks go to the access log and the
+	// dashboard; an edition may also record them (edition.Prepare).
 	var rec middleware.Recorder
 
 	// The data folder keeps the secret, accounts, exclusions and
@@ -184,6 +187,19 @@ func main() {
 		}
 	}
 
+	if edition.Prepare != nil {
+		r, closer, err := edition.Prepare(ctx, cfg, authSvc, log)
+		if err != nil {
+			fatal("startup", err)
+		}
+		if closer != nil {
+			defer closer()
+		}
+		if r != nil {
+			rec = r
+		}
+	}
+
 	handler, err := NewHandler(cfg, engine, authSvc, rec, log)
 	if err != nil {
 		fatal("startup", err)
@@ -247,6 +263,11 @@ func main() {
 				fatal("tls", err)
 			}
 		}
+		if edition.TLS != nil {
+			if err := edition.TLS(cfg, tlsCfg); err != nil {
+				fatal("tls", err)
+			}
+		}
 		tlsSrv = &http.Server{
 			Addr: cfg.TLSListenAddr, Handler: handler, TLSConfig: tlsCfg,
 			ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 30 * time.Second,
@@ -262,15 +283,9 @@ func main() {
 	}
 
 	go func() {
-		log.Info("sentinel started",
-			"version", Version,
-			"mode", cfg.Mode,
-			"listen", cfg.ListenAddr,
-			"upstreams", cfg.Upstreams,
-			"rules", engine.RuleCount()+crsRules(engine),
-			"database", cfg.DatabaseURL != "",
-			"store", storeName(cfg.KV),
-		)
+		attrs := []any{"version", Version, "mode", cfg.Mode, "listen", cfg.ListenAddr, "upstreams", cfg.Upstreams,
+			"rules", engine.RuleCount() + crsRules(engine), "database", cfg.DatabaseURL != "", "store", storeName(cfg.KV)}
+		log.Info("sentinel started", append(attrs, startedAttrs(cfg)...)...)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			fatal("server", err)
 		}
@@ -309,7 +324,11 @@ func main() {
 			rl.reload("SIGHUP")
 		}
 	}()
-	go rl.watch(file, cfg.RulesFile, cfg.ExclusionsFile)
+	watched := []string{file, cfg.RulesFile, cfg.ExclusionsFile}
+	if edition.WatchFiles != nil {
+		watched = append(watched, edition.WatchFiles(cfg)...)
+	}
+	go rl.watch(watched...)
 
 	// Graceful shutdown: finish in-flight requests on Ctrl+C / docker stop.
 	stop := make(chan os.Signal, 1)
@@ -469,6 +488,13 @@ func orNone(s string) string {
 		return "none"
 	}
 	return s
+}
+
+func startedAttrs(cfg *config.Config) []any {
+	if edition.StartedAttrs == nil {
+		return nil
+	}
+	return edition.StartedAttrs(cfg)
 }
 
 func storeName(s kv.Store) string {

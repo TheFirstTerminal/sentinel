@@ -47,8 +47,11 @@ var aliases = map[string]string{
 	"PROMPT_GUARD_ENDPOINT":   "PROMPT_GUARD_PATHS",
 }
 
-// ProVariables are Sentinel Pro settings. The free edition accepts them in a
-// config file only to refuse them with a clear message (see Load).
+// Pro is true in Sentinel Pro builds. The free edition accepts Pro settings
+// only to refuse them with a clear message (see Load).
+var Pro bool
+
+// ProVariables are Sentinel Pro settings.
 var ProVariables = []string{"POLICY_FILE", "SEED_USERS_FILE", "AUDIT_LOG_FILE", "CLIENT_CA_FILE", "MTLS_ROUTES", "TLS_AUTOGEN_DIR",
 	"RISK", "RISK_STEP_UP", "RISK_BLOCK", "RISK_HIGH_COUNTRIES", "RISK_QUIET_HOURS"}
 

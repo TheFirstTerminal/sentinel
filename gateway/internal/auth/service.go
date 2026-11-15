@@ -87,7 +87,7 @@ func (s *Service) Login(ctx context.Context, username, password string) (*LoginR
 	}
 	// Logins are for Sentinel's own administrators (the dashboard). Other
 	// accounts, e.g. left in a shared database, can't sign in.
-	if u.Role != "admin" {
+	if AdminOnly && u.Role != "admin" {
 		return nil, ErrBadCredentials
 	}
 
@@ -228,7 +228,11 @@ func (s *Service) Enable2FA(ctx context.Context, username, code string) error {
 	return s.store.SetTOTP(ctx, username, u.TOTPSecretEnc, true)
 }
 
-// SeedUser is an account created by Seed (tests and tooling).
+// AdminOnly: only admin accounts can log in (set to false by editions
+// that log users in to the protected apps).
+var AdminOnly = true
+
+// SeedUser is an account created by Seed.
 type SeedUser struct {
 	Username   string `json:"username"`
 	Password   string `json:"password"`

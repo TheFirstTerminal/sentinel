@@ -39,16 +39,18 @@ type Recorder interface {
 
 // Info is the read-only configuration summary shown on the dashboard.
 type Info struct {
-	Version    string   `json:"version"`
-	Mode       string   `json:"mode"`
-	WAFMode    string   `json:"waf_mode"`
-	Rules      int      `json:"waf_rules"`
-	RateLimits []string `json:"rate_limits"`
-	Store      string   `json:"store"`
-	Geo        string   `json:"geo"`
-	PromptPath []string `json:"prompt_guard_paths"`
-	ML         string   `json:"ml"`
-	Started    string   `json:"started"`
+	Version    string      `json:"version"`
+	Mode       string      `json:"mode"`
+	WAFMode    string      `json:"waf_mode"`
+	Rules      int         `json:"waf_rules"`
+	RateLimits []string    `json:"rate_limits"`
+	Store      string      `json:"store"`
+	Geo        string      `json:"geo"`
+	Extra      [][2]string `json:"extra,omitempty"`    // more rows for the configuration table
+	Features   []string    `json:"features,omitempty"` // e.g. "risk", "audit": parts of the page to show
+	PromptPath []string    `json:"prompt_guard_paths"`
+	ML         string      `json:"ml"`
+	Started    string      `json:"started"`
 }
 
 // SiteStatus is one site and its servers, for the dashboard.
@@ -110,6 +112,9 @@ type Dashboard struct {
 	Info      Info
 	Excl      *exclude.Set           // false-alarm exclusions (nil = feature off)
 	Reload    func(why string) error // reloads rules, CRS and exclusions
+	// More answers extra API routes (path is after the API prefix); it
+	// returns false for paths it doesn't know. nil = none.
+	More func(path string, w http.ResponseWriter, r *http.Request) bool
 }
 
 func (d *Dashboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -281,6 +286,9 @@ func (d *Dashboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		d.audit(r, "exclusion_removed", map[string]any{"id": id, "by": u.Username})
 		reply(w, map[string]any{"removed": id})
 	default:
+		if d.More != nil && d.More(path, w, r) {
+			return
+		}
 		jsonError(w, http.StatusNotFound, "unknown dashboard API path", info.ID)
 	}
 }

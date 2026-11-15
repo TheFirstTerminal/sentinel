@@ -81,6 +81,7 @@ type Config struct {
 	// Sentinel. Otherwise attackers can fake X-Forwarded-For to dodge IP bans.
 	TrustProxyHeaders bool
 
+	AuditLogFile  string        // tamper-evident audit log (Sentinel Pro; empty = off)
 	HoneypotPaths []string      // trap paths; nil = built-in list
 	HoneypotBan   time.Duration // how long a honeypot hit bans the IP
 
@@ -92,6 +93,8 @@ type Config struct {
 	HistoryDir    string // set at startup: <data dir>/history when the data folder is usable
 	DatabaseURL   string // PostgreSQL; empty = in-memory users (lost on restart)
 	Secret        string // SENTINEL_SECRET, master key for tokens and encryption
+	SeedUsersFile string // JSON users created on first start (Sentinel Pro)
+	PolicyFile    string // RBAC/ABAC policy JSON (Sentinel Pro)
 	APISpecFile   string // OpenAPI spec; empty = schema validation off
 	APISpecPrefix string // which paths the spec covers (required with a spec)
 
@@ -104,9 +107,18 @@ type Config struct {
 	GeoAllowCountries string // if set, only these (and LAN)
 	IPDeny            string // CIDRs always refused
 	IPAllow           string // if set, only these may connect
+	RiskEnabled       bool   // risk scoring (Sentinel Pro)
+	RiskStepUp        int
+	RiskBlock         int
+	RiskHighCountries string
+	RiskQuietHours    string // "00-05"
+	Timezone          string // for quiet hours
 	TLSListenAddr     string // e.g. ":8443"; empty = no HTTPS listener
 	TLSCertFile       string
 	TLSKeyFile        string
+	ClientCAFile      string // CA that signs client certificates (mTLS, Sentinel Pro)
+	MTLSRoutes        string // "/prefix=cn1|cn2,..." routes that need a client certificate
+	TLSAutogenDir     string // generate lab certificates here if missing
 
 	// Phase 4
 	Dashboard        bool     // serve /__sentinel/dashboard (DASHBOARD=off to disable)
@@ -211,9 +223,17 @@ func Load() (*Config, error) {
 	// Zero-trust settings belong to Sentinel Pro. Refuse to start rather than
 	// ignore them: someone who set POLICY_FILE expects their routes protected.
 	for _, v := range ProVariables {
-		if val := os.Getenv(v); val != "" && !(v == "RISK" && strings.EqualFold(val, "off")) {
+		if val := os.Getenv(v); !Pro && val != "" && !(v == "RISK" && strings.EqualFold(val, "off")) {
 			return nil, fmt.Errorf("%s is a Sentinel Pro setting (logins for your apps, access policies, mTLS, risk step-up and the tamper-evident audit log); remove it to run the free edition", v)
 		}
+	}
+	stepUp, err := strconv.Atoi(env("RISK_STEP_UP", "40"))
+	if err != nil || stepUp < 1 || stepUp > 100 {
+		return nil, fmt.Errorf("RISK_STEP_UP must be 1-100")
+	}
+	block, err := strconv.Atoi(env("RISK_BLOCK", "80"))
+	if err != nil || block < stepUp || block > 101 {
+		return nil, fmt.Errorf("RISK_BLOCK must be between RISK_STEP_UP and 101 (101 = never block)")
 	}
 
 	sites, err := ParseSites(os.Getenv("SITES"))
@@ -321,12 +341,24 @@ func Load() (*Config, error) {
 		GeoAllowCountries: os.Getenv("GEO_ALLOW_COUNTRIES"),
 		IPDeny:            os.Getenv("IP_DENY"),
 		IPAllow:           os.Getenv("IP_ALLOW"),
+		RiskEnabled:       Pro && !strings.EqualFold(os.Getenv("RISK"), "off"),
+		RiskStepUp:        stepUp,
+		RiskBlock:         block,
+		RiskHighCountries: os.Getenv("RISK_HIGH_COUNTRIES"),
+		RiskQuietHours:    env("RISK_QUIET_HOURS", "00-05"),
+		Timezone:          env("TZ", "UTC"),
 		TLSListenAddr:     os.Getenv("TLS_LISTEN_ADDR"),
 		TLSCertFile:       os.Getenv("TLS_CERT_FILE"),
 		TLSKeyFile:        os.Getenv("TLS_KEY_FILE"),
+		ClientCAFile:      os.Getenv("CLIENT_CA_FILE"),
+		MTLSRoutes:        os.Getenv("MTLS_ROUTES"),
+		TLSAutogenDir:     os.Getenv("TLS_AUTOGEN_DIR"),
 		Upstreams:         env("UPSTREAMS", "/="+upstream.String()),
 		DatabaseURL:       os.Getenv("DATABASE_URL"),
 		Secret:            os.Getenv("SENTINEL_SECRET"),
+		SeedUsersFile:     os.Getenv("SEED_USERS_FILE"),
+		PolicyFile:        os.Getenv("POLICY_FILE"),
+		AuditLogFile:      os.Getenv("AUDIT_LOG_FILE"),
 		APISpecFile:       os.Getenv("API_SPEC_FILE"),
 		APISpecPrefix:     os.Getenv("API_SPEC_PREFIX"),
 		HoneypotPaths:     traps,

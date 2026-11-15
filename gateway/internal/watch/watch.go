@@ -48,6 +48,7 @@ type entry struct {
 	Role     string  `json:"role"`
 	MFA      bool    `json:"mfa"`
 	Country  string  `json:"country"`
+	Risk     *int    `json:"risk"`
 	Site     string  `json:"site"`
 	Duration float64 `json:"duration_ms"`
 }
@@ -70,6 +71,9 @@ var styles = map[string]style{
 	"mfa_failed":       {"✗", "2FA FAIL", red},
 	"rate_limited":     {"⏱", "TOO MANY", red},
 	"geo_blocked":      {"⊘", "GEO BLOCK", red},
+	"step_up":          {"…", "NEED 2FA", yellow},
+	"risk_blocked":     {"✗", "RISK", red},
+	"mtls_required":    {"✗", "NO CERT", red},
 	"prompt_injection": {"✗", "PROMPT INJ", red},
 	"leak_blocked":     {"✗", "LEAK", red},
 	"ml_blocked":       {"✗", "ML", red},
@@ -129,6 +133,9 @@ func Format(line []byte, opt Options) string {
 	}
 	if e.Country != "" && e.Country != "LAN" {
 		why = append(why, c(dim, "from "+e.Country))
+	}
+	if e.Risk != nil && *e.Risk > 0 && e.Outcome != "step_up" && e.Outcome != "risk_blocked" {
+		why = append(why, c(dim, fmt.Sprintf("risk %d", *e.Risk)))
 	}
 	if e.Site != "" {
 		why = append(why, c(dim, "site "+e.Site))

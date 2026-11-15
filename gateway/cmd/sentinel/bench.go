@@ -156,6 +156,9 @@ func runBench(w io.Writer, crsDir string, n int, dur time.Duration, conc int) er
 			MaxBodyBytes: 1 << 20, HoneypotBan: time.Hour, RateLimits: "/=100000000/1m",
 			MLMode: "block", MLThreshold: 0.9, LoginFailLimit: 10, SecurityHeaders: true, TrustedProxies: "127.0.0.0/8",
 			ResponseCheck: "block", ResponseMaxBytes: 1 << 20}
+		if edition.Bench != nil {
+			edition.Bench(cfg)
+		}
 		e := waf.NewEngine(rules, 5)
 		if withCRS {
 			e.UseCRS(set)

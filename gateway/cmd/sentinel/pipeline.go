@@ -53,6 +53,8 @@ type shared struct {
 	bans       *blocklist.List
 	hub        *events.Hub
 	loginFails *middleware.LoginFailures
+	logins     middleware.LoginCounter // what LoginGuard asks (loginFails unless an edition replaces it)
+	ext        any                     // the edition's own state (see edition.go)
 	spec       *schema.Validator
 	model      *ml.Model
 	traps      []string
@@ -124,7 +126,7 @@ func NewHandler(cfg *config.Config, engine *waf.Engine, authSvc *auth.Service, r
 		}
 		hostRouter.ServeHTTP(w, r)
 	})
-	var inner http.Handler = middleware.CountLoginFailures(sh.loginFails)(root)
+	inner := edition.Outer(sh, root)
 	if cfg.SecurityHeaders {
 		inner = middleware.SecurityHeaders(inner)
 	}
@@ -154,6 +156,12 @@ func newShared(cfg *config.Config, engine *waf.Engine, authSvc *auth.Service, re
 		return nil, fmt.Errorf("IP_ALLOW: %w", err)
 	}
 	sh.loginFails = &middleware.LoginFailures{Store: sh.store, Window: 15 * time.Minute}
+	sh.logins = sh.loginFails
+	if edition.Shared != nil {
+		if err := edition.Shared(sh); err != nil {
+			return nil, err
+		}
+	}
 	sh.bans = blocklist.New()
 	currentBans = sh.bans
 	sh.hub = events.NewHub(5000)
@@ -175,6 +183,9 @@ func newShared(cfg *config.Config, engine *waf.Engine, authSvc *auth.Service, re
 			log.Info("alert settings from the dashboard", "file", sh.settingsFile("alerts.json"))
 		}
 		go currentAlerter.Watch(context.Background(), sh.hub)
+		if edition.AlertsReady != nil {
+			edition.AlertsReady(sh)
+		}
 		if u, _, burst := currentAlerter.Settings(); u != "" {
 			log.Info("alerts on", "to", redactURL(u), "burst", burst)
 		}
@@ -417,8 +428,7 @@ func (sh *shared) sitePipeline(sc config.Site, s *site) error {
 		spec = s.spec
 	}
 	p = guard(middleware.Schema(spec, cfg.MaxBodyBytes, sh.rec, log))(p) // 6
-	p = middleware.StripIdentityHeaders(p)
-	p = guard(middleware.LoginGuard(sh.loginFails, cfg.LoginFailLimit, sh.rec, log))(p)
+	p = edition.Access(sh, sc, p, guard)
 	if limiter != nil {
 		p = guard(middleware.RateLimitBan(limiter, sh.bans, cfg.HoneypotBan, sh.rec, log))(p) // 2
 	}
@@ -488,6 +498,9 @@ func (sh *shared) adminPages(excl *exclude.Set) (http.Handler, error) {
 			}
 			return reloadFunc(why)
 		}}
+		if edition.Dashboard != nil {
+			edition.Dashboard(sh, a.dash)
+		}
 	}
 	// First run: no accounts yet, so print a one-time link to create the admin.
 	setupState, setupToken, err := sh.authSvc.NewSetup(context.Background())
@@ -518,7 +531,7 @@ func (sh *shared) adminChain() (http.Handler, error) {
 		return nil, err
 	}
 	var h http.Handler = sh.admin
-	h = middleware.LoginGuard(sh.loginFails, cfg.LoginFailLimit, sh.rec, log)(h)
+	h = middleware.LoginGuard(sh.logins, cfg.LoginFailLimit, sh.rec, log)(h)
 	h = middleware.RateLimitBan(ratelimit.New(rules, sh.store).ForSite("__admin"), nil, 0, sh.rec, log)(h)
 	h = middleware.Authenticate(sh.authSvc)(h)
 	return middleware.BodyLimit(cfg.MaxBodyBytes, sh.rec, log)(h), nil
