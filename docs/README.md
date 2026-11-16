@@ -19,6 +19,7 @@ with every release.
 | File | For | What it is |
 |---|---|---|
 | [`configuration.md`](configuration.md) | Whoever runs Sentinel | Every setting |
+| [`pro.md`](pro.md) | Everyone | Sentinel Free and Sentinel Pro compared, and Pro's price |
 | [`benchmarks.md`](benchmarks.md) | Everyone | Detection per layer (including CSIC 2010), speed |
 | [`ml-report.md`](ml-report.md) | Everyone | How well the ML classifier does: test data, evasion test, example explanations |
 | [`evaluation.md`](evaluation.md) | Everyone | Attacking the lab from outside (replay, overhead, sqlmap) and what it found |

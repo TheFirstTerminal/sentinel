@@ -255,10 +255,12 @@ publishes binaries and a multi-arch image ([`release.yml`](.github/workflows/rel
 This repository is **Sentinel Free**: everything above, for any number of
 gateways, in production, at no cost.
 
-**Sentinel Pro** (coming) adds zero-trust access for your apps (logins with
-2FA, role- and attribute-based access rules, mTLS for services, risk-based
-step-up and a tamper-evident audit log), faster rule and virtual-patch
-updates for new CVEs, and help with installation, tuning and support.
+**Sentinel Pro** adds access control for your apps: single sign-on (Google,
+Microsoft, Okta, Keycloak or any OpenID Connect provider), logins with 2FA,
+access rules by role and department, risk-based step-up, mTLS for services
+and a tamper-evident audit log, with email support. **$29 per server a
+month** ($19 for the first 50 customers), no per-user charge.
+[Free vs Pro](https://tsxmamii.github.io/sentinel/pro.html).
 
 ## License
 
