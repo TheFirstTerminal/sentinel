@@ -150,6 +150,8 @@ sentinel
 The binary has Sentinel's rules and ML built in. For the OWASP Core Rule Set,
 point `waf.crs` at a CRS `rules/` folder (the Docker image includes it).
 
+Behind Nginx or Cloudflare, or on Kubernetes: [common setups](docs/setups.md).
+
 ### Kubernetes
 
 ```bash

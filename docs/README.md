@@ -18,6 +18,7 @@ with every release.
 
 | File | For | What it is |
 |---|---|---|
+| [`setups.md`](setups.md) | Whoever installs Sentinel | Behind Nginx, behind Cloudflare, on Kubernetes, directly on the internet; and how to check it works |
 | [`configuration.md`](configuration.md) | Whoever runs Sentinel | Every setting |
 | [`pro.md`](pro.md) | Everyone | Sentinel Free and Sentinel Pro compared, and Pro's price |
 | [`benchmarks.md`](benchmarks.md) | Everyone | Detection per layer (including CSIC 2010), speed |
