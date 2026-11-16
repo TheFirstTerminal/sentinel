@@ -53,7 +53,9 @@ var Pro bool
 
 // ProVariables are Sentinel Pro settings.
 var ProVariables = []string{"POLICY_FILE", "SEED_USERS_FILE", "AUDIT_LOG_FILE", "CLIENT_CA_FILE", "MTLS_ROUTES", "TLS_AUTOGEN_DIR",
-	"RISK", "RISK_STEP_UP", "RISK_BLOCK", "RISK_HIGH_COUNTRIES", "RISK_QUIET_HOURS"}
+	"RISK", "RISK_STEP_UP", "RISK_BLOCK", "RISK_HIGH_COUNTRIES", "RISK_QUIET_HOURS",
+	"SSO_ISSUER", "SSO_CLIENT_ID", "SSO_CLIENT_SECRET", "SSO_URL", "SSO_ROLE_CLAIM", "SSO_ROLES", "SSO_DEPARTMENT_CLAIM", "SSO_SCOPES", "SSO_SESSION_HOURS",
+	"LICENSE_KEY", "LICENSE_FILE"}
 
 // Variables is every setting Sentinel reads. A file key that maps to none
 // of them is a mistake (usually a typo) and stops the start.
@@ -71,6 +73,8 @@ var Variables = []string{
 	"PROMPT_GUARD_PATHS", "PROMPT_GUARD_MODE", "PROMPT_GUARD_THRESHOLD", "PROMPT_CANARY",
 	"ML_MODE", "ML_THRESHOLD", "ML_SKIP_PATHS",
 	"EXPORT_SYSLOG", "EXPORT_OTLP", "EXPORT_OTLP_HEADERS", "EXPORT_ALL",
+	"SSO_ISSUER", "SSO_CLIENT_ID", "SSO_CLIENT_SECRET", "SSO_URL", "SSO_ROLE_CLAIM", "SSO_ROLES", "SSO_DEPARTMENT_CLAIM", "SSO_SCOPES", "SSO_SESSION_HOURS",
+	"LICENSE_KEY", "LICENSE_FILE",
 }
 
 // ApplyFile reads a YAML config file and sets every variable it defines that

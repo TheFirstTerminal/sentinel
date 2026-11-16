@@ -224,7 +224,7 @@ func Load() (*Config, error) {
 	// ignore them: someone who set POLICY_FILE expects their routes protected.
 	for _, v := range ProVariables {
 		if val := os.Getenv(v); !Pro && val != "" && !(v == "RISK" && strings.EqualFold(val, "off")) {
-			return nil, fmt.Errorf("%s is a Sentinel Pro setting (logins for your apps, access policies, mTLS, risk step-up and the tamper-evident audit log); remove it to run the free edition", v)
+			return nil, fmt.Errorf("%s is a Sentinel Pro setting (logins and single sign-on for your apps, access policies, mTLS, risk step-up and the tamper-evident audit log); remove it to run the free edition", v)
 		}
 	}
 	stepUp, err := strconv.Atoi(env("RISK_STEP_UP", "40"))

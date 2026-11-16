@@ -220,8 +220,18 @@ func BearerToken(r *http.Request) string {
 	if len(h) > 7 && strings.EqualFold(h[:7], "bearer ") {
 		return strings.TrimSpace(h[7:])
 	}
+	for _, from := range TokenSources {
+		if t := from(r); t != "" {
+			return t
+		}
+	}
 	return ""
 }
+
+// TokenSources are other places a token may come from when there is no
+// Authorization header (e.g. a session cookie, in editions that log people
+// in through a browser). Empty by default.
+var TokenSources []func(*http.Request) string
 
 func isTokenErr(err error) bool {
 	for _, e := range []error{ErrTokenMalformed, ErrTokenAlg, ErrTokenSignature, ErrTokenExpired, ErrTokenPurpose, ErrTokenRevoked} {
