@@ -119,7 +119,7 @@ spec:
             backend:
               service:
                 name: sentinel
-                port: { number: 8080 }
+                port: { number: 80 }   # the chart's Service port
 ```
 
 - The chart already trusts `X-Forwarded-For` from the cluster's private
