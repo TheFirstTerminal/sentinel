@@ -148,6 +148,9 @@ body:not(.multi) .site-col { display: none; }
 <section id="login" class="card">
   <h2>Admin login</h2>
   <p class="muted" style="margin-top:0">The dashboard is for admins, operators and viewers with two-factor authentication.</p>
+  <p id="no-admin" class="hidden" style="margin-top:0;padding:10px 12px;border:1px solid var(--warn);border-radius:8px">
+    <b>No account exists yet.</b> Create the first admin with the one-time <b>setup link</b> Sentinel printed when it
+    started (a line starting with <span class="mono">FIRST RUN</span>; in the lab menu, press <b>L</b>). Then log in here.</p>
   <form id="f1">
     <label for="u">Username</label><input id="u" autocomplete="username" required>
     <label for="p">Password</label><input id="p" type="password" autocomplete="current-password" required>
@@ -351,8 +354,20 @@ async function post(path, body) {
   return out;
 }
 
+// Before the first admin exists, every login fails: say why.
+async function checkSetup() {
+  try {
+    const r = await fetch("/__sentinel/setup/api");
+    const s = await r.json();
+    $("no-admin").classList.toggle("hidden", !s.active);
+    return s.active;
+  } catch (e) { return false; }
+}
+checkSetup();
+
 $("f1").onsubmit = async (e) => {
   e.preventDefault(); $("err").textContent = "";
+  if (await checkSetup()) { $("err").textContent = "No account exists yet: create the admin with the setup link first."; return; }
   try {
     const out = await post("login", { username: $("u").value, password: $("p").value });
     if (out.mfa_required) { mfaToken = out.mfa_token; $("f1").classList.add("hidden"); $("f2").classList.remove("hidden"); $("c").focus(); }

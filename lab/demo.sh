@@ -42,7 +42,29 @@ run_all() {
   printf "\n  Normal shopping still works through Sentinel: HTTP %s\n" "$(code "$GATEWAY/rest/products/search?q=apple")"
 }
 
-open_url() { start "$1" 2>/dev/null || open "$1" 2>/dev/null || xdg-open "$1" >/dev/null 2>&1 || echo "  Open $1"; }
+# Open a page in the default browser. On Windows (Git Bash) "start" is not
+# reliable with links holding "#" and "&", so ask Windows directly.
+open_url() {
+  if command -v rundll32 >/dev/null 2>&1; then rundll32 url.dll,FileProtocolHandler "$1"
+  elif command -v open >/dev/null 2>&1; then open "$1"
+  elif command -v xdg-open >/dev/null 2>&1; then xdg-open "$1" >/dev/null 2>&1
+  else echo "  Open $1"; fi
+}
+
+# The one-time link to create the first admin ("" once an admin exists).
+setup_link() {
+  [ "$(curl -s --max-time 3 "$DASHBOARD/__sentinel/setup/api")" = '{"active":true}' ] || return 0
+  docker compose logs gateway 2>/dev/null | grep -o 'http[^" ]*/__sentinel/setup#[^ "]*' | tail -1 | sed "s|http://[^/]*|$DASHBOARD|"
+}
+
+# First thing: open the browser where you need to be.
+link=$(setup_link)
+if [ -n "$link" ]; then
+  printf "\n  %s\n  %s\n" "${CYAN}First run: create your admin account in the browser window that just opened.${RESET}" "Setup link (works once): $link"
+  open_url "$link"
+else
+  open_url "$DASHBOARD/__sentinel/dashboard#console"
+fi
 
 while true; do
   printf "\n%s\n" "${CYAN}SENTINEL · quick demo${RESET}"
@@ -51,7 +73,7 @@ while true; do
   case "$c" in
     1) run_all ;;
     [dD]) open_url "$DASHBOARD/__sentinel/dashboard#console" ;;
-    [lL]) docker compose logs gateway 2>/dev/null | grep -o 'http[^" ]*/__sentinel/setup#[^ "]*' | tail -1 | sed "s|http://[^/]*|$DASHBOARD|" | grep . || echo "  No setup link: the admin account already exists." ;;
+    [lL]) link=$(setup_link); if [ -n "$link" ]; then echo "  $link"; open_url "$link"; else echo "  No setup link: the admin account already exists."; fi ;;
     [qQ]) exit 0 ;;
   esac
 done
