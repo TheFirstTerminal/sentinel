@@ -74,6 +74,10 @@ while true; do
     1) run_all ;;
     [dD]) open_url "$DASHBOARD/__sentinel/dashboard#console" ;;
     [lL]) link=$(setup_link); if [ -n "$link" ]; then echo "  $link"; open_url "$link"; else echo "  No setup link: the admin account already exists."; fi ;;
-    [qQ]) exit 0 ;;
+    [qQ]) printf "  Stopping the lab (your account, settings and history are kept)...
+"
+          docker compose stop >/dev/null 2>&1 && printf "  %s
+" "${GREEN}Stopped. Double-click Start Sentinel.bat to start it again.${RESET}"
+          sleep 2; exit 0 ;;
   esac
 done
