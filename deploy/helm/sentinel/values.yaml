@@ -41,8 +41,17 @@ persistence:
   existingClaim: ""
 
 service:
-  type: ClusterIP
+  type: ClusterIP    # LoadBalancer when Sentinel is the ingress controller
   port: 80
+
+# Sentinel as the cluster's Ingress controller: it reads Ingresses with
+# ingressClassName: sentinel and protects and routes their hosts itself
+# (no other ingress controller in front). Read-only access to Ingresses
+# and Services is granted to its service account.
+ingressController:
+  enabled: false
+  className: sentinel
+  default: false     # make it the cluster's default IngressClass
 
 resources:
   requests: {cpu: 100m, memory: 64Mi}

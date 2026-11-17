@@ -64,6 +64,7 @@ type Config struct {
 	ExportOTLP        string // OpenTelemetry collector, e.g. http://collector:4318 ("" = off)
 	ExportOTLPHeaders string // Name=value,... sent with every OTLP request
 	ExportAll         bool   // also export plain allowed requests
+	KubeIngressClass  string // act as the Kubernetes Ingress controller for this class ("" = off)
 
 	Profile     string   // e.g. "wordpress"
 	ProfileData *Profile // its traps to remove and exclusions (nil = none)
@@ -311,6 +312,7 @@ func Load() (*Config, error) {
 		ExportOTLP:        os.Getenv("EXPORT_OTLP"),
 		ExportOTLPHeaders: os.Getenv("EXPORT_OTLP_HEADERS"),
 		ExportAll:         os.Getenv("EXPORT_ALL") == "true",
+		KubeIngressClass:  os.Getenv("KUBERNETES_INGRESS_CLASS"),
 		Profile:           strings.ToLower(os.Getenv("PROFILE")),
 		ProfileData:       profile,
 		CRSDir:            os.Getenv("CRS_DIR"),

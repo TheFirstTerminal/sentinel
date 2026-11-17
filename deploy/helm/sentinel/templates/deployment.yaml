@@ -19,7 +19,12 @@ spec:
         prometheus.io/path: /metrics
         {{- end }}
     spec:
+      {{- if .Values.ingressController.enabled }}
+      serviceAccountName: {{ include "sentinel.fullname" . }}
+      automountServiceAccountToken: true   # to read Ingresses (read-only)
+      {{- else }}
       automountServiceAccountToken: false
+      {{- end }}
       securityContext: {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: sentinel
@@ -36,6 +41,10 @@ spec:
           env:
             - name: LISTEN_ADDR
               value: ":8080"
+            {{- if .Values.ingressController.enabled }}
+            - name: KUBERNETES_INGRESS_CLASS
+              value: {{ .Values.ingressController.className | quote }}
+            {{- end }}
             {{- if or .Values.secret.create .Values.secret.existingSecret }}
             - name: SENTINEL_SECRET
               valueFrom:

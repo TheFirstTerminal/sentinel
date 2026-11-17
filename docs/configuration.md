@@ -231,6 +231,7 @@ paths, so use it for pages like `/login`, not your whole site.
 | `export.otlp` | `EXPORT_OTLP` | off | Send security events to an OpenTelemetry collector as log records (OTLP over HTTP, JSON), e.g. `http://otel-collector:4318` |
 | `export.otlp_headers` | `EXPORT_OTLP_HEADERS` | none | Headers sent to the collector, e.g. `api-key=...` (several: `A=1,B=2`) |
 | `export.all` | `EXPORT_ALL` | `false` | Also export plain allowed requests, not only blocked, flagged and login events |
+| `kubernetes_ingress_class` | `KUBERNETES_INGRESS_CLASS` | off | Be the Kubernetes Ingress controller for this ingress class (e.g. `sentinel`): sites come from Ingresses. See [common setups](setups.md#sentinel-as-the-ingress-controller) |
 
 Alerts are sent for: a honeypot hit, an attack burst from one IP, password
 guessing on an account, a new admin account and a failed reload. Each subject alerts at most once per 10 minutes, with at most 20

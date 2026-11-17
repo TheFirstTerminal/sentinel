@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- **Kubernetes Ingress controller**: with `kubernetes_ingress_class` (Helm: `ingressController.enabled`), Sentinel reads Ingresses and protects and routes their hosts itself.
 - **Dashboard**: add and remove sites without a restart.
 - **Dashboard accounts with roles**: admin, operator (bans, false alarms, reloads) and viewer (looks only). Admins add, reset and remove accounts; each sets up 2FA at first login.
 - **Docs**: common setups (Nginx, Cloudflare, Kubernetes, directly on the internet), and how to check Sentinel works.

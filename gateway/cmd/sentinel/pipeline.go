@@ -80,6 +80,7 @@ type site struct {
 	limits  []string
 	edited  dashboard.SiteSettings // changes made on the dashboard
 	added   bool                   // added on the dashboard
+	managed bool                   // from a Kubernetes Ingress
 	router  *proxy.Router
 	servers string            // what router was built from (serversKey)
 	prof    *profile.Profile  // app profile, kept across rebuilds
@@ -110,6 +111,14 @@ func NewHandler(cfg *config.Config, engine *waf.Engine, authSvc *auth.Service, r
 		return nil, err
 	}
 	sh.siteSet.Store(&sites)
+	if cfg.KubeIngressClass != "" {
+		kc, err := newKubeClient()
+		if err != nil {
+			return nil, fmt.Errorf("KUBERNETES_INGRESS_CLASS: %w", err)
+		}
+		go sh.watchIngresses(context.Background(), kc, cfg.KubeIngressClass, kubeEvery)
+		log.Info("kubernetes ingress controller", "ingress_class", cfg.KubeIngressClass)
+	}
 	hostRouter := newHostRouter(sites)
 	hostRouter.admin = sh.adminPort
 	sh.hosts = hostRouter
@@ -293,7 +302,11 @@ func (sh *shared) buildSites() ([]*site, error) {
 	cfg := sh.cfg
 	list := cfg.Sites
 	if len(list) == 0 {
-		list = []config.Site{{Hosts: []string{"*"}, Spec: cfg.Upstreams, HealthCheck: cfg.HealthCheck}}
+		hosts := []string{"*"}
+		if cfg.KubeIngressClass != "" {
+			hosts = nil // ingress mode: hosts come from Ingresses; others get 421
+		}
+		list = []config.Site{{Hosts: hosts, Spec: cfg.Upstreams, HealthCheck: cfg.HealthCheck}}
 	}
 	sh.added = sh.loadAdded()
 	if len(sh.added) > 0 {

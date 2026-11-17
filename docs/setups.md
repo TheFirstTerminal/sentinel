@@ -131,6 +131,49 @@ spec:
 - Several apps: one Sentinel can protect them all with `sites`
   ([several sites](configuration.md#several-sites)), one Ingress rule each.
 
+### Sentinel as the Ingress controller
+
+Instead of putting Sentinel behind another ingress controller, it can be
+the ingress controller: it reads every Ingress with
+`ingressClassName: sentinel` and protects and routes its hosts itself.
+
+```bash
+helm install sentinel ./deploy/helm/sentinel \
+  --set ingressController.enabled=true --set service.type=LoadBalancer
+```
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: shop
+  annotations:
+    sentinel.io/mode: protect        # optional; default: the global mode
+spec:
+  ingressClassName: sentinel
+  rules:
+    - host: shop.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: shop, port: { number: 3000 } } }
+          - path: /api/
+            pathType: Prefix
+            backend: { service: { name: shop-api, port: { name: http } } }
+```
+
+- Each host becomes a site named `k8s-<namespace>-<ingress>`, shown on the
+  dashboard like any other. Changes to Ingresses apply within 10 seconds,
+  without a restart.
+- Paths are prefixes (`Exact` is treated as a prefix). A host already used
+  by another Ingress or by the config file is skipped, with a warning in
+  the log.
+- HTTPS: terminate it at your cloud load balancer, or use `tls.auto_domains`
+  (Ingress `tls:` secrets are not read).
+- The chart grants read-only access: list Ingresses, get Services.
+- Setting: `kubernetes_ingress_class` / `KUBERNETES_INGRESS_CLASS`.
+
 ## Directly on the internet
 
 No proxy in front: Sentinel takes ports 80 and 443 itself and gets

@@ -137,7 +137,7 @@ func withEdits(sc config.Site, ed dashboard.SiteSettings) config.Site {
 // worked out, by name. Empty when there are no named sites.
 func (sh *shared) effectiveSites(edits map[string]dashboard.SiteSettings) (map[string]config.Site, error) {
 	named := append(append([]config.Site(nil), sh.cfg.Sites...), sh.added...)
-	return checkSites(named, edits, len(sh.cfg.Sites) == 0)
+	return checkSites(named, edits, len(sh.cfg.Sites) == 0 && sh.cfg.KubeIngressClass == "")
 }
 
 // checkSites checks a list of named sites with edits; withCatchAll: an
@@ -220,7 +220,7 @@ func (sh *shared) addSite(in dashboard.NewSite) error {
 	}
 	nc := config.Site{Name: in.Name, Hosts: in.Hosts, Upstreams: in.Upstreams, HealthCheck: in.HealthCheck, Mode: in.Mode}
 	named := append(append(append([]config.Site(nil), sh.cfg.Sites...), sh.added...), nc)
-	effective, err := checkSites(named, sh.loadSiteSettings(), len(sh.cfg.Sites) == 0)
+	effective, err := checkSites(named, sh.loadSiteSettings(), len(sh.cfg.Sites) == 0 && sh.cfg.KubeIngressClass == "")
 	if err != nil {
 		return err
 	}
