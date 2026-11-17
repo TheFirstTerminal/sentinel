@@ -85,8 +85,12 @@ mode, WAF mode, ML mode, rate limits, host names, servers and health check
 while Sentinel runs. Changes are checked like the config file is (a host name
 used by two sites, a server that isn't a URL) and refused with the reason.
 They are kept in `site-settings.json` in the data folder and win over the
-config file; **Back to the config file** removes them. Adding or removing a
-site is done in the config file.
+config file; **Back to the config file** removes them.
+
+**Add site** creates a new site (name, host names, servers, an optional
+health check). It starts in monitor mode and is kept in `sites-added.json`
+in the data folder. Sites added there can be removed there; sites from the
+config file are removed in the file.
 
 ### Profiles
 

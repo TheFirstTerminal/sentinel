@@ -6,6 +6,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"sentinel/gateway/internal/alert"
@@ -130,28 +131,163 @@ func withEdits(sc config.Site, ed dashboard.SiteSettings) config.Site {
 	return sc
 }
 
-// effectiveSites is the configured sites with the dashboard's changes,
-// checked as a whole the way the config file is (host names used twice,
-// server URLs), with their routes worked out. nil when there are no named
-// sites.
-func (sh *shared) effectiveSites(edits map[string]dashboard.SiteSettings) ([]config.Site, error) {
-	if len(sh.cfg.Sites) == 0 {
-		return nil, nil
+// effectiveSites is the named sites (from the config file and added on the
+// dashboard) with the dashboard's changes, checked as a whole the way the
+// config file is (host names used twice, server URLs), with their routes
+// worked out, by name. Empty when there are no named sites.
+func (sh *shared) effectiveSites(edits map[string]dashboard.SiteSettings) (map[string]config.Site, error) {
+	named := append(append([]config.Site(nil), sh.cfg.Sites...), sh.added...)
+	return checkSites(named, edits, len(sh.cfg.Sites) == 0)
+}
+
+// checkSites checks a list of named sites with edits; withCatchAll: an
+// unnamed site already takes every other host, so "*" is refused.
+func checkSites(named []config.Site, edits map[string]dashboard.SiteSettings, withCatchAll bool) (map[string]config.Site, error) {
+	out := map[string]config.Site{}
+	if len(named) == 0 {
+		return out, nil
 	}
-	list := make([]config.Site, len(sh.cfg.Sites))
-	for i, sc := range sh.cfg.Sites {
+	list := make([]config.Site, len(named))
+	for i, sc := range named {
 		sc.Hosts = append([]string(nil), sc.Hosts...)
 		list[i] = withEdits(sc, edits[sc.Name])
+		if withCatchAll && slices.Contains(list[i].Hosts, "*") {
+			return nil, fmt.Errorf("site %q: host \"*\" is already the default site's (every other host)", sc.Name)
+		}
 	}
 	b, err := json.Marshal(list)
 	if err != nil {
 		return nil, err
 	}
-	out, err := config.ParseSites(string(b))
+	parsed, err := config.ParseSites(string(b))
 	if err != nil {
 		return nil, fmt.Errorf("%s", strings.TrimPrefix(err.Error(), "SITES: "))
 	}
+	for _, sc := range parsed {
+		out[sc.Name] = sc
+	}
 	return out, nil
+}
+
+// siteList is the running sites.
+func (sh *shared) siteList() []*site {
+	if p := sh.siteSet.Load(); p != nil {
+		return *p
+	}
+	return nil
+}
+
+func (sh *shared) loadAdded() []config.Site {
+	var out []config.Site
+	if file := sh.settingsFile("sites-added.json"); file != "" {
+		if b, err := os.ReadFile(file); err == nil {
+			if err := json.Unmarshal(b, &out); err != nil {
+				sh.log.Warn("sites added on the dashboard: file is broken and was ignored", "file", file, "error", err.Error())
+				return nil
+			}
+		}
+	}
+	return out
+}
+
+func (sh *shared) saveAdded() {
+	file := sh.settingsFile("sites-added.json")
+	if file == "" {
+		sh.log.Warn("added sites not saved (no data folder): they last until Sentinel restarts")
+		return
+	}
+	b, _ := json.MarshalIndent(sh.added, "", "  ")
+	if err := os.WriteFile(file, b, 0o600); err != nil {
+		sh.log.Warn("added sites not saved: they last until Sentinel restarts", "file", file, "error", err.Error())
+	}
+}
+
+// addSite adds a site from the dashboard. It starts in monitor mode unless
+// told otherwise, and is saved in the data folder.
+func (sh *shared) addSite(in dashboard.NewSite) error {
+	sh.siteMu.Lock()
+	defer sh.siteMu.Unlock()
+	if in.Mode == "" {
+		in.Mode = "monitor"
+	}
+	if in.Mode != "monitor" && in.Mode != "protect" {
+		return fmt.Errorf("mode must be monitor or protect")
+	}
+	for _, s := range sh.siteList() {
+		if s.name == in.Name {
+			return fmt.Errorf("there is already a site %q", in.Name)
+		}
+	}
+	nc := config.Site{Name: in.Name, Hosts: in.Hosts, Upstreams: in.Upstreams, HealthCheck: in.HealthCheck, Mode: in.Mode}
+	named := append(append(append([]config.Site(nil), sh.cfg.Sites...), sh.added...), nc)
+	effective, err := checkSites(named, sh.loadSiteSettings(), len(sh.cfg.Sites) == 0)
+	if err != nil {
+		return err
+	}
+	sc := effective[in.Name]
+	s := &site{name: sc.Name, hosts: sc.Hosts, conf: sc, added: true}
+	if err := sh.sitePipeline(sc, s); err != nil {
+		return err
+	}
+	list := append(append([]*site(nil), sh.siteList()...), s)
+	sh.siteSet.Store(&list)
+	sh.added = append(sh.added, nc)
+	if sh.hosts != nil {
+		sh.hosts.rebuild(list)
+	}
+	sh.saveAdded()
+	sh.log.Warn("site added on the dashboard", "site", sc.Name, "hosts", sc.Hosts, "upstreams", sc.Spec, "mode", sc.Mode)
+	currentAlerter.Send("site-added:"+sc.Name, alert.Message{Title: "Site added",
+		Text: fmt.Sprintf("Site %q (%s) was added on the dashboard, in %s mode.", sc.Name, strings.Join(sc.Hosts, ", "), sc.Mode)})
+	return nil
+}
+
+// removeSite removes a site that was added on the dashboard. Sites from the
+// config file are removed there (they would come back on restart).
+func (sh *shared) removeSite(name string) error {
+	sh.siteMu.Lock()
+	defer sh.siteMu.Unlock()
+	cur := sh.siteList()
+	var s *site
+	var keep []*site
+	for _, x := range cur {
+		if x.name == name {
+			s = x
+		} else {
+			keep = append(keep, x)
+		}
+	}
+	switch {
+	case s == nil:
+		return fmt.Errorf("no site %q", name)
+	case !s.added:
+		return fmt.Errorf("site %q comes from the config file: remove it there", name)
+	case len(keep) == 0:
+		return fmt.Errorf("Sentinel needs at least one site")
+	}
+	sh.siteSet.Store(&keep)
+	if sh.hosts != nil {
+		sh.hosts.rebuild(keep)
+	}
+	s.mu.Lock()
+	if s.router != nil {
+		s.router.Close()
+	}
+	s.mu.Unlock()
+	var added []config.Site
+	for _, a := range sh.added {
+		if a.Name != name {
+			added = append(added, a)
+		}
+	}
+	sh.added = added
+	sh.saveAdded()
+	all := sh.loadSiteSettings()
+	delete(all, name)
+	sh.saveSiteSettings(all)
+	sh.log.Warn("site removed on the dashboard", "site", name)
+	currentAlerter.Send("site-removed:"+name, alert.Message{Title: "Site removed", Text: fmt.Sprintf("Site %q was removed on the dashboard.", name)})
+	return nil
 }
 
 // hostNames is the site's current host names.
@@ -173,6 +309,8 @@ func findSite(sites []*site, name string) (*site, error) {
 // setSite replaces a site's dashboard changes (empty fields = as in the
 // config file), rebuilds its checks and saves the changes.
 func (sh *shared) setSite(sites []*site, name string, ed dashboard.SiteSettings) error {
+	sh.siteMu.Lock()
+	defer sh.siteMu.Unlock()
 	if err := checkSiteSettings(ed); err != nil {
 		return err
 	}
@@ -191,12 +329,8 @@ func (sh *shared) setSite(sites []*site, name string, ed dashboard.SiteSettings)
 	sc := withEdits(s.conf, ed)
 	if effective, err := sh.effectiveSites(all); err != nil {
 		return err
-	} else if effective != nil {
-		for _, e := range effective {
-			if e.Name == name {
-				sc = e
-			}
-		}
+	} else if e, ok := effective[name]; ok {
+		sc = e
 	}
 	s.mu.Lock()
 	old := s.router

@@ -88,8 +88,8 @@ select, textarea { font: inherit; padding: 4px 8px; border: 1px solid var(--line
 .hist-form { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); align-items: end; margin-bottom: 10px; }
 .hist-form label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
 .hist-form input { width: 100%; font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); }
-#excl-form label, #se-form label, #al-form label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
-#excl-form input, #se-form select, #se-form textarea, #se-form input, #al-form input { width: 100%; font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); }
+#excl-form label, #se-form label, #al-form label, #as-form label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+#excl-form input, #se-form select, #se-form textarea, #se-form input, #al-form input, #as-form input, #as-form textarea { width: 100%; font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); }
 .hist-form input[type=checkbox] { width: auto; }
 .empty { color: var(--muted); padding: 10px 6px; }
 body:not(.multi) .site-col { display: none; }
@@ -169,8 +169,21 @@ body:not(.multi) .site-col { display: none; }
   </div>
 
   <div class="card" style="margin-top:14px" id="sites-card">
-    <h2>Sites <span class="muted" style="font-weight:400;font-size:13px;text-transform:none;letter-spacing:0">monitor logs only · protect blocks</span></h2>
-    <div class="sites" id="sites"></div>
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0">Sites <span class="muted" style="font-weight:400;font-size:13px;text-transform:none;letter-spacing:0">monitor logs only · protect blocks</span></h2>
+      <button type="button" class="small" id="add-site-btn">Add site</button></div>
+    <form id="as-form" class="hidden" style="margin:12px 0">
+      <h2 style="margin-bottom:6px">Add a site</h2>
+      <p class="muted" style="margin:0 0 8px">It starts in monitor mode: attacks are logged, nothing is blocked, until you switch it to protect.</p>
+      <div class="grid three">
+        <div><label for="as-name">Name (lowercase letters, digits and -)</label><input id="as-name" class="mono" required placeholder="blog"></div>
+        <div><label for="as-hosts">Host names (comma separated)</label><input id="as-hosts" class="mono" required placeholder="blog.example.com, www.blog.example.com"></div>
+        <div><label for="as-health">Health check path (optional)</label><input id="as-health" class="mono" placeholder="/healthz"></div>
+      </div>
+      <label for="as-servers">Servers (one per line, shared in turn)</label>
+      <textarea id="as-servers" class="mono" rows="2" required placeholder="http://10.0.0.5:3000"></textarea>
+      <div class="row" style="margin-top:10px"><button class="primary" type="submit">Add site</button><button type="button" id="as-cancel">Cancel</button><span class="err" id="as-err"></span></div>
+    </form>
+    <div class="sites" id="sites" style="margin-top:10px"></div>
     <form id="se-form" class="hidden" style="margin-top:14px">
       <h2 id="se-title" style="margin-bottom:6px">Edit site</h2>
       <p class="muted" style="margin:0 0 8px">Changes apply right away and are kept in the data folder; they win over the config file. Empty = as in the config file.</p>
@@ -438,6 +451,9 @@ document.addEventListener("click", async (e) => {
     if (b.dataset.allow && EVENTS.has(b.dataset.allow)) openAllow(EVENTS.get(b.dataset.allow));
     if (b.dataset.unexcl) { await api("exclusions/" + encodeURIComponent(b.dataset.unexcl), { method: "DELETE" }); loadExclusions(); }
     if (b.dataset.edit !== undefined) openSiteEdit(b.dataset.edit);
+    if (b.dataset.removeSite && confirm("Remove the site " + b.dataset.removeSite + "? Its host names will get no answer (421).")) {
+      await api("sites/" + encodeURIComponent(b.dataset.removeSite), { method: "DELETE" }); loadSites();
+    }
     if (b.dataset.mode) {
       const name = b.dataset.site;
       if (b.dataset.mode === "protect" || confirm("Switch " + siteName(name) + " to monitor? Attacks will be logged but no longer blocked.")) {
@@ -655,7 +671,8 @@ function siteCard(s) {
   const limits = (s.rate_limits || []).length ? "<div class='note mono'>" + (s.rate_limits || []).map(esc).join(" · ") + "</div>" : "";
   return "<div class='site'><div class='top'><span class='name'>" + esc(siteName(s.name)) + "</span><span class='sp' style='flex:1'></span>" +
     "<span class='seg' role='group' aria-label='Mode of " + esc(siteName(s.name)) + "'>" + btn("monitor", "Monitor") + btn("protect", "Protect") + "</span>" +
-    "<button type='button' class='small' data-edit='" + esc(s.name) + "'>Edit</button></div>" +
+    "<button type='button' class='small' data-edit='" + esc(s.name) + "'>Edit</button>" +
+    (s.added ? "<button type='button' class='small' data-remove-site='" + esc(s.name) + "'>Remove</button>" : "") + "</div>" +
     "<div class='hosts'>" + (s.hosts || []).map(h => h === "*" ? "any host" : esc(h)).join(", ") + "</div>" +
     "<div class='servers'>" + servers + "</div>" +
     "<div class='note'>" + up + " of " + all + " server" + (all === 1 ? "" : "s") + " up · WAF " + esc(s.waf_mode) + " · ML " + esc(s.ml_mode) + "</div>" + limits + changed + "</div>";
@@ -706,6 +723,19 @@ $("se-form").onsubmit = (ev) => {
 };
 $("se-reset").onclick = () => saveSite({});
 $("se-cancel").onclick = () => $("se-form").classList.add("hidden");
+
+$("add-site-btn").onclick = () => { $("as-err").textContent = ""; $("as-form").classList.remove("hidden"); $("as-name").focus(); };
+$("as-cancel").onclick = () => $("as-form").classList.add("hidden");
+$("as-form").onsubmit = async (ev) => {
+  ev.preventDefault(); $("as-err").textContent = "";
+  const list = (v, sep) => v.split(sep).map(x => x.trim()).filter(Boolean);
+  const body = { name: $("as-name").value.trim(), hosts: list($("as-hosts").value, ","), upstreams: list($("as-servers").value, "\n") };
+  if ($("as-health").value.trim()) body.health_check = $("as-health").value.trim();
+  try {
+    await api("sites", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    $("as-form").reset(); $("as-form").classList.add("hidden"); loadSites();
+  } catch (x) { $("as-err").textContent = x.message; }
+};
 
 // ---- Alerts --------------------------------------------------------------
 async function loadAlerts() {

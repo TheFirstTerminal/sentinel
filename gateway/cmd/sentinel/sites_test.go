@@ -410,3 +410,61 @@ func TestSiteHostsAndServersFromDashboard(t *testing.T) {
 		t.Errorf("after reset: %d %q", code, got)
 	}
 }
+
+func TestAddAndRemoveSitesFromDashboard(t *testing.T) {
+	dir := t.TempDir()
+	blog := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "blog") }))
+	defer blog.Close()
+	sitesJSON := `[{"name":"shop","hosts":["shop.test"],"upstreams":["{shop}"]}]`
+	gw, _ := sitesLabIn(t, dir, sitesJSON, "shop")
+	l := &lab{t: t, gw: gw, logBuf: &strings.Builder{}}
+	admin := l.login("admin", "Admin#2026")
+
+	if code, out := l.do("POST", "/__sentinel/api/sites", admin, `{"name":"blog","hosts":["blog.test"],"upstreams":["`+blog.URL+`"]}`); code != 200 {
+		t.Fatalf("add: %d %v", code, out)
+	}
+	if code, got := hostGet(t, gw, "blog.test", "/"); code != 200 || got != "blog" {
+		t.Errorf("the new site: %d %q", code, got)
+	}
+	if code, _ := hostGet(t, gw, "blog.test", attack); code != 200 {
+		t.Errorf("a new site starts in monitor mode: attack got %d", code)
+	}
+	for body, why := range map[string]string{
+		`{"name":"blog","hosts":["b2.test"],"upstreams":["http://x"]}`:            "already",
+		`{"name":"b2","hosts":["shop.test"],"upstreams":["http://x"]}`:            "already used",
+		`{"name":"B 2","hosts":["b2.test"],"upstreams":["http://x"]}`:             "name",
+		`{"name":"b2","hosts":["b2.test"],"upstreams":["ftp://x"]}`:               "expected http",
+		`{"name":"b2","hosts":["b2.test"]}`:                                       "upstreams",
+		`{"name":"b2","hosts":["b2.test"],"upstreams":["http://x"],"mode":"off"}`: "mode",
+	} {
+		if code, out := l.do("POST", "/__sentinel/api/sites", admin, body); code != 400 || !strings.Contains(fmt.Sprint(out), why) {
+			t.Errorf("%s: %d %v, want an error about %q", body, code, out, why)
+		}
+	}
+	if code, out := l.do("DELETE", "/__sentinel/api/sites/shop", admin, ""); code != 400 || !strings.Contains(fmt.Sprint(out), "config file") {
+		t.Errorf("a config-file site can't be removed here: %d %v", code, out)
+	}
+	// The added site survives a restart, with its dashboard edits.
+	if code, _ := l.do("PUT", "/__sentinel/api/sites/blog/settings", admin, `{"mode":"protect"}`); code != 200 {
+		t.Fatal("edit the added site")
+	}
+	gw2, _ := sitesLabIn(t, dir, sitesJSON, "shop")
+	if code, got := hostGet(t, gw2, "blog.test", "/"); code != 200 || got != "blog" {
+		t.Errorf("after a restart: %d %q", code, got)
+	}
+	if code, _ := hostGet(t, gw2, "blog.test", attack); code != 403 {
+		t.Errorf("its edit survives too: attack got %d, want 403", code)
+	}
+	l2 := &lab{t: t, gw: gw2, logBuf: &strings.Builder{}}
+	admin2 := l2.login("admin", "Admin#2026")
+	if code, out := l2.do("DELETE", "/__sentinel/api/sites/blog", admin2, ""); code != 200 {
+		t.Fatalf("remove: %d %v", code, out)
+	}
+	if code, _ := hostGet(t, gw2, "blog.test", "/"); code != 421 {
+		t.Errorf("a removed site's host gets 421: %d", code)
+	}
+	gw3, _ := sitesLabIn(t, dir, sitesJSON, "shop")
+	if code, _ := hostGet(t, gw3, "blog.test", "/"); code != 421 {
+		t.Errorf("removed for good: %d", code)
+	}
+}

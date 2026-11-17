@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+- **Dashboard**: add and remove sites without a restart.
+- **Docs**: common setups (Nginx, Cloudflare, Kubernetes, directly on the internet), and how to check Sentinel works.
+
 ## 0.14.0 · 2026-11-15
 - **OWASP Core Rule Set 4.25.2 (LTS)** (was 4.8.0), with XML attribute values inspected too. The built-in engine passes 99.3% of its regression suite; path variables are now URL-decoded as in ModSecurity.
 - **Dashboard**: change a site's host names, servers and health check without a restart.

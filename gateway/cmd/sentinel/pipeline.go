@@ -54,6 +54,9 @@ type shared struct {
 	hub        *events.Hub
 	loginFails *middleware.LoginFailures
 	hosts      *hostRouter             // picks the site by host name
+	siteSet    atomic.Pointer[[]*site] // the running sites
+	siteMu     sync.Mutex              // adding and removing sites
+	added      []config.Site           // sites added on the dashboard
 	logins     middleware.LoginCounter // what LoginGuard asks (loginFails unless an edition replaces it)
 	ext        any                     // the edition's own state (see edition.go)
 	spec       *schema.Validator
@@ -76,6 +79,7 @@ type site struct {
 	ml      string
 	limits  []string
 	edited  dashboard.SiteSettings // changes made on the dashboard
+	added   bool                   // added on the dashboard
 	router  *proxy.Router
 	servers string            // what router was built from (serversKey)
 	prof    *profile.Profile  // app profile, kept across rebuilds
@@ -105,13 +109,16 @@ func NewHandler(cfg *config.Config, engine *waf.Engine, authSvc *auth.Service, r
 	if err != nil {
 		return nil, err
 	}
+	sh.siteSet.Store(&sites)
 	hostRouter := newHostRouter(sites)
 	hostRouter.admin = sh.adminPort
 	sh.hosts = hostRouter
 	if d, ok := sh.admin.(*adminPages); ok && d.dash != nil {
-		d.dash.Sites = func() []dashboard.SiteStatus { return siteStatus(sites, cfg.Mode) }
-		d.dash.SetMode = func(name, mode string) error { return sh.setSiteMode(sites, name, mode) }
-		d.dash.SetSite = func(name string, in dashboard.SiteSettings) error { return sh.setSite(sites, name, in) }
+		d.dash.Sites = func() []dashboard.SiteStatus { return siteStatus(sh.siteList(), cfg.Mode) }
+		d.dash.SetMode = func(name, mode string) error { return sh.setSiteMode(sh.siteList(), name, mode) }
+		d.dash.SetSite = func(name string, in dashboard.SiteSettings) error { return sh.setSite(sh.siteList(), name, in) }
+		d.dash.AddSite = sh.addSite
+		d.dash.RemoveSite = sh.removeSite
 		d.dash.Alerts = sh.alertSettings
 		d.dash.SetAlerts = sh.setAlerts
 	}
@@ -288,6 +295,15 @@ func (sh *shared) buildSites() ([]*site, error) {
 	if len(list) == 0 {
 		list = []config.Site{{Hosts: []string{"*"}, Spec: cfg.Upstreams, HealthCheck: cfg.HealthCheck}}
 	}
+	sh.added = sh.loadAdded()
+	if len(sh.added) > 0 {
+		if _, err := sh.effectiveSites(nil); err != nil {
+			sh.log.Warn("sites added on the dashboard ignored: they don't fit the config file any more", "error", err.Error(), "file", sh.settingsFile("sites-added.json"))
+			sh.added = nil
+		}
+	}
+	nConfigured := len(list)
+	list = append(list, sh.added...)
 	edits := sh.loadSiteSettings()
 	effective, err := sh.effectiveSites(edits)
 	if err != nil {
@@ -296,12 +312,12 @@ func (sh *shared) buildSites() ([]*site, error) {
 	}
 	var out []*site
 	for i, sc := range list {
-		s := &site{name: sc.Name, hosts: sc.Hosts, conf: sc}
+		s := &site{name: sc.Name, hosts: sc.Hosts, conf: sc, added: i >= nConfigured}
 		if ed, ok := edits[sc.Name]; ok {
 			s.edited = ed
 			sc = withEdits(sc, ed)
-			if effective != nil {
-				sc = effective[i]
+			if e, ok := effective[sc.Name]; ok {
+				sc = e
 				s.hosts = sc.Hosts
 			}
 			sh.log.Info("site settings changed on the dashboard", "site", siteLabel(sc.Name), "file", sh.settingsFile("site-settings.json"))
@@ -659,7 +675,7 @@ func siteStatus(sites []*site, defaultMode string) []dashboard.SiteStatus {
 	out := make([]dashboard.SiteStatus, 0, len(sites))
 	for _, s := range sites {
 		s.mu.Lock()
-		st := dashboard.SiteStatus{Name: s.name, Hosts: s.hosts, Editable: s.name != "",
+		st := dashboard.SiteStatus{Name: s.name, Hosts: s.hosts, Editable: s.name != "", Added: s.added,
 			Config: dashboard.SiteSettings{Hosts: s.conf.Hosts, Upstreams: s.conf.Upstreams, HealthCheck: s.conf.HealthCheck}, Mode: s.mode, ConfigMode: pick(s.conf.Mode, defaultMode), Edited: s.edited, ConfigLimits: s.conf.RateLimits, WAFMode: s.waf, MLMode: s.ml, RateLimits: s.limits}
 		s.mu.Unlock()
 		for _, u := range s.router.Status() {

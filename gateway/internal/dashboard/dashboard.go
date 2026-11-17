@@ -69,6 +69,7 @@ type SiteStatus struct {
 	ConfigLimits map[string]string `json:"config_rate_limits,omitempty"`
 	Config       SiteSettings      `json:"config"`   // hosts, servers and health check in the config file
 	Editable     bool              `json:"editable"` // hosts and servers can be changed here (named sites)
+	Added        bool              `json:"added"`    // added on the dashboard (so it can be removed here)
 }
 
 // SiteSettings are a site's settings that can be changed on the dashboard.
@@ -90,6 +91,15 @@ func (s SiteSettings) Empty() bool {
 		len(s.Hosts) == 0 && len(s.Upstreams) == 0 && s.HealthCheck == ""
 }
 
+// NewSite is a site added on the dashboard.
+type NewSite struct {
+	Name        string   `json:"name"`
+	Hosts       []string `json:"hosts"`
+	Upstreams   []string `json:"upstreams"`
+	HealthCheck string   `json:"health_check,omitempty"`
+	Mode        string   `json:"mode,omitempty"` // default monitor
+}
+
 // AlertSettings are where alerts go.
 type AlertSettings struct {
 	WebhookURL   string `json:"webhook_url"`
@@ -107,18 +117,20 @@ type ServerStatus struct {
 }
 
 type Dashboard struct {
-	Sites     func() []SiteStatus                     // nil = not available
-	SetMode   func(site, mode string) error           // switch a site between monitor and protect
-	SetSite   func(site string, s SiteSettings) error // change a site's modes and rate limits
-	Alerts    func() AlertSettings
-	SetAlerts func(AlertSettings) error
-	Hub       *events.Hub
-	Bans      *blocklist.List
-	Rec       Recorder
-	Log       *slog.Logger
-	Info      Info
-	Excl      *exclude.Set           // false-alarm exclusions (nil = feature off)
-	Reload    func(why string) error // reloads rules, CRS and exclusions
+	Sites      func() []SiteStatus                     // nil = not available
+	SetMode    func(site, mode string) error           // switch a site between monitor and protect
+	SetSite    func(site string, s SiteSettings) error // change a site's modes and rate limits
+	AddSite    func(NewSite) error                     // add a site (nil = not available)
+	RemoveSite func(name string) error
+	Alerts     func() AlertSettings
+	SetAlerts  func(AlertSettings) error
+	Hub        *events.Hub
+	Bans       *blocklist.List
+	Rec        Recorder
+	Log        *slog.Logger
+	Info       Info
+	Excl       *exclude.Set           // false-alarm exclusions (nil = feature off)
+	Reload     func(why string) error // reloads rules, CRS and exclusions
 	// More answers extra API routes (path is after the API prefix); it
 	// returns false for paths it doesn't know. nil = none.
 	More func(path string, w http.ResponseWriter, r *http.Request) bool
@@ -250,6 +262,28 @@ func (d *Dashboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		d.audit(r, "dashboard_alerts", map[string]any{"off": in.Off, "burst": in.Burst, "by": u.Username})
 		reply(w, d.Alerts())
+	case path == "sites" && r.Method == "POST" && d.AddSite != nil:
+		var in NewSite
+		dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&in); err != nil {
+			jsonError(w, http.StatusBadRequest, `send {"name","hosts":[...],"upstreams":[...],"health_check","mode"}`, info.ID)
+			return
+		}
+		if err := d.AddSite(in); err != nil {
+			jsonError(w, http.StatusBadRequest, err.Error(), info.ID)
+			return
+		}
+		d.audit(r, "dashboard_site_added", map[string]any{"site": in.Name, "hosts": in.Hosts, "upstreams": in.Upstreams, "by": u.Username})
+		reply(w, map[string]any{"added": in.Name})
+	case strings.HasPrefix(path, "sites/") && !strings.Contains(strings.TrimPrefix(path, "sites/"), "/") && r.Method == "DELETE" && d.RemoveSite != nil:
+		name := strings.TrimPrefix(path, "sites/")
+		if err := d.RemoveSite(name); err != nil {
+			jsonError(w, http.StatusBadRequest, err.Error(), info.ID)
+			return
+		}
+		d.audit(r, "dashboard_site_removed", map[string]any{"site": name, "by": u.Username})
+		reply(w, map[string]any{"removed": name})
 	case path == "sites" && r.Method == "GET":
 		if d.Sites == nil {
 			reply(w, []SiteStatus{})
