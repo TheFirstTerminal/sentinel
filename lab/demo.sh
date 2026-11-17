@@ -68,7 +68,7 @@ fi
 
 while true; do
   printf "\n%s\n" "${CYAN}SENTINEL · quick demo${RESET}"
-  printf "  1  Run the five attacks\n  D  Open the dashboard (%s)\n  L  Show the setup link (first login)\n  Q  Quit\n  > " "$DASHBOARD"
+  printf "  1  Run the five attacks\n  D  Open the dashboard (%s)\n  L  Show the setup link (first login)\n  Q  Quit (stops the lab and closes this window)\n  > " "$DASHBOARD"
   read -r c
   case "$c" in
     1) run_all ;;
