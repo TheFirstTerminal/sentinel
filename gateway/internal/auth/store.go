@@ -27,6 +27,11 @@ type Store interface {
 	CreateUser(ctx context.Context, u *User) error
 	SetTOTP(ctx context.Context, username, secretEnc string, enabled bool) error
 	CountUsers(ctx context.Context) (int, error)
+	ListUsers(ctx context.Context) ([]User, error)
+	// UpdateUser changes the role and/or password hash ("" = keep), and
+	// turns 2FA off when resetTOTP is set.
+	UpdateUser(ctx context.Context, username, role, passwordHash string, resetTOTP bool) error
+	DeleteUser(ctx context.Context, username string) error
 	RevokeToken(ctx context.Context, jti string, expires time.Time) error
 	IsRevoked(ctx context.Context, jti string) (bool, error)
 }
@@ -75,6 +80,45 @@ func (m *MemoryStore) SetTOTP(_ context.Context, name, secretEnc string, enabled
 		return ErrNotFound
 	}
 	u.TOTPSecretEnc, u.TOTPEnabled = secretEnc, enabled
+	return nil
+}
+
+func (m *MemoryStore) ListUsers(context.Context) ([]User, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := make([]User, 0, len(m.users))
+	for _, u := range m.users {
+		out = append(out, *u)
+	}
+	return out, nil
+}
+
+func (m *MemoryStore) UpdateUser(_ context.Context, name, role, hash string, resetTOTP bool) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	u, ok := m.users[name]
+	if !ok {
+		return ErrNotFound
+	}
+	if role != "" {
+		u.Role = role
+	}
+	if hash != "" {
+		u.PasswordHash = hash
+	}
+	if resetTOTP {
+		u.TOTPSecretEnc, u.TOTPEnabled = "", false
+	}
+	return nil
+}
+
+func (m *MemoryStore) DeleteUser(_ context.Context, name string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.users[name]; !ok {
+		return ErrNotFound
+	}
+	delete(m.users, name)
 	return nil
 }
 

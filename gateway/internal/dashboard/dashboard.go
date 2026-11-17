@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"sentinel/gateway/internal/audit"
+	"sentinel/gateway/internal/auth"
 	"sentinel/gateway/internal/blocklist"
 	"sentinel/gateway/internal/events"
 	"sentinel/gateway/internal/reqctx"
@@ -130,6 +131,7 @@ type Dashboard struct {
 	Log        *slog.Logger
 	Info       Info
 	Excl       *exclude.Set           // false-alarm exclusions (nil = feature off)
+	Auth       *auth.Service          // accounts (nil = no account management)
 	Reload     func(why string) error // reloads rules, CRS and exclusions
 	// More answers extra API routes (path is after the API prefix); it
 	// returns false for paths it doesn't know. nil = none.
@@ -152,14 +154,30 @@ func (d *Dashboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, http.StatusUnauthorized, "log in as an admin with 2FA", info.ID)
 		info.SetOutcome(reqctx.Outcome{Kind: "unauthenticated", Reason: "dashboard API without login", Rule: "dashboard"})
 		return
-	case u.Role != "admin" || !u.MFA:
-		jsonError(w, http.StatusForbidden, "the dashboard is for admins who passed 2FA", info.ID)
-		info.SetOutcome(reqctx.Outcome{Kind: "denied", Reason: "dashboard needs admin + 2FA", Rule: "dashboard"})
+	case !auth.IsDashboardRole(u.Role) || !u.MFA:
+		jsonError(w, http.StatusForbidden, "the dashboard is for admins, operators and viewers who passed 2FA", info.ID)
+		info.SetOutcome(reqctx.Outcome{Kind: "denied", Reason: "dashboard needs a dashboard role + 2FA", Rule: "dashboard"})
+		return
+	}
+	path := strings.TrimPrefix(r.URL.Path, APIPrefix)
+	// The account's role now (it may have been changed or removed since the
+	// token was issued), and what this call needs.
+	role := u.Role
+	if d.Auth != nil {
+		var ok bool
+		if role, ok = d.Auth.RoleOf(r.Context(), u.Username); !ok || !auth.IsDashboardRole(role) {
+			jsonError(w, http.StatusForbidden, "this account was removed or no longer has a dashboard role", info.ID)
+			info.SetOutcome(reqctx.Outcome{Kind: "denied", Reason: "dashboard account removed or changed", Rule: "dashboard"})
+			return
+		}
+	}
+	if need := neededRole(path, r.Method); auth.RoleRank(role) < auth.RoleRank(need) {
+		jsonError(w, http.StatusForbidden, "this needs the "+need+" role (you are "+role+")", info.ID)
+		info.SetOutcome(reqctx.Outcome{Kind: "denied", Reason: "dashboard: needs " + need, Rule: "dashboard"})
 		return
 	}
 	w.Header().Set("Cache-Control", "no-store")
 
-	path := strings.TrimPrefix(r.URL.Path, APIPrefix)
 	switch {
 	case path == "stats" && r.Method == "GET":
 		win := 60 * time.Minute
@@ -210,6 +228,67 @@ func (d *Dashboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		d.audit(r, "dashboard_unban", map[string]any{"ip": ip, "by": u.Username})
 		reply(w, map[string]any{"unbanned": ip})
+	case path == "me" && r.Method == "GET":
+		reply(w, map[string]any{"username": u.Username, "role": role})
+	case path == "accounts" && r.Method == "GET" && d.Auth != nil:
+		list, err := d.Auth.Accounts(r.Context())
+		if err != nil {
+			jsonError(w, http.StatusInternalServerError, "could not list accounts", info.ID)
+			return
+		}
+		reply(w, list)
+	case path == "accounts" && r.Method == "POST" && d.Auth != nil:
+		var in struct {
+			Username   string `json:"username"`
+			Role       string `json:"role"`
+			Department string `json:"department"`
+		}
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 2048)).Decode(&in); err != nil {
+			jsonError(w, http.StatusBadRequest, `send {"username","role"}`, info.ID)
+			return
+		}
+		pw, err := d.Auth.CreateAccount(r.Context(), in.Username, in.Role, in.Department)
+		if err != nil {
+			jsonError(w, http.StatusBadRequest, err.Error(), info.ID)
+			return
+		}
+		d.audit(r, "account_created", map[string]any{"account": in.Username, "role": in.Role, "by": u.Username})
+		reply(w, map[string]any{"username": in.Username, "role": in.Role, "password": pw})
+	case strings.HasPrefix(path, "accounts/") && d.Auth != nil:
+		name, action, _ := strings.Cut(strings.TrimPrefix(path, "accounts/"), "/")
+		switch {
+		case action == "" && r.Method == "DELETE":
+			if err := d.Auth.DeleteAccount(r.Context(), u.Username, name); err != nil {
+				jsonError(w, http.StatusBadRequest, err.Error(), info.ID)
+				return
+			}
+			d.audit(r, "account_removed", map[string]any{"account": name, "by": u.Username})
+			reply(w, map[string]any{"removed": name})
+		case action == "" && r.Method == "PUT":
+			var in struct {
+				Role string `json:"role"`
+			}
+			if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1024)).Decode(&in); err != nil {
+				jsonError(w, http.StatusBadRequest, `send {"role"}`, info.ID)
+				return
+			}
+			if err := d.Auth.SetAccountRole(r.Context(), u.Username, name, in.Role); err != nil {
+				jsonError(w, http.StatusBadRequest, err.Error(), info.ID)
+				return
+			}
+			d.audit(r, "account_role", map[string]any{"account": name, "role": in.Role, "by": u.Username})
+			reply(w, map[string]any{"username": name, "role": in.Role})
+		case action == "reset" && r.Method == "POST":
+			pw, err := d.Auth.ResetAccount(r.Context(), name)
+			if err != nil {
+				jsonError(w, http.StatusBadRequest, err.Error(), info.ID)
+				return
+			}
+			d.audit(r, "account_reset", map[string]any{"account": name, "by": u.Username})
+			reply(w, map[string]any{"username": name, "password": pw})
+		default:
+			jsonError(w, http.StatusNotFound, "unknown dashboard API path", info.ID)
+		}
 	case path == "info" && r.Method == "GET":
 		reply(w, d.Info)
 	case strings.HasPrefix(path, "sites/") && strings.HasSuffix(path, "/mode") && r.Method == "POST" && d.SetMode != nil:
@@ -403,4 +482,19 @@ func jsonError(w http.ResponseWriter, status int, msg, id string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(map[string]string{"error": msg, "request_id": id})
+}
+
+// neededRole is the least role a dashboard API call needs: viewers read,
+// operators also act on traffic (bans, exclusions, reloads), and admins
+// also change Sentinel itself (sites, alerts, accounts).
+func neededRole(path, method string) string {
+	switch {
+	case method == http.MethodGet && !strings.HasPrefix(path, "accounts"):
+		return "viewer"
+	case path == "bans" || strings.HasPrefix(path, "bans/") || path == "exclusions" ||
+		strings.HasPrefix(path, "exclusions/") || path == "reload":
+		return "operator"
+	default:
+		return "admin" // sites, alerts, accounts, and anything new
+	}
 }

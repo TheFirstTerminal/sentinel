@@ -85,5 +85,19 @@ func (s *FileStore) SetTOTP(ctx context.Context, name, secretEnc string, enabled
 	return s.save()
 }
 
+func (s *FileStore) UpdateUser(ctx context.Context, name, role, hash string, resetTOTP bool) error {
+	if err := s.MemoryStore.UpdateUser(ctx, name, role, hash, resetTOTP); err != nil {
+		return err
+	}
+	return s.save()
+}
+
+func (s *FileStore) DeleteUser(ctx context.Context, name string) error {
+	if err := s.MemoryStore.DeleteUser(ctx, name); err != nil {
+		return err
+	}
+	return s.save()
+}
+
 // Revoked tokens stay in memory: they expire within the token lifetime.
 var _ Store = (*FileStore)(nil)

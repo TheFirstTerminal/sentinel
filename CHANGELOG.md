@@ -2,6 +2,7 @@
 
 ## Unreleased
 - **Dashboard**: add and remove sites without a restart.
+- **Dashboard accounts with roles**: admin, operator (bans, false alarms, reloads) and viewer (looks only). Admins add, reset and remove accounts; each sets up 2FA at first login.
 - **Docs**: common setups (Nginx, Cloudflare, Kubernetes, directly on the internet), and how to check Sentinel works.
 
 ## 0.14.0 · 2026-11-15

@@ -521,7 +521,7 @@ func (sh *shared) adminPages(excl *exclude.Set) (http.Handler, error) {
 			Rules: sh.engine.RuleCount() + crsRules(sh.engine), Store: sh.store.Name(),
 			Started: time.Now().Format(time.RFC3339), PromptPath: cfg.PromptGuardPaths}
 		info.Geo = fmt.Sprintf("%d ranges; deny %s; allow %s", sh.geoDB.Size(), orNone(cfg.GeoDenyCountries), orNone(cfg.GeoAllowCountries))
-		a.dash = &dashboard.Dashboard{Hub: sh.hub, Bans: sh.bans, Rec: sh.rec, Log: log, Info: info, Excl: excl, Reload: func(why string) error {
+		a.dash = &dashboard.Dashboard{Hub: sh.hub, Bans: sh.bans, Rec: sh.rec, Log: log, Info: info, Excl: excl, Auth: sh.authSvc, Reload: func(why string) error {
 			if reloadFunc == nil {
 				return fmt.Errorf("reload is only available in the running gateway")
 			}

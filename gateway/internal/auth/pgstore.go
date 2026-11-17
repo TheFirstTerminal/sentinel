@@ -93,6 +93,52 @@ func (p *PGStore) SetTOTP(ctx context.Context, name, secretEnc string, enabled b
 	return nil
 }
 
+func (p *PGStore) ListUsers(ctx context.Context) ([]User, error) {
+	rows, err := p.pool.Query(ctx, `
+		SELECT id, username, password_hash, role, department, totp_secret_enc, totp_enabled FROM users ORDER BY username`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []User
+	for rows.Next() {
+		var u User
+		if err := rows.Scan(&u.ID, &u.Username, &u.PasswordHash, &u.Role, &u.Department, &u.TOTPSecretEnc, &u.TOTPEnabled); err != nil {
+			return nil, err
+		}
+		out = append(out, u)
+	}
+	return out, rows.Err()
+}
+
+func (p *PGStore) UpdateUser(ctx context.Context, name, role, hash string, resetTOTP bool) error {
+	tag, err := p.pool.Exec(ctx, `
+		UPDATE users SET
+			role = COALESCE(NULLIF($2, ''), role),
+			password_hash = COALESCE(NULLIF($3, ''), password_hash),
+			totp_secret_enc = CASE WHEN $4 THEN '' ELSE totp_secret_enc END,
+			totp_enabled = CASE WHEN $4 THEN FALSE ELSE totp_enabled END
+		WHERE username = $1`, name, role, hash, resetTOTP)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (p *PGStore) DeleteUser(ctx context.Context, name string) error {
+	tag, err := p.pool.Exec(ctx, `DELETE FROM users WHERE username = $1`, name)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func (p *PGStore) CountUsers(ctx context.Context) (int, error) {
 	var n int
 	err := p.pool.QueryRow(ctx, `SELECT count(*) FROM users`).Scan(&n)

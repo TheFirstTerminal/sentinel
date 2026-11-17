@@ -66,6 +66,13 @@ td.n { text-align: right; font-variant-numeric: tabular-nums; }
 #login .err { color: var(--bad); min-height: 20px; margin-top: 10px; font-size: 13px; }
 .audit-ok { color: var(--ok); font-weight: 650; } .audit-bad { color: var(--bad); font-weight: 650; }
 body:not(.f-risk) .risk-col, body:not(.f-audit) .audit-col { display: none; }
+/* What each dashboard role sees (the server enforces the same rules). */
+body.role-viewer [data-unban], body.role-viewer [data-allow], body.role-viewer [data-unexcl],
+body.role-viewer #ban-btn, body.role-viewer #ban-ip, body.role-viewer #reload-btn { display: none !important; }
+body:not(.role-admin) #add-site-btn, body:not(.role-admin) [data-edit], body:not(.role-admin) [data-remove-site],
+body:not(.role-admin) #alerts-card, body:not(.role-admin) #accounts-card { display: none !important; }
+body:not(.role-admin) .seg button { pointer-events: none; }
+#ac-form input, #ac-form select { font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); }
 .hidden { display: none !important; }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .row input { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); width: 150px; }
@@ -140,7 +147,7 @@ body:not(.multi) .site-col { display: none; }
 
 <section id="login" class="card">
   <h2>Admin login</h2>
-  <p class="muted" style="margin-top:0">The dashboard is for admins who passed two-factor authentication.</p>
+  <p class="muted" style="margin-top:0">The dashboard is for admins, operators and viewers with two-factor authentication.</p>
   <form id="f1">
     <label for="u">Username</label><input id="u" autocomplete="username" required>
     <label for="p">Password</label><input id="p" type="password" autocomplete="current-password" required>
@@ -203,6 +210,17 @@ body:not(.multi) .site-col { display: none; }
       <textarea id="se-limits" class="mono" rows="4" style="width:100%"></textarea>
       <div class="row" style="margin-top:10px"><button class="primary" type="submit">Save</button><button type="button" id="se-reset">Back to the config file</button><button type="button" id="se-cancel">Cancel</button><span class="err" id="se-err"></span></div>
     </form>
+  </div>
+
+  <div class="card" style="margin-top:14px" id="accounts-card">
+    <h2>Accounts <span class="muted" style="font-weight:400;font-size:13px;text-transform:none;letter-spacing:0">admin: everything · operator: bans, false alarms, reloads · viewer: looks only</span></h2>
+    <table id="t-accounts"></table>
+    <form id="ac-form" class="row" style="margin-top:10px">
+      <input id="ac-name" class="mono" placeholder="user name" required aria-label="User name">
+      <select id="ac-role" aria-label="Role"><option value="viewer">viewer</option><option value="operator">operator</option><option value="admin">admin</option></select>
+      <button class="primary" type="submit">Add account</button><span class="err" id="ac-err"></span>
+    </form>
+    <p class="muted hidden" id="ac-pw" style="margin:10px 0 0"></p>
   </div>
 
   <div class="card" style="margin-top:14px" id="alerts-card">
@@ -338,15 +356,15 @@ $("f1").onsubmit = async (e) => {
   try {
     const out = await post("login", { username: $("u").value, password: $("p").value });
     if (out.mfa_required) { mfaToken = out.mfa_token; $("f1").classList.add("hidden"); $("f2").classList.remove("hidden"); $("c").focus(); }
-    else if (out.role === "admin") { enrol(out.token); }
-    else { $("err").textContent = "Only admins with 2FA can open the dashboard."; }
+    else if (["admin", "operator", "viewer"].includes(out.role)) { enrol(out.token); }
+    else { $("err").textContent = "This account has no dashboard role (admin, operator or viewer)."; }
   } catch (x) { $("err").textContent = x.message; }
 };
 $("f2").onsubmit = async (e) => {
   e.preventDefault(); $("err").textContent = "";
   try {
     const out = await post("verify-2fa", { mfa_token: mfaToken, code: $("c").value.trim() });
-    if (out.role !== "admin") { $("err").textContent = "Only admins can open the dashboard."; return; }
+    if (!["admin", "operator", "viewer"].includes(out.role)) { $("err").textContent = "This account has no dashboard role (admin, operator or viewer)."; return; }
     token = out.token; try { sessionStorage.setItem("sentinel_token", token); } catch (x) {}
     start();
   } catch (x) { $("err").textContent = x.message; }
@@ -396,11 +414,60 @@ function logout(msg) {
   $("err").textContent = msg;
 }
 
+async function loadMe() {
+  try {
+    const me = await api("me");
+    document.body.classList.remove("role-admin", "role-operator", "role-viewer");
+    document.body.classList.add("role-" + me.role);
+    $("who").textContent = me.username + " · " + me.role + " · 2FA";
+    if (me.role === "admin") loadAccounts();
+  } catch (e) {}
+}
+async function loadAccounts() {
+  let list; try { list = await api("accounts"); } catch (e) { return; }
+  const roles = ["admin", "operator", "viewer"];
+  $("t-accounts").innerHTML = "<tr><th>Account</th><th>Role</th><th>2FA</th><th></th></tr>" + list.map(a =>
+    "<tr><td class='mono'>" + esc(a.username) + "</td><td><select data-acc-role='" + esc(a.username) + "' aria-label='Role of " + esc(a.username) + "'>" +
+    roles.concat(roles.includes(a.role) ? [] : [a.role]).map(r => "<option" + (r === a.role ? " selected" : "") + ">" + esc(r) + "</option>").join("") +
+    "</select></td><td>" + (a.two_factor ? "on" : "<span class='muted'>at first login</span>") + "</td><td>" +
+    "<button class='small' data-acc-reset='" + esc(a.username) + "'>Reset</button> <button class='small' data-acc-del='" + esc(a.username) + "'>Remove</button></td></tr>").join("");
+}
+function showPassword(name, pw, what) {
+  $("ac-pw").classList.remove("hidden");
+  $("ac-pw").innerHTML = what + " <b>" + esc(name) + "</b>. One-time password (shown once, send it privately): <span class='mono'>" + esc(pw) +
+    "</span>. They set up 2FA at their first login.";
+}
+$("ac-form").onsubmit = async (ev) => {
+  ev.preventDefault(); $("ac-err").textContent = "";
+  try {
+    const r = await api("accounts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: $("ac-name").value.trim(), role: $("ac-role").value }) });
+    showPassword(r.username, r.password, "Account created:"); $("ac-name").value = ""; loadAccounts();
+  } catch (x) { $("ac-err").textContent = x.message; }
+};
+document.addEventListener("change", async (e) => {
+  const sel = e.target.closest("[data-acc-role]"); if (!sel) return;
+  try { await api("accounts/" + encodeURIComponent(sel.dataset.accRole), { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role: sel.value }) }); }
+  catch (x) { $("ac-err").textContent = x.message; }
+  loadAccounts(); loadMe();
+});
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  try {
+    if (b.dataset.accReset && confirm("Reset " + b.dataset.accReset + "? They get a new one-time password and set up 2FA again.")) {
+      const r = await api("accounts/" + encodeURIComponent(b.dataset.accReset) + "/reset", { method: "POST" });
+      showPassword(r.username, r.password, "Reset:"); loadAccounts();
+    }
+    if (b.dataset.accDel && confirm("Remove the account " + b.dataset.accDel + "? It loses access at once.")) {
+      await api("accounts/" + encodeURIComponent(b.dataset.accDel), { method: "DELETE" }); loadAccounts();
+    }
+  } catch (x) { $("ac-err").textContent = x.message; }
+});
+
 function start() {
   $("login").classList.add("hidden"); $("app").classList.remove("hidden");
   ["live", "who", "logout"].forEach(id => $(id).classList.remove("hidden"));
-  try { const c = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))); $("who").textContent = c.sub + " · admin · 2FA"; } catch (e) {}
-  refresh(); loadSites(); loadEvents(); stream(); loadInfo(); loadExclusions(); loadAlerts(); defaultHistoryRange();
+  try { const c = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))); $("who").textContent = c.sub + " · 2FA"; } catch (e) {}
+  refresh(); loadSites(); loadEvents(); stream(); loadInfo(); loadExclusions(); loadAlerts(); loadMe(); defaultHistoryRange();
   if (location.hash === "#console") setTimeout(() => { conFull(true); }, 300);
 }
 

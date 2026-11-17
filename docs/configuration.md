@@ -35,10 +35,27 @@ In the file, nested keys map to one variable: `waf: {threshold: 7}` is
 | `log_format` | `LOG_FORMAT` | automatic | `pretty` (one readable line per decision) in a terminal, `json` otherwise |
 | `log_file` | `LOG_FILE` | none | Also write JSON logs here (`sentinel watch` reads it) |
 | `history_days` | `HISTORY_DAYS` | `30` | Days of dashboard history kept on disk, in `history/` in the data folder: every request Sentinel stopped or flagged (plain allowed requests are not kept). It survives restarts, older days are deleted, and the dashboard can search it. `0` keeps history in memory only |
-| `dashboard` | `DASHBOARD` | on | The dashboard, at `/__sentinel/dashboard` (admins with 2FA) |
+| `dashboard` | `DASHBOARD` | on | The dashboard, at `/__sentinel/dashboard` (accounts with 2FA; see *Dashboard accounts* below) |
 | `dashboard_listen` | `DASHBOARD_ADDR` | none (on the main port) | Give the dashboard its own port, e.g. `:9000`: then it opens at `http://<host>:9000` and is not reachable on the public port at all. Recommended: keep that port private (firewall or VPN). IP bans don't apply on it, so an admin who shares an address with an attacker (an office or mobile network) can still get in to lift the ban; logins there stay rate limited |
 | `security_headers` | `SECURITY_HEADERS` | on | Adds nosniff, Referrer-Policy, X-Frame-Options and (over HTTPS) HSTS when the app doesn't |
 | `timezone` | `TZ` | `UTC` | Time zone for log times shown to people |
+
+### Dashboard accounts
+
+The first-run link creates the first **admin**. Admins add more accounts in
+the dashboard's **Accounts** card, each with a role:
+
+| Role | Can |
+|---|---|
+| `admin` | everything, including sites, alerts and accounts |
+| `operator` | ban and unban, allow false alarms, reload rules; see everything |
+| `viewer` | see everything, change nothing |
+
+A new account gets a one-time password, shown once to the admin who made
+it, and sets up 2FA at its first login. **Reset** gives a new one-time
+password and starts 2FA again (a lost phone). A changed role or a removed
+account takes effect at once. One admin always stays, and nobody can
+remove or demote their own account.
 
 ## Several sites
 

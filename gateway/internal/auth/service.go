@@ -87,7 +87,7 @@ func (s *Service) Login(ctx context.Context, username, password string) (*LoginR
 	}
 	// Logins are for Sentinel's own administrators (the dashboard). Other
 	// accounts, e.g. left in a shared database, can't sign in.
-	if AdminOnly && u.Role != "admin" {
+	if AdminOnly && !IsDashboardRole(u.Role) {
 		return nil, ErrBadCredentials
 	}
 
