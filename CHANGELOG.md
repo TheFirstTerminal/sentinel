@@ -4,6 +4,7 @@
 - **Fewer false alarms on real traffic** (open-appsec dataset, same attacks blocked):
   - the ML model no longer scores cookies (analytics cookies hold encoded JSON it mistook for injections); the rules still check them;
   - a Core Rule Set match in a cookie blocks only if the ML model agrees (Akamai, Mixpanel and consent cookies tripped CRS command and SQL rules);
+  - the ML model was retrained with normal GraphQL queries and analytics telemetry (timing strings, CSS selectors), which it flagged before;
   - `text/plain` request bodies (`navigator.sendBeacon`, analytics) and CSP reports are allowed content types.
 - **Security fixes**:
   - a 2FA login token now works only once (it was revoked but the revocation was not checked);

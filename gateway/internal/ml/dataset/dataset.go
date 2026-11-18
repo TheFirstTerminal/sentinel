@@ -271,6 +271,57 @@ var normals = map[string]func(g gen) string{
 		return g.pick("eyJhbGciOiJIUzI1NiJ9."+rnd(g.n(40, 120))+"."+rnd(43), rnd(g.n(16, 64)),
 			fmt.Sprintf("%08x-%04x-4%03x-a%03x-%012x", g.r.Uint32(), g.n(0, 65535), g.n(0, 4095), g.n(0, 4095), g.r.Int63n(1<<48)), "P"+rnd(6), rnd(20)+"==")
 	},
+	"graphql": func(g gen) string {
+		field := func() string {
+			return g.pick("id", "name", "title", "price", "sku", "url", "image", "description", "brandId", "__typename", "quantity", "slug", "path", "currency", "value", "createdAt", "status", "email")
+		}
+		fields := func(n int) string {
+			var b strings.Builder
+			for i := 0; i < n; i++ {
+				if i > 0 {
+					b.WriteString(" ")
+				}
+				b.WriteString(field())
+			}
+			return b.String()
+		}
+		obj := g.pick("products", "product", "cart", "user", "order", "findContent", "findURL", "category", "search", "collection", "images", "prices", "variants", "reviews")
+		arg := g.pick(`id: $id`, `sku: "`+g.pick("SKU", "P", "")+g.num()+`"`, `first: `+fmt.Sprint(g.n(1, 100)), `brand: "`+g.pick("shop", "acme", "flowers", "berries")+`"`,
+			`environment: "production"`, `locale: "en-us"`, `skus: $skus`, `path: "/`+g.pick("green", "sale", "new", "men", "women")+`"`, `filter: {status: ACTIVE}`, `after: "`+g.num()+`"`)
+		op := g.pick("query", "query", "query", "mutation")
+		name := g.pick("ProductQuery", "CategoryDataQuery", "GetCart", "Search", "plpProductsData", "UpdateCart", "Login", "CourseBySlugQuery", "")
+		vars := g.pick("", "($id: ID!)", "($skus: [String!])", "($brand: String!, $environment: String!)", "($first: Int)")
+		inner := fields(g.n(1, 5))
+		if g.maybe(0.6) {
+			inner += " " + g.pick("image", "price", "retail", "brand", "items", "edges", "node", "pageInfo") + " { " + fields(g.n(1, 4)) + " __typename }"
+		}
+		body := obj + "(" + arg + ") { " + inner + " }"
+		if g.maybe(0.3) {
+			body = obj + " { " + inner + " }"
+		}
+		full := op + " " + name + vars + " { " + body + " }"
+		return g.pick(full, full, "{ "+body+" }", body+" __typename } __typename }",
+			`{"`+g.pick("targeting", "skus", "id", "brand")+`":`+g.pick("[]", `["`+g.num()+`"]`, `"`+g.num()+`"`, "null", "{}")+`}`,
+			"fragment "+g.pick("ProductFields", "Price", "Img")+" on "+g.pick("Product", "Price", "Image")+" { "+fields(g.n(1, 4))+" }")
+	},
+	"telemetry": func(g gen) string {
+		code := func() string {
+			const a = "0123456789abcdefghijklmnopqrstuvwxyz"
+			s := make([]byte, g.n(1, 5))
+			for i := range s {
+				s[i] = a[g.r.Intn(len(a))]
+			}
+			return string(s)
+		}
+		return g.pick(
+			code()+","+code()+","+code()+","+fmt.Sprint(g.n(1, 9))+","+fmt.Sprint(g.n(1, 9))+"*"+fmt.Sprint(g.n(1, 20)),
+			g.pick("div", "section", "main", "ul")+"#"+g.pick("app", "root", "main")+" * "+g.pick("div", "section", "h2", "li")+"._"+g.pick("carousel", "card", "grid", "hero")+"-context_"+code()+"_"+fmt.Sprint(g.n(1, 2000)),
+			`{"event_category":"`+g.pick("CHECKOUT", "CART", "PDP", "SEARCH")+`","event_name":"`+g.pick("SECTION VIEW:PAYMENT", "ADD TO CART", "VIEW ITEM")+`","logged_in":"`+g.pick("TRUE", "FALSE")+`"}`,
+			`"`+fmt.Sprint(g.n(1, 999))+`":{"load":`+fmt.Sprint(g.n(0, 1))+`,"wait":`+fmt.Sprint(g.n(0, 9))+`,"tid":`+fmt.Sprint(g.n(1000, 30000))+`,"executed":0}`,
+			"~(fbevents*3a~(end*3a"+g.pick("estPageViewProcessing", "init", "track")+"~'"+code()+"~start*3a"+g.pick("estPageViewProcessing", "init")+"~'"+code()+"))",
+			`{"v":[0,1],"d":{"ty":"Browser","ac":"`+fmt.Sprint(g.n(100000, 9999999))+`","ap":"`+fmt.Sprint(g.n(100000, 9999999))+`"}}`,
+		)
+	},
 	"socketio": func(g gen) string {
 		return g.pick("polling", "websocket", "4", "40", "2", "3", `42["notification received","`+g.pick(products...)+`"]`, `40{"sid":"`+fmt.Sprint(g.r.Int63())+`"}`, "1:EIO=4", "ok")
 	},
