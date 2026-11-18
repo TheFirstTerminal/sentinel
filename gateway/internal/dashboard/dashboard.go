@@ -52,6 +52,11 @@ type Info struct {
 	PromptPath []string    `json:"prompt_guard_paths"`
 	ML         string      `json:"ml"`
 	Started    string      `json:"started"`
+	// Edition is "free" or "pro". License is who Pro is licensed to, with
+	// LicenseState "ok", "expiring" (30 days or less) or "expired".
+	Edition      string `json:"edition"`
+	License      string `json:"license,omitempty"`
+	LicenseState string `json:"license_state,omitempty"`
 }
 
 // SiteStatus is one site and its servers, for the dashboard.

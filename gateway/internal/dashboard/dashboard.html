@@ -73,6 +73,9 @@ body:not(.role-admin) #add-site-btn, body:not(.role-admin) [data-edit], body:not
 body:not(.role-admin) #alerts-card, body:not(.role-admin) #accounts-card { display: none !important; }
 body:not(.role-admin) .seg button { pointer-events: none; }
 #ac-form input, #ac-form select { font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); }
+header .pill.warn { color: var(--warn); border-color: var(--warn); }
+header .pill.bad { color: var(--bad); border-color: var(--bad); }
+a.pill { text-decoration: none; }
 .hidden { display: none !important; }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .row input { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); width: 150px; }
@@ -138,6 +141,7 @@ body:not(.multi) .site-col { display: none; }
   <svg class="shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 3v6c0 5-3.5 9.5-8 11-4.5-1.5-8-6-8-11V5l8-3z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>
   <h1>Sentinel</h1>
   <span class="pill" id="version">dashboard</span>
+  <a class="pill hidden" id="edition" target="_blank" rel="noopener"></a>
   <span class="sp"></span>
   <label class="hidden" id="site-pick"><span class="muted" style="font-size:12px;margin-right:6px">Site</span><select id="site-sel" aria-label="Show one site"><option value="*">All sites</option></select></label>
   <span class="pill off hidden" id="live">● live</span>
@@ -869,6 +873,18 @@ async function loadInfo() {
   try {
     const i = await api("info");
     $("version").textContent = "v" + i.version;
+    const ed = $("edition");
+    if (i.edition === "pro") {
+      ed.textContent = "Pro" + (i.license_state === "expiring" ? " · license ends soon" : i.license_state === "expired" ? " · license expired" : "");
+      ed.title = i.license || "";
+      ed.className = "pill" + (i.license_state === "expiring" ? " warn" : i.license_state === "expired" ? " bad" : "");
+      ed.removeAttribute("href");
+    } else {
+      ed.textContent = "Free · what Pro adds →";
+      ed.title = "Single sign-on, access rules, risk-based 2FA, mTLS, a tamper-evident audit log";
+      ed.href = "https://tsxmamii.github.io/sentinel/pro.html";
+      ed.className = "pill";
+    }
     const rows = [["Mode", i.mode === "monitor" ? "MONITOR: logging only, nothing is blocked" : "protect"], ["WAF", i.waf_mode + ", " + i.waf_rules + " rules"], ["Rate limits", (i.rate_limits || []).join("  ") || "off"], ["Shared store", i.store],
       ["Geo", i.geo], ["AI prompt guard", (i.prompt_guard_paths || []).join(", ") || "off"], ["ML classifier", i.ml], ...(i.extra || []), ["Started", new Date(i.started).toLocaleString()]];
     for (const f of i.features || []) document.body.classList.add("f-" + f);

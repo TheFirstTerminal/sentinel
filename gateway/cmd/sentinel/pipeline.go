@@ -530,7 +530,7 @@ func (sh *shared) adminPages(excl *exclude.Set) (http.Handler, error) {
 	cfg, log := sh.cfg, sh.log
 	a := &adminPages{cfg: cfg, authAPI: auth.NewHandlers(sh.authSvc, sh.rec, log)}
 	if cfg.Dashboard {
-		info := dashboard.Info{Version: Version, Mode: cfg.Mode, WAFMode: cfg.WAFMode, ML: mlDescribe(cfg),
+		info := dashboard.Info{Version: Version, Edition: "free", Mode: cfg.Mode, WAFMode: cfg.WAFMode, ML: mlDescribe(cfg),
 			Rules: sh.engine.RuleCount() + crsRules(sh.engine), Store: sh.store.Name(),
 			Started: time.Now().Format(time.RFC3339), PromptPath: cfg.PromptGuardPaths}
 		info.Geo = fmt.Sprintf("%d ranges; deny %s; allow %s", sh.geoDB.Size(), orNone(cfg.GeoDenyCountries), orNone(cfg.GeoAllowCountries))
