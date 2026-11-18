@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.16.2 · 2026-11-18
 - **Sentinel moved to the TheFirstTerminal organization**: the repository is `github.com/TheFirstTerminal/sentinel` (old links redirect), the docs are at https://sentinel.tft.markets, the image is `ghcr.io/thefirstterminal/sentinel`, Homebrew is `brew tap thefirstterminal/sentinel https://github.com/TheFirstTerminal/sentinel`, and the contact address is support@tft.markets. Images up to 0.16.1 stay at `ghcr.io/tsxmamii/sentinel`.
 
 ## 0.16.1 · 2026-11-18
