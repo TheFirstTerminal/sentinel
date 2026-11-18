@@ -1,6 +1,7 @@
 # Changelog
 
-## Unreleased
+## 0.16.3 · 2026-11-19
+- **Comparison (open-appsec dataset, normal traffic counted only on sites the model never saw)**: Sentinel blocks 93.4% of attacks and wrongly blocks 4.4% of normal requests (0.16.1: 95.0% / 7.5%); ModSecurity + CRS 90.3% / 26.7%, BunkerWeb 90.3% / 28.8%. See `docs/benchmarks.md`.
 - **ML model trained on real browser traffic**: values from recorded browsing sessions on half the sites of the open-appsec dataset (Apache-2.0) are now part of the normal training data. On the other half, sites the model never saw, it wrongly flags 0.7% of normal requests instead of 3.0%. Public attack payloads it never saw: 94.8% caught (was 96.1%). Report: `docs/ml-report.md`; trainer flag `-traffic`.
 - **Security hardening**:
   - alert webhooks can no longer reach link-local addresses (the cloud metadata service at 169.254.169.254) and don't follow redirects, so a stolen admin session can't use them to fetch cloud credentials;

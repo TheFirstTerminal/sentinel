@@ -43,27 +43,33 @@ real attack syntax. Reproduce with
 ## 1c. Against other self-hosted WAFs (open-appsec dataset)
 
 The open-source [WAF comparison project](https://github.com/openappsec/waf-comparison-project)
-sends real-world normal traffic and public attack payloads to each WAF and records
-what is blocked. Run on 2026-11-18 in fast mode (a fixed ~15% sample), each WAF in
-Docker in front of the same app, default settings, blocking mode. Sentinel
-0.16.1 (after the false-alarm fixes below); the other two from the same day.
+sends real-world normal traffic (recorded while browsing real sites) and public
+attack payloads to each WAF and records what is blocked. Run in fast mode (a
+fixed ~15% sample), each WAF in Docker in front of the same app, default
+settings, blocking mode, November 2026.
 
-| WAF | Attacks blocked | Normal requests allowed | Balanced accuracy |
+Since 0.16.3 Sentinel's ML model learns normal input from the recorded
+sessions of **half** of the dataset's sites. So the table counts normal
+traffic only on the **other half** (318 sites, 85,207 requests) that the model
+never saw, for every WAF. Attacks: all 11,054.
+
+| WAF | Attacks blocked | Normal requests wrongly blocked | Balanced accuracy |
 |---|---|---|---|
-| **Sentinel 0.16.1** | **95.0%** | **92.3%** | **93.6%** |
-| Sentinel 0.16.0 | 85.3% | 85.4% | 85.4% |
-| ModSecurity + OWASP CRS (PL1) | 90.3% | 75.3% | 82.8% |
-| BunkerWeb | 90.3% | 72.6% | 81.5% |
+| **Sentinel 0.16.3** | 93.4% | **4.4%** | **94.5%** |
+| Sentinel 0.16.1 | 95.0% | 7.5% | 93.7% |
+| Sentinel 0.16.0 | 85.3% | 14.6% (all sites) | 85.4% |
+| ModSecurity + OWASP CRS (PL1) | 90.3% | 26.7% | 81.8% |
+| BunkerWeb | 90.3% | 28.8% | 80.8% |
 
 Sentinel blocks more attacks than both and wrongly blocks about 1 normal
-request in 13, against 1 in 4 for the others. From 0.16.0 to 0.16.1, every
+request in 23, against more than 1 in 4 for the others. From 0.16.0 on, every
 false alarm was traced to the rule or model input behind it (tracking cookies,
-analytics beacons, GraphQL, binary bodies) and fixed without letting the same
-attacks through. Those fixes were found on this same dataset, so the 0.16.1
-row is partly tuned to it; the fixes are general (no rule names a site),
-but treat the gap as an upper bound. The normal traffic in this dataset includes many unusual
-requests, so all numbers are lower than on a typical site; start in monitor
-mode and check the dashboard before blocking.
+analytics beacons, GraphQL, binary bodies) and fixed. Those rule fixes were
+found on this dataset, so treat the gap as an upper bound; they are general
+(no rule names a site). 0.16.3 trades 1.6 points of attacks for 40% fewer
+false alarms. The normal traffic here includes many unusual requests, so all
+numbers are worse than on a typical site; start in monitor mode and check the
+dashboard before blocking.
 
 ### GoTestWAF
 
