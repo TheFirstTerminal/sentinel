@@ -285,6 +285,29 @@ var normals = map[string]func(g gen) string{
 			"(see attached)", "call me (after 5pm)", "f(x) = 2x + 1", "great :) thanks (again)", "a > b and b > c", "price (incl. VAT)", "[1] first note", "{name} placeholder",
 			"size: M (fits L)", "3 x (2 + 4) = 18", "<- back", "-> next", "John (HR) said so", "concat two strings in Excel", "extract value from report", "select user from the list")
 	},
+	"tech-prose": func(g gen) string {
+		lang := g.pick("JavaScript", "Python", "SQL", "PHP", "Java", "HTML", "CSS", "Bash", "Go", "C#", "XML", "JSON", "Linux", "Windows")
+		topic := g.pick("Basics", "Introduction", "Functions", "Loops", "Variables", "Arrays", "Objects", "Classes", "Errors", "Strings", "Dates", "Files", "Security", "Tips")
+		lo := g.n(0, 50)
+		hi := lo + g.n(1, 500)
+		param := g.pick("hl", "lang", "page", "sort", "q", "ref", "utm_source", "id", "size", "color")
+		val := g.pick("fr", "en", "ar", "2", "asc", "desc", "newsletter", "42", "M", "red")
+		return g.pick(
+			lang+": "+topic+" of "+lang,
+			lang+" "+topic+" for beginners",
+			"Learn "+lang+" "+topic+" in "+fmt.Sprint(g.n(2, 30))+" minutes",
+			lang+" "+strings.ToLower(topic)+" cheat sheet ("+fmt.Sprint(g.n(2020, 2026))+")",
+			"pick a random number between "+fmt.Sprint(lo)+" and "+fmt.Sprint(hi),
+			"I want "+g.pick("a size", "a number", "an age", "a price", "a date")+" between "+fmt.Sprint(lo)+" and "+fmt.Sprint(hi)+", please",
+			"show results between "+fmt.Sprint(lo)+" and "+fmt.Sprint(hi)+" only",
+			"ages "+fmt.Sprint(lo)+" to "+fmt.Sprint(hi)+" or older",
+			"I will include the parameter \""+param+"="+val+"\" in the link",
+			"add ?"+param+"="+val+" to the address to change it",
+			"How do I "+g.pick("select", "update", "delete", "insert", "drop", "join")+" "+g.pick("rows", "a column", "duplicates", "an item", "my account", "two tables")+" in "+lang+"?",
+			"the "+g.pick("script", "alert", "prompt", "confirm", "eval", "document")+" "+g.pick("button", "dialog", "tag", "box", "page", "function")+" in "+lang+" does not work",
+			"What does "+g.pick("<br>", "&&", "||", "!=", "==", "->", "=>", "::")+" mean in "+lang+"?",
+		)
+	},
 	"parens": func(g gen) string {
 		return g.pick(products...) + " (" + g.pick("2 pack", "new", "large", "x"+fmt.Sprint(g.n(1, 9)), g.num()+"g", "gift") + ")" + g.pick("", " - "+g.pick(sentences...))
 	},

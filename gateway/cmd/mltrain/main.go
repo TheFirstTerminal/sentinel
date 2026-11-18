@@ -41,6 +41,7 @@ const (
 func main() {
 	csicDir := flag.String("csic", "", "folder with the CSIC 2010 dataset (adds real-format web traffic to training and a CSIC test to the report)")
 	crsDir := flag.String("crs", "", "OWASP CRS rules/ folder, for the CSIC comparison (optional)")
+	payloadDir := flag.String("payloads", "", "a PayloadsAllTheThings checkout: its Intruder lists are added to training (4 in 5) and the rest is a held-out test in the report")
 	flag.Parse()
 	start := time.Now()
 	train := dataset.Generate(trainN, 1)
@@ -51,6 +52,19 @@ func main() {
 		train = append(train, cs.train...)
 	}
 
+	var pubTest []dataset.Example
+	if *payloadDir != "" {
+		pubTrain, held := loadPublicPayloads(*payloadDir)
+		pubTest = held
+		train = append(train, pubTrain...)
+		// As many normal inputs again, so the classes stay balanced.
+		for _, e := range dataset.Generate(len(pubTrain), 5) {
+			if !e.Attack {
+				train = append(train, e)
+			}
+		}
+		fmt.Printf("public payloads: %d for training, %d held out\n", len(pubTrain), len(held))
+	}
 	vecs := make([]ml.Vector, len(train))
 	for i, e := range train {
 		vecs[i] = ml.Featurize(e.Text)
@@ -142,6 +156,46 @@ func main() {
 		fmt.Fprintf(&rep, "\nExamples the ML wrongly flagged:\n\n")
 		for _, s := range fpExamples {
 			fmt.Fprintf(&rep, "- `%s`\n", strings.ReplaceAll(s, "`", "'"))
+		}
+	}
+
+	// Held-out public payloads: written by other people, never trained on.
+	if len(pubTest) > 0 {
+		fmt.Fprintf(&rep, "\n## Public payloads the model never saw (%d, PayloadsAllTheThings)\n\n", len(pubTest))
+		fmt.Fprintf(&rep, "One in five payloads from each list was held out of training. Sent as a search parameter.\n\n")
+		fmt.Fprintf(&rep, "| Family | Payloads | WAF rules | ML | WAF + ML |\n|---|---|---|---|---|\n")
+		type cnt struct{ n, w, l, b int }
+		byFam := map[string]*cnt{}
+		all := &cnt{}
+		for _, e := range pubTest {
+			w, l := wafHit(e.Text), mlHit(e.Text)
+			for _, c := range []*cnt{all, func() *cnt {
+				if byFam[e.Family] == nil {
+					byFam[e.Family] = &cnt{}
+				}
+				return byFam[e.Family]
+			}()} {
+				c.n++
+				if w {
+					c.w++
+				}
+				if l {
+					c.l++
+				}
+				if w || l {
+					c.b++
+				}
+			}
+		}
+		fmt.Fprintf(&rep, "| **all** | %d | %s | %s | %s |\n", all.n, pct(all.w, all.n), pct(all.l, all.n), pct(all.b, all.n))
+		var fams []string
+		for f := range byFam {
+			fams = append(fams, f)
+		}
+		sort.Strings(fams)
+		for _, f := range fams {
+			c := byFam[f]
+			fmt.Fprintf(&rep, "| %s | %d | %s | %s | %s |\n", f, c.n, pct(c.w, c.n), pct(c.l, c.n), pct(c.b, c.n))
 		}
 	}
 
@@ -371,4 +425,58 @@ func must(err error) {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+}
+
+// publicLists are PayloadsAllTheThings folders with one payload per line.
+var publicLists = map[string]string{
+	"SQL Injection/Intruder":                  "sqli",
+	"XSS Injection/Intruders":                 "xss",
+	"Command Injection/Intruder":              "cmdi",
+	"Directory Traversal/Intruder":            "traversal",
+	"NoSQL Injection/Intruder":                "nosql",
+	"LDAP Injection/Intruder":                 "ldap",
+	"Server Side Template Injection/Intruder": "ssti",
+	"XXE Injection/Intruders":                 "xxe",
+	"Server Side Request Forgery/Files":       "ssrf",
+}
+
+// loadPublicPayloads reads the lists and splits each payload, by a hash of
+// its text, into training (4 in 5) or held-out test (1 in 5).
+func loadPublicPayloads(dir string) (trainSet, testSet []dataset.Example) {
+	seen := map[string]bool{}
+	const perFamily = 1500 // directory traversal alone has 23,000 lines
+	for sub, fam := range publicLists {
+		count := 0
+		files, _ := filepath.Glob(filepath.Join(dir, sub, "*"))
+		for _, f := range files {
+			b, err := os.ReadFile(f)
+			if err != nil {
+				continue
+			}
+			for _, line := range strings.Split(string(b), "\n") {
+				line = strings.TrimSpace(line)
+				if len(line) < 4 || len(line) > 2000 || seen[line] || strings.HasPrefix(line, "#") {
+					continue
+				}
+				if count >= perFamily {
+					break
+				}
+				seen[line] = true
+				count++
+				h := uint32(2166136261)
+				for i := 0; i < len(line); i++ {
+					h = (h ^ uint32(line[i])) * 16777619
+				}
+				e := dataset.Example{Text: line, Attack: true, Family: "public-" + fam}
+				if h%5 == 0 {
+					testSet = append(testSet, e)
+				} else {
+					trainSet = append(trainSet, e)
+				}
+			}
+		}
+	}
+	sort.Slice(trainSet, func(i, j int) bool { return trainSet[i].Text < trainSet[j].Text })
+	sort.Slice(testSet, func(i, j int) bool { return testSet[i].Text < testSet[j].Text })
+	return trainSet, testSet
 }

@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+- **Better detection** (GoTestWAF: attacks blocked 51% → 85%, normal requests allowed 96% → 95%; ModSecurity + CRS on the same test: 49% / 91%):
+  - values that are base64 for readable text are checked decoded, multipart form fields one by one, overlong UTF-8 (`%C0%AE`) is undone;
+  - new rules: NoSQL commands, LDAP filters, IMAP/SMTP commands, out-of-band callback hosts, git/ssh option injection, `#{}` templates, Windows admin shares, UTF-7 XML, JavaScript call probes (`confirm.call(…)`, `alert?.(…)`);
+  - the `javascript:` rule no longer fires on prose ("JavaScript: Basics").
+- **ML model retrained** with public payloads (PayloadsAllTheThings, MIT) and technical prose as normal input: 96.7% of 1,153 held-out public payloads caught, no normal input wrongly blocked.
+- **Dashboard**: the edition in the header; Free links to what Pro adds.
+
 ## 0.15.0 · 2026-11-17
 - **Kubernetes Ingress controller**: with `kubernetes_ingress_class` (Helm: `ingressController.enabled`), Sentinel reads Ingresses and protects and routes their hosts itself.
 - **Dashboard**: add and remove sites without a restart.
