@@ -45,19 +45,25 @@ real attack syntax. Reproduce with
 The open-source [WAF comparison project](https://github.com/openappsec/waf-comparison-project)
 sends real-world normal traffic and public attack payloads to each WAF and records
 what is blocked. Run on 2026-11-18 in fast mode (a fixed ~15% sample), each WAF in
-Docker in front of the same app, default settings, blocking mode. Sentinel 0.16.0
-rules with the 0.15 ML model.
+Docker in front of the same app, default settings, blocking mode. Sentinel
+0.16.1 (after the false-alarm fixes below); the other two from the same day.
 
 | WAF | Attacks blocked | Normal requests allowed | Balanced accuracy |
 |---|---|---|---|
-| **Sentinel** | 85.3% | **85.4%** | **85.4%** |
+| **Sentinel 0.16.1** | **95.0%** | **92.3%** | **93.6%** |
+| Sentinel 0.16.0 | 85.3% | 85.4% | 85.4% |
 | ModSecurity + OWASP CRS (PL1) | 90.3% | 75.3% | 82.8% |
 | BunkerWeb | 90.3% | 72.6% | 81.5% |
 
-Sentinel blocks a little less and wrongly blocks far less: about 1 normal
-request in 7, against 1 in 4 for the others. The normal traffic in this dataset
-includes many unusual requests, so all three numbers are lower than on a
-typical site; start in monitor mode and check the dashboard before blocking.
+Sentinel blocks more attacks than both and wrongly blocks about 1 normal
+request in 13, against 1 in 4 for the others. From 0.16.0 to 0.16.1, every
+false alarm was traced to the rule or model input behind it (tracking cookies,
+analytics beacons, GraphQL, binary bodies) and fixed without letting the same
+attacks through. Those fixes were found on this same dataset, so the 0.16.1
+row is partly tuned to it; the fixes are general (no rule names a site),
+but treat the gap as an upper bound. The normal traffic in this dataset includes many unusual
+requests, so all numbers are lower than on a typical site; start in monitor
+mode and check the dashboard before blocking.
 
 ### GoTestWAF
 
