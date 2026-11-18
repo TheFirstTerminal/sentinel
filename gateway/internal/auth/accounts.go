@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -38,6 +39,8 @@ func RoleRank(role string) int {
 	}
 	return 0
 }
+
+var accountsMu sync.Mutex
 
 var (
 	ErrLastAdmin = errors.New("there must stay at least one admin")
@@ -130,6 +133,10 @@ func (s *Service) ResetAccount(ctx context.Context, username string) (string, er
 
 // SetAccountRole changes an account's role. by is who asks.
 func (s *Service) SetAccountRole(ctx context.Context, by, username, role string) error {
+	// One change at a time: two admins demoting each other at once
+	// must not leave no admin.
+	accountsMu.Lock()
+	defer accountsMu.Unlock()
 	if err := s.checkRole(role); err != nil {
 		return err
 	}
@@ -150,6 +157,10 @@ func (s *Service) SetAccountRole(ctx context.Context, by, username, role string)
 
 // DeleteAccount removes an account. by is who asks.
 func (s *Service) DeleteAccount(ctx context.Context, by, username string) error {
+	// One change at a time: two admins demoting each other at once
+	// must not leave no admin.
+	accountsMu.Lock()
+	defer accountsMu.Unlock()
 	if username == by {
 		return ErrSelf
 	}

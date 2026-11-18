@@ -11,6 +11,7 @@
 package proxy
 
 import (
+	"sentinel/gateway/internal/reqctx"
 	"context"
 	"errors"
 	"fmt"
@@ -231,6 +232,11 @@ func newReverseProxy(upstream *url.URL, p *pool, s *server, log *slog.Logger) ht
 			pr.SetURL(upstream)
 			pr.Out.Host = pr.In.Host // keep the original Host header
 			pr.SetXForwarded()       // tell the app the real client IP
+			// Behind a trusted load balancer the connection's address is
+			// the balancer: pass on the client IP Sentinel worked out.
+			if ip := reqctx.From(pr.In.Context()).ClientIP; ip != "" {
+				pr.Out.Header.Set("X-Forwarded-For", ip)
+			}
 			pr.Out.Header.Set("X-Protected-By", "Sentinel")
 		},
 		Transport: &http.Transport{

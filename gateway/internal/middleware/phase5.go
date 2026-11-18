@@ -36,7 +36,10 @@ func ML(m *ml.Model, mode string, threshold float64, skip []string, maxBody int6
 			for _, in := range waf.ExtractInputs(r, body) {
 				// Names are left to the rules: the model scores what users
 				// type, and a field called "pwd" is not a shell command.
-				if in.Target == waf.TargetPath || in.Field == "(raw)" || in.Name || len(in.Value) < 3 {
+				// Cookies are left to the rules too: browsers and analytics
+				// scripts fill them with encoded JSON the model mistakes for
+				// injections (half of all false alarms on real traffic).
+				if in.Target == waf.TargetPath || in.Target == waf.TargetCookies || in.Field == "(raw)" || in.Name || len(in.Value) < 3 {
 					continue
 				}
 				if Exclusions.ExcludedOn(reqctx.From(r.Context()).Site, "ML", r.Method, r.URL.Path, in.Field) {

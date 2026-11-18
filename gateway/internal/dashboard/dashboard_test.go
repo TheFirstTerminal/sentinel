@@ -154,3 +154,18 @@ func TestDashboardPageHeaders(t *testing.T) {
 		t.Errorf("Cache-Control: %q", h.Get("Cache-Control"))
 	}
 }
+
+func TestSameOrigin(t *testing.T) {
+	r := httptest.NewRequest("POST", "https://gw.example.com/x", nil)
+	if sameOrigin(r) {
+		t.Error("no Origin/Referer must not count as same origin")
+	}
+	r.Header.Set("Origin", "https://evil.example")
+	if sameOrigin(r) {
+		t.Error("another site must be refused")
+	}
+	r.Header.Set("Origin", "https://gw.example.com")
+	if !sameOrigin(r) {
+		t.Error("own origin must pass")
+	}
+}

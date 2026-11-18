@@ -34,6 +34,10 @@ func (s *Set) Evaluate(r *http.Request, body []byte) Result {
 	// Inspect XML attribute values too (CRS 4.25 LTS leaves it off unless
 	// crs-setup.conf opts in): attacks must not hide in attributes.
 	tx.tx["crs_xml_attr_inspect"] = "1"
+	// CRS's list plus what browsers send on their own: navigator.sendBeacon
+	// and analytics posts use text/plain, and CSP/Reporting API reports
+	// have their own types. Rule 920420 blocked ~5% of real traffic without.
+	tx.tx["allowed_request_content_type"] = "|application/x-www-form-urlencoded| |multipart/form-data| |text/xml| |application/xml| |application/soap+xml| |application/json| |text/plain| |application/csp-report| |application/reports+json|"
 
 	for _, phase := range s.phases {
 		skipTo := ""

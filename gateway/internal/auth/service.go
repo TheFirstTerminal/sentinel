@@ -116,12 +116,12 @@ func (s *Service) VerifyMFA(ctx context.Context, mfaToken, code string) (*LoginR
 		return nil, err
 	}
 
-	s.mu.Lock()
-	if s.mfaAttempts[c.Jti] >= maxMFAAttempts {
-		s.mu.Unlock()
-		return nil, ErrTooManyAttempts
+	// The MFA token is single-use: once exchanged it is revoked.
+	if revoked, err := s.store.IsRevoked(ctx, c.Jti); err != nil {
+		return nil, err
+	} else if revoked {
+		return nil, ErrTokenRevoked
 	}
-	s.mu.Unlock()
 
 	u, err := s.store.UserByName(ctx, c.Sub)
 	if err != nil {
@@ -150,16 +150,21 @@ func (s *Service) VerifyMFA(ctx context.Context, mfaToken, code string) (*LoginR
 
 // acceptCode checks a TOTP code, counts failures and blocks reuse.
 func (s *Service) acceptCode(username, secret, code, attemptKey string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	// The limit is checked and the attempt counted under one lock, so
+	// codes sent in parallel can't get past it.
+	if attemptKey != "" {
+		if s.mfaAttempts[attemptKey] >= maxMFAAttempts {
+			return ErrTooManyAttempts
+		}
+		s.mfaAttempts[attemptKey]++
+	}
 	step, err := checkTOTP(secret, code, s.now())
 	if err != nil {
 		return err
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	if step < 0 {
-		if attemptKey != "" {
-			s.mfaAttempts[attemptKey]++
-		}
 		return ErrBadCode
 	}
 	if step <= s.lastStep[username] {

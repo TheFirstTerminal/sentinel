@@ -1,6 +1,7 @@
 package crs
 
 import (
+	"net"
 	"bytes"
 	"encoding/json"
 	"encoding/xml"
@@ -215,7 +216,11 @@ func newTx(r *http.Request, body []byte) *Tx {
 	tx.single["REQUEST_PROTOCOL"] = r.Proto
 	tx.single["REQUEST_LINE"] = r.Method + " " + uri + " " + r.Proto
 	tx.single["REQUEST_BODY_LENGTH"] = strconv.Itoa(len(body))
-	tx.single["REMOTE_ADDR"], _, _ = strings.Cut(r.RemoteAddr, ":")
+	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		tx.single["REMOTE_ADDR"] = host // also right for IPv6 ("[::1]:80")
+	} else {
+		tx.single["REMOTE_ADDR"] = r.RemoteAddr
+	}
 	tx.single["REQBODY_ERROR"] = "0"
 	tx.single["ARGS_COMBINED_SIZE"] = "0"
 

@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"sync"
 	"context"
 	"encoding/base64"
 	"errors"
@@ -260,5 +261,47 @@ func TestTooManyWrongCodes(t *testing.T) {
 	code, _ := TOTPCode(demoSecret, time.Now())
 	if _, err := svc.VerifyMFA(ctx, res.MFAToken, code); !errors.Is(err, ErrTooManyAttempts) {
 		t.Fatalf("after %d wrong codes even the right one must be refused, got %v", maxMFAAttempts, err)
+	}
+}
+
+// An MFA token works once, even with a later (unused) code.
+func TestMFATokenSingleUse(t *testing.T) {
+	ctx := context.Background()
+	svc := newService(t, NewMemoryStore())
+	res, _ := svc.Login(ctx, "admin", "Admin#2026")
+	code, _ := TOTPCode(demoSecret, time.Now())
+	if _, err := svc.VerifyMFA(ctx, res.MFAToken, code); err != nil {
+		t.Fatal(err)
+	}
+	later := time.Now().Add(30 * time.Second)
+	svc.now = func() time.Time { return later }
+	next, _ := TOTPCode(demoSecret, later)
+	if _, err := svc.VerifyMFA(ctx, res.MFAToken, next); !errors.Is(err, ErrTokenRevoked) {
+		t.Fatalf("used MFA token must be refused, got %v", err)
+	}
+}
+
+// Codes sent in parallel count against the same limit.
+func TestParallelWrongCodes(t *testing.T) {
+	ctx := context.Background()
+	svc := newService(t, NewMemoryStore())
+	res, _ := svc.Login(ctx, "admin", "Admin#2026")
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	tried := 0
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if _, err := svc.VerifyMFA(ctx, res.MFAToken, "000000"); errors.Is(err, ErrBadCode) {
+				mu.Lock()
+				tried++
+				mu.Unlock()
+			}
+		}()
+	}
+	wg.Wait()
+	if tried > maxMFAAttempts {
+		t.Fatalf("%d codes were checked, limit is %d", tried, maxMFAAttempts)
 	}
 }

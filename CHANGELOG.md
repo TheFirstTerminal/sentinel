@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+- **Fewer false alarms on real traffic** (open-appsec dataset, same attacks blocked):
+  - the ML model no longer scores cookies (analytics cookies hold encoded JSON it mistook for injections); the rules still check them;
+  - a Core Rule Set match in a cookie blocks only if the ML model agrees (Akamai, Mixpanel and consent cookies tripped CRS command and SQL rules);
+  - `text/plain` request bodies (`navigator.sendBeacon`, analytics) and CSP reports are allowed content types.
+- **Security fixes**:
+  - a 2FA login token now works only once (it was revoked but the revocation was not checked);
+  - wrong 2FA codes sent in parallel all count against the limit of 5;
+  - two admins demoting each other at once can no longer leave no admin;
+  - with `TRUST_PROXY_HEADERS=true`, an `X-Forwarded-For` that is not an IP is ignored;
+  - dashboard changes made with a login cookie (Pro single sign-on) must come from the dashboard's own page.
+- The protected app gets the client IP Sentinel worked out in `X-Forwarded-For` (behind a load balancer it got the balancer's); IPv6 client addresses reach CRS correctly.
+
 ## 0.16.0 · 2026-11-18
 - **Better detection** (GoTestWAF: attacks blocked 51% → 85%, normal requests allowed 96% → 95%; ModSecurity + CRS on the same test: 49% / 91%):
   - values that are base64 for readable text are checked decoded, multipart form fields one by one, overlong UTF-8 (`%C0%AE`) is undone;

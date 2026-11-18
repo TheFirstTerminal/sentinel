@@ -158,6 +158,26 @@ func BenignBySecondOpinion(d waf.Decision, threshold int, opinion SecondOpinion)
 	return true
 }
 
+// benignCookies is true when the request is an attack only because of Core
+// Rule Set matches in cookies that the ML model doubts. Tracking cookies
+// (Akamai, Mixpanel, consent managers) hold JSON, "~" and "|" that CRS
+// reads as commands or SQL: on real browser traffic this was a third of all
+// false alarms, and no attack in the same test relied on it.
+func benignCookies(engine *waf.Engine, d waf.Decision, opinion SecondOpinion) bool {
+	if opinion == nil || !d.Attack {
+		return false
+	}
+	rest := engine.Without(d, func(m waf.Match) bool {
+		return m.Target == string(waf.TargetCookies) && strings.HasPrefix(m.RuleID, "CRS-") &&
+			m.Excerpt != "" && len(m.Excerpt) <= 2000 && opinion(m.Excerpt) < cookieDoubt
+	})
+	return !rest.Attack
+}
+
+// cookieDoubt: a CRS match in a cookie counts only if the model gives it at
+// least this probability.
+const cookieDoubt = 0.5
+
 // WAFWithSecondOpinion is WAF with the ML model as a second opinion on
 // borderline Core Rule Set detections (opinion nil = off).
 func WAFWithSecondOpinion(engine *waf.Engine, mode string, maxBody int64, opinion SecondOpinion, rec Recorder, log *slog.Logger) func(http.Handler) http.Handler {
@@ -176,7 +196,8 @@ func WAFWithSecondOpinion(engine *waf.Engine, mode string, maxBody int64, opinio
 					return Exclusions.ExcludedOn(info.Site, m.RuleID, r.Method, r.URL.Path, fieldName(m))
 				})
 			}
-			secondOpinion := BenignBySecondOpinion(decision, engine.Threshold(), opinion)
+			secondOpinion := BenignBySecondOpinion(decision, engine.Threshold(), opinion) ||
+				benignCookies(engine, decision, opinion)
 			if len(decision.Matches) > 0 {
 				action := "allowed"
 				if decision.Attack {
@@ -363,6 +384,9 @@ func clientIP(r *http.Request, trust ProxyTrust) string {
 		return peer
 	}
 	if trust.All {
+		if _, err := netip.ParseAddr(hops[0]); err != nil {
+			return peer // not an IP: don't log or ban whatever the client wrote
+		}
 		return hops[0]
 	}
 	if !trust.trusts(peer) {

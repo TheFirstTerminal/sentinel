@@ -7,6 +7,7 @@
 package dashboard
 
 import (
+	"net/url"
 	"sentinel/gateway/internal/exclude"
 
 	_ "embed"
@@ -162,6 +163,13 @@ func (d *Dashboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case !auth.IsDashboardRole(u.Role) || !u.MFA:
 		jsonError(w, http.StatusForbidden, "the dashboard is for admins, operators and viewers who passed 2FA", info.ID)
 		info.SetOutcome(reqctx.Outcome{Kind: "denied", Reason: "dashboard needs a dashboard role + 2FA", Rule: "dashboard"})
+		return
+	}
+	// Logged in by a cookie (no Authorization header): a change must come
+	// from the dashboard's own page, not a form on another site (CSRF).
+	if r.Method != http.MethodGet && len(auth.TokenSources) > 0 && r.Header.Get("Authorization") == "" && !sameOrigin(r) {
+		jsonError(w, http.StatusForbidden, "request from another site refused", info.ID)
+		info.SetOutcome(reqctx.Outcome{Kind: "denied", Reason: "dashboard change from another origin", Rule: "dashboard"})
 		return
 	}
 	path := strings.TrimPrefix(r.URL.Path, APIPrefix)
@@ -502,4 +510,18 @@ func neededRole(path, method string) string {
 	default:
 		return "admin" // sites, alerts, accounts, and anything new
 	}
+}
+
+// sameOrigin reports whether the request's Origin (or, without one, its
+// Referer) is this host.
+func sameOrigin(r *http.Request) bool {
+	o := r.Header.Get("Origin")
+	if o == "" {
+		o = r.Header.Get("Referer")
+	}
+	if o == "" {
+		return false
+	}
+	u, err := url.Parse(o)
+	return err == nil && strings.EqualFold(u.Host, r.Host)
 }
