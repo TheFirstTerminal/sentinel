@@ -20,11 +20,7 @@ func flag2Delimiter(flag int) byte {
 //		   "   \\"	" two backslash = not escaped!
 //	    "  \\\"	" three backslash = escaped!
 func isBackslashEscaped(str string) bool {
-	if strings.IndexByte(str, '\\') == -1 {
-		return false
-	}
-
-	var count = 0
+	count := 0
 	for i := len(str) - 1; i >= 0; i-- {
 		if str[i] == '\\' {
 			count++
@@ -58,6 +54,12 @@ func isByteWhite(ch byte) bool {
 // regexp.match(str, "[ABC]*")
 func strLenSpn(s string, length int, accept string) int {
 	for i := 0; i < length; i++ {
+		if s[i] == 0 {
+			// C's strchr(accept, ch) also matches the NUL terminating
+			// `accept`, so a NUL byte belongs to every accept set and does
+			// not end the span: "0x<NUL>1" stays one hex number.
+			continue
+		}
 		if strings.IndexByte(accept, s[i]) == -1 {
 			return i
 		}
@@ -68,7 +70,9 @@ func strLenSpn(s string, length int, accept string) int {
 
 func strLenCSpn(s string, length int, accept []byte) int {
 	for i := 0; i < length; i++ {
-		if accept[s[i]] == 1 {
+		if s[i] == 0 || accept[s[i]] == 1 {
+			// Same strchr semantics, from the rejecting side: a NUL byte
+			// ends every complement span, spelled out in the table or not.
 			return i
 		}
 	}
@@ -107,12 +111,20 @@ func isMysqlComment(s string, pos int) bool {
 	return true
 }
 
-func toUpperCmp(a, b string) bool {
-	return a == strings.ToUpper(b)
-}
-
-func isKeyword(key string) byte {
-	return searchKeyword(key, sqlKeywords)
+func toUpperCmp(expectedUpper, s string) bool {
+	if len(expectedUpper) != len(s) {
+		return false
+	}
+	for i := 0; i < len(expectedUpper); i++ {
+		c := s[i]
+		if c >= 'a' && c <= 'z' {
+			c -= 0x20
+		}
+		if expectedUpper[i] != c {
+			return false
+		}
+	}
+	return true
 }
 
 func searchKeyword(key string, keywords map[string]byte) byte {
