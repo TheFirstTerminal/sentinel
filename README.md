@@ -2,8 +2,8 @@
 
 **A security gateway for web apps, APIs and AI endpoints that explains every decision.**
 
-[![CI](https://github.com/tsxmamii/sentinel/actions/workflows/ci.yml/badge.svg)](https://github.com/tsxmamii/sentinel/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/tsxmamii/sentinel)](https://github.com/tsxmamii/sentinel/releases)
+[![CI](https://github.com/TheFirstTerminal/sentinel/actions/workflows/ci.yml/badge.svg)](https://github.com/TheFirstTerminal/sentinel/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/TheFirstTerminal/sentinel)](https://github.com/TheFirstTerminal/sentinel/releases)
 [![License: PolyForm Shield](https://img.shields.io/badge/license-PolyForm%20Shield%201.0.0-blue)](LICENSE.md)
 
 Sentinel sits in front of your app as a reverse proxy and checks every request
@@ -84,7 +84,7 @@ Put Sentinel in front of an app running on port 3000 of your machine:
 docker run --rm -it -p 8080:8080 -v sentinel-data:/var/lib/sentinel \
   -e UPSTREAM_URL=http://host.docker.internal:3000 \
   --add-host=host.docker.internal:host-gateway \
-  ghcr.io/tsxmamii/sentinel
+  ghcr.io/thefirstterminal/sentinel
 ```
 
 Open http://localhost:8080 as usual. Now send an attack and watch Sentinel's
@@ -117,7 +117,7 @@ key are kept in the `sentinel-data` volume, so they survive restarts.
 ### Linux server (one line)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/tsxmamii/sentinel/main/deploy/install.sh | sudo UPSTREAM=http://localhost:3000 sh
+curl -fsSL https://raw.githubusercontent.com/TheFirstTerminal/sentinel/main/deploy/install.sh | sudo UPSTREAM=http://localhost:3000 sh
 ```
 
 It installs the latest release as a systemd service, after checking its
@@ -129,9 +129,9 @@ create the admin account. Run it again to update. Config:
 ### Packages
 
 - **Debian/Ubuntu:** download `sentinel_<version>_amd64.deb` (or `arm64`) from the
-  [releases](https://github.com/tsxmamii/sentinel/releases), then `sudo apt install ./sentinel_*.deb`
+  [releases](https://github.com/TheFirstTerminal/sentinel/releases), then `sudo apt install ./sentinel_*.deb`
 - **Fedora/RHEL/Rocky:** `sudo dnf install ./sentinel-*.rpm`
-- **macOS/Linux with Homebrew:** `brew tap tsxmamii/sentinel https://github.com/tsxmamii/sentinel && brew install sentinel`
+- **macOS/Linux with Homebrew:** `brew tap thefirstterminal/sentinel https://github.com/TheFirstTerminal/sentinel && brew install sentinel`
 
 The packages install a `sentinel` systemd service and `/etc/sentinel/sentinel.yaml`;
 set `upstream:` in it, then `sudo systemctl start sentinel`.
@@ -139,7 +139,7 @@ set `upstream:` in it, then `sudo systemctl start sentinel`.
 ### Binary
 
 Download a binary for Linux, macOS or Windows from the
-[releases](https://github.com/tsxmamii/sentinel/releases), then:
+[releases](https://github.com/TheFirstTerminal/sentinel/releases), then:
 
 ```bash
 sentinel init            # writes a commented sentinel.yaml
@@ -248,7 +248,7 @@ publishes binaries and a multi-arch image ([`release.yml`](.github/workflows/rel
 
 ## Getting help
 
-- Questions, bugs and false alarms: [GitHub issues](https://github.com/tsxmamii/sentinel/issues/new/choose).
+- Questions, bugs and false alarms: [GitHub issues](https://github.com/TheFirstTerminal/sentinel/issues/new/choose).
 - Security problems: privately, as described in [`SECURITY.md`](SECURITY.md).
 - Code review is welcome; code contributions are not accepted: [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
@@ -262,7 +262,7 @@ Microsoft, Okta, Keycloak or any OpenID Connect provider), logins with 2FA,
 access rules by role and department, risk-based step-up, mTLS for services
 and a tamper-evident audit log, with email support. **$29 per server a
 month** ($19 for the first 50 customers), no per-user charge.
-[Free vs Pro](https://tsxmamii.github.io/sentinel/pro.html).
+[Free vs Pro](https://sentinel.tft.markets/pro.html).
 
 ## License
 

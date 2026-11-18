@@ -40,6 +40,6 @@ key is checked offline.
 
 ## Getting Pro
 
-Email **[tft.markets.support@gmail.com](mailto:tft.markets.support@gmail.com)**
+Email **[support@tft.markets](mailto:support@tft.markets)**
 with your company name and how many servers you need. You'll get an
 invoice, then a license key and access to the Pro image.

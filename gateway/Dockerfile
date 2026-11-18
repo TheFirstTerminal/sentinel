@@ -23,7 +23,7 @@ RUN apk add --no-cache git \
 FROM gcr.io/distroless/static-debian12:nonroot
 ARG VERSION=dev
 ARG DESCRIPTION="Security gateway for web apps, APIs and AI endpoints: WAF + OWASP CRS + ML"
-ARG SOURCE="https://github.com/tsxmamii/sentinel"
+ARG SOURCE="https://github.com/TheFirstTerminal/sentinel"
 ARG LICENSE="LicenseRef-PolyForm-Shield-1.0.0"
 LABEL org.opencontainers.image.title="Sentinel" \
       org.opencontainers.image.description="${DESCRIPTION}" \

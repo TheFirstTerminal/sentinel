@@ -1,7 +1,7 @@
 #!/bin/sh
 # Sentinel installer for Linux (systemd), no Docker needed.
 #
-#   curl -fsSL https://raw.githubusercontent.com/tsxmamii/sentinel/main/deploy/install.sh | sudo sh
+#   curl -fsSL https://raw.githubusercontent.com/TheFirstTerminal/sentinel/main/deploy/install.sh | sudo sh
 #
 # Options (environment variables, e.g. `| sudo UPSTREAM=http://localhost:3000 sh`):
 #   UPSTREAM          your app, written into a new config file (default http://localhost:3000)
@@ -17,7 +17,7 @@
 # Copyright (c) 2026 Saif Zahid. Licensed under PolyForm Shield 1.0.0.
 set -eu
 
-REPO=tsxmamii/sentinel
+REPO=TheFirstTerminal/sentinel
 BIN=/usr/local/bin/sentinel
 CONF_DIR=/etc/sentinel
 DATA_DIR=/var/lib/sentinel

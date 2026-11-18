@@ -6,7 +6,7 @@ at risk. Thank you for reporting one privately.
 ## Reporting a vulnerability
 
 **Please don't open a public issue.** Use GitHub's private reporting
-instead: on the [Security tab](https://github.com/tsxmamii/sentinel/security),
+instead: on the [Security tab](https://github.com/TheFirstTerminal/sentinel/security),
 choose **Report a vulnerability**. Only the maintainer can see the report.
 
 Useful to include:

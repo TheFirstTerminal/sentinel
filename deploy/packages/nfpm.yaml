@@ -5,7 +5,7 @@ platform: linux
 version: ${VERSION}
 maintainer: Saif Zahid
 description: Security gateway for web apps, APIs and AI endpoints that explains every decision.
-homepage: https://github.com/tsxmamii/sentinel
+homepage: https://github.com/TheFirstTerminal/sentinel
 license: PolyForm-Shield-1.0.0
 contents:
   - src: build/sentinel   # the release workflow copies the binary here

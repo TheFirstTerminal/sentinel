@@ -4,14 +4,14 @@
 set -eu
 v=$1 sums=$2
 sha() { grep " sentinel-$v-$1\$" "$sums" | cut -d' ' -f1; }
-base="https://github.com/tsxmamii/sentinel/releases/download/v$v"
+base="https://github.com/TheFirstTerminal/sentinel/releases/download/v$v"
 cat <<EOF
 # Homebrew formula for Sentinel, updated by the release workflow.
-#   brew tap tsxmamii/sentinel https://github.com/tsxmamii/sentinel
+#   brew tap thefirstterminal/sentinel https://github.com/TheFirstTerminal/sentinel
 #   brew install sentinel
 class Sentinel < Formula
   desc "Security gateway for web apps, APIs and AI endpoints that explains every decision"
-  homepage "https://github.com/tsxmamii/sentinel"
+  homepage "https://github.com/TheFirstTerminal/sentinel"
   version "$v"
   license :cannot_represent # PolyForm Shield 1.0.0
 

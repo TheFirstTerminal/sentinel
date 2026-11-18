@@ -10,7 +10,7 @@
 
 services:
   sentinel:
-    image: ghcr.io/tsxmamii/sentinel:latest
+    image: ghcr.io/thefirstterminal/sentinel:latest
     ports:
       - "80:8080"                    # HTTP: redirects to HTTPS, answers Let's Encrypt
       - "443:8443"

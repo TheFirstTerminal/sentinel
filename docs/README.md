@@ -8,10 +8,10 @@ it would block before it blocks anything.
 
 ![The dashboard](dashboard.png)
 
-**Try it:** `docker run --rm -it -p 8080:8080 -v sentinel-data:/var/lib/sentinel -e UPSTREAM_URL=http://host.docker.internal:3000 --add-host=host.docker.internal:host-gateway ghcr.io/tsxmamii/sentinel`,
+**Try it:** `docker run --rm -it -p 8080:8080 -v sentinel-data:/var/lib/sentinel -e UPSTREAM_URL=http://host.docker.internal:3000 --add-host=host.docker.internal:host-gateway ghcr.io/thefirstterminal/sentinel`,
 then open the `FIRST RUN` link it prints. On a Linux server:
-`curl -fsSL https://raw.githubusercontent.com/tsxmamii/sentinel/main/deploy/install.sh | sudo sh`.
-More in the [README on GitHub](https://github.com/tsxmamii/sentinel#quickstart).
+`curl -fsSL https://raw.githubusercontent.com/TheFirstTerminal/sentinel/main/deploy/install.sh | sudo sh`.
+More in the [README on GitHub](https://github.com/TheFirstTerminal/sentinel#quickstart).
 
 The guide for each version lives here, next to its code, and is updated
 with every release.
@@ -35,5 +35,5 @@ bash lab/update.sh
 ```
 
 Pulls the latest version and restarts the lab. See [`CHANGELOG.md`](../CHANGELOG.md)
-for what changed. Questions and bug reports: [GitHub issues](https://github.com/tsxmamii/sentinel/issues).
+for what changed. Questions and bug reports: [GitHub issues](https://github.com/TheFirstTerminal/sentinel/issues).
 Security problems: see [`SECURITY.md`](../SECURITY.md), not a public issue.

@@ -15,7 +15,7 @@ step() { printf "\n%s\n" "${CYAN}▶ $1${RESET}"; }
 fail() {
   printf "\n%s\n" "${RED}✗ $1${RESET}"
   [ -n "$2" ] && printf "  %s\n" "$2"
-  printf "  Still stuck? Open an issue with a screenshot of this window: https://github.com/tsxmamii/sentinel/issues\n\n"
+  printf "  Still stuck? Open an issue with a screenshot of this window: https://github.com/TheFirstTerminal/sentinel/issues\n\n"
   read -r -p "  Press Enter to close." _
   exit 1
 }

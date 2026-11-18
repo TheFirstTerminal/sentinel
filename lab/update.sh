@@ -14,7 +14,7 @@ echo "Getting the latest version from GitHub..."
 if ! git pull --ff-only; then
   echo
   echo "${RED}Could not update.${RESET} Usually a project file was changed by accident."
-  echo "Run  git status  to see which files changed, or open an issue: https://github.com/tsxmamii/sentinel/issues"
+  echo "Run  git status  to see which files changed, or open an issue: https://github.com/TheFirstTerminal/sentinel/issues"
   exit 1
 fi
 

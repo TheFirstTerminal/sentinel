@@ -5,4 +5,4 @@ type: application
 version: 0.12.0
 appVersion: "0.12.0"
 keywords: [waf, security, gateway, owasp, crs]
-home: https://github.com/tsxmamii/sentinel
+home: https://github.com/TheFirstTerminal/sentinel

@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Security problems (a way past Sentinel's checks, a crash an attacker could cause...) go through [SECURITY.md](https://github.com/tsxmamii/sentinel/blob/main/SECURITY.md), not here.
+        Security problems (a way past Sentinel's checks, a crash an attacker could cause...) go through [SECURITY.md](https://github.com/TheFirstTerminal/sentinel/blob/main/SECURITY.md), not here.
   - type: input
     id: version
     attributes:

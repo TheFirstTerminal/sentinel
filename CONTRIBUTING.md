@@ -8,7 +8,7 @@ What helps, and is very welcome:
 
 ## Reporting bugs and false alarms
 
-[Open an issue](https://github.com/tsxmamii/sentinel/issues/new/choose).
+[Open an issue](https://github.com/TheFirstTerminal/sentinel/issues/new/choose).
 False alarms (normal requests that Sentinel refuses) are especially useful:
 include the log line, which shows the rule, the field and the matched text.
 Remove anything private (tokens, cookies, personal data) first.

@@ -882,7 +882,7 @@ async function loadInfo() {
     } else {
       ed.textContent = "Free · what Pro adds →";
       ed.title = "Single sign-on, access rules, risk-based 2FA, mTLS, a tamper-evident audit log";
-      ed.href = "https://tsxmamii.github.io/sentinel/pro.html";
+      ed.href = "https://sentinel.tft.markets/pro.html";
       ed.className = "pill";
     }
     const rows = [["Mode", i.mode === "monitor" ? "MONITOR: logging only, nothing is blocked" : "protect"], ["WAF", i.waf_mode + ", " + i.waf_rules + " rules"], ["Rate limits", (i.rate_limits || []).join("  ") || "off"], ["Shared store", i.store],

@@ -21,7 +21,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     env:
-      IMAGE: ghcr.io/${{ github.repository }}
+      IMAGE: ghcr.io/thefirstterminal/sentinel # registry names are lowercase
       PUBLIC: ${{ !github.event.repository.private }}
     steps:
       - uses: actions/checkout@v4
@@ -124,7 +124,7 @@ jobs:
             What changed: see CHANGELOG.md. How to verify: docs/supply-chain.md.
 
       - name: Homebrew formula (public repository only)
-        if: github.repository == 'tsxmamii/sentinel'
+        if: github.repository == 'TheFirstTerminal/sentinel'
         run: |
           git fetch -q origin main && git checkout -q -B main origin/main
           mkdir -p Formula

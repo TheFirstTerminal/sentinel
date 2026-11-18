@@ -2,7 +2,7 @@
 # Sentinel, and Sentinel at your app.
 
 image:
-  repository: ghcr.io/tsxmamii/sentinel
+  repository: ghcr.io/thefirstterminal/sentinel
   tag: ""            # defaults to the chart's appVersion
   pullPolicy: IfNotPresent
 
