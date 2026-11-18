@@ -40,6 +40,35 @@ The ML model was not retrained on CSIC: mixing it in made the model worse on
 real attack syntax. Reproduce with
 `go run ./cmd/csiceval -csic <folder with the three CSIC files> -crs <coreruleset/rules>`.
 
+## 1c. Against other self-hosted WAFs (open-appsec dataset)
+
+The open-source [WAF comparison project](https://github.com/openappsec/waf-comparison-project)
+sends real-world normal traffic and public attack payloads to each WAF and records
+what is blocked. Run on 2026-11-18 in fast mode (a fixed ~15% sample), each WAF in
+Docker in front of the same app, default settings, blocking mode. Sentinel 0.16.0
+rules with the 0.15 ML model.
+
+| WAF | Attacks blocked | Normal requests allowed | Balanced accuracy |
+|---|---|---|---|
+| **Sentinel** | 85.3% | **85.4%** | **85.4%** |
+| ModSecurity + OWASP CRS (PL1) | 90.3% | 75.3% | 82.8% |
+| BunkerWeb | 90.3% | 72.6% | 81.5% |
+
+Sentinel blocks a little less and wrongly blocks far less: about 1 normal
+request in 7, against 1 in 4 for the others. The normal traffic in this dataset
+includes many unusual requests, so all three numbers are lower than on a
+typical site; start in monitor mode and check the dashboard before blocking.
+
+### GoTestWAF
+
+[GoTestWAF](https://github.com/wallarm/gotestwaf), same setup:
+
+| WAF | Attacks blocked | Normal requests allowed |
+|---|---|---|
+| Sentinel 0.15.0 | 51.3% | 95.7% |
+| **Sentinel 0.16.0** | **84.9%** | 95.0% |
+| ModSecurity + OWASP CRS (PL1) | 48.6% | 90.8% |
+
 ## 2. Speed
 
 A real HTTP server (the "app", answering with a small JSON document) and Sentinel in front of it, both on this machine. Clients send a mix of ordinary requests: a search with browser headers and cookies, a JSON POST, and a static file. Every check that applies runs (rate-limit counting, WAF, ML, response leak checks); logs go nowhere.

@@ -1,11 +1,12 @@
 # Changelog
 
-## Unreleased
+## 0.16.0 · 2026-11-18
 - **Better detection** (GoTestWAF: attacks blocked 51% → 85%, normal requests allowed 96% → 95%; ModSecurity + CRS on the same test: 49% / 91%):
   - values that are base64 for readable text are checked decoded, multipart form fields one by one, overlong UTF-8 (`%C0%AE`) is undone;
   - new rules: NoSQL commands, LDAP filters, IMAP/SMTP commands, out-of-band callback hosts, git/ssh option injection, `#{}` templates, Windows admin shares, UTF-7 XML, JavaScript call probes (`confirm.call(…)`, `alert?.(…)`);
   - the `javascript:` rule no longer fires on prose ("JavaScript: Basics").
 - **ML model retrained** with public payloads (PayloadsAllTheThings, MIT) and technical prose as normal input: 96.7% of 1,153 held-out public payloads caught, no normal input wrongly blocked.
+- **Compared with other self-hosted WAFs** on the open-appsec dataset (docs/benchmarks.md): Sentinel 85.4% balanced accuracy, ModSecurity + CRS 82.8%, BunkerWeb 81.5%; Sentinel wrongly blocks 14.6% of normal requests, the others 25-27%.
 - **Dashboard**: the edition in the header; Free links to what Pro adds.
 
 ## 0.15.0 · 2026-11-17
