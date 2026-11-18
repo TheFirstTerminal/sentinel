@@ -8,7 +8,12 @@
 package waf
 
 import (
+	"bytes"
+	"encoding/base64"
+	"io"
+	"mime/multipart"
 	"sync"
+	"unicode/utf8"
 
 	"sentinel/gateway/internal/prefilter"
 
@@ -249,6 +254,13 @@ func ExtractInputs(r *http.Request, body []byte) []Input {
 
 	path := r.URL.EscapedPath()
 	inputs = append(inputs, Input{Target: TargetPath, Value: path})
+	for _, seg := range strings.Split(path, "/") {
+		if dec, err := url.PathUnescape(seg); err == nil {
+			if text, ok := Base64Text(dec); ok {
+				inputs = append(inputs, Input{Target: TargetPath, Field: "path (base64)", Value: text})
+			}
+		}
+	}
 
 	for key, values := range r.URL.Query() {
 		inputs = append(inputs, Input{Target: TargetQuery, Field: key, Value: key, Name: true})
@@ -284,11 +296,63 @@ func ExtractInputs(r *http.Request, body []byte) []Input {
 	if len(body) > 0 {
 		inputs = append(inputs, bodyInputs(r.Header.Get("Content-Type"), body)...)
 	}
+	// A value that is base64 for readable text is checked decoded too:
+	// apps that decode a parameter would otherwise get an attack no rule saw.
+	for _, in := range inputs {
+		if in.Name || in.Field == "(raw)" {
+			continue
+		}
+		if text, ok := Base64Text(in.Value); ok {
+			inputs = append(inputs, Input{Target: in.Target, Field: in.Field + " (base64)", Value: text})
+		}
+	}
 	return inputs
 }
 
+// Base64Text decodes a value that is base64 (standard or URL alphabet,
+// with or without padding) of readable text with some punctuation. Tokens,
+// IDs and binary data don't qualify, so they aren't checked twice.
+func Base64Text(v string) (string, bool) {
+	v = strings.TrimSpace(v)
+	if len(v) < 12 || len(v) > 64<<10 {
+		return "", false
+	}
+	for i := 0; i < len(v); i++ {
+		c := v[i]
+		if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '+' || c == '/' || c == '-' || c == '_' || c == '=') {
+			return "", false
+		}
+	}
+	raw := strings.TrimRight(v, "=")
+	var b []byte
+	var err error
+	for _, enc := range []*base64.Encoding{base64.RawStdEncoding, base64.RawURLEncoding} {
+		if b, err = enc.DecodeString(raw); err == nil {
+			break
+		}
+	}
+	if err != nil || !utf8.Valid(b) {
+		return "", false
+	}
+	printable, punct := 0, 0
+	for _, r := range string(b) {
+		switch {
+		case r == '\n' || r == '\r' || r == '\t' || r >= 0x20 && r != 0x7f:
+			printable++
+		}
+		if strings.ContainsRune(`<>'"();=/\{}$|&*:%`, r) {
+			punct++
+		}
+	}
+	n := utf8.RuneCount(b)
+	if n == 0 || printable*100 < n*97 || punct == 0 {
+		return "", false
+	}
+	return string(b), true
+}
+
 func bodyInputs(contentType string, body []byte) []Input {
-	mediaType, _, _ := mime.ParseMediaType(contentType)
+	mediaType, params, _ := mime.ParseMediaType(contentType)
 
 	switch {
 	case mediaType == "application/json" || strings.HasSuffix(mediaType, "+json"):
@@ -302,6 +366,26 @@ func bodyInputs(contentType string, body []byte) []Input {
 			walkJSON("", v, &out)
 			return out
 		}
+	case mediaType == "multipart/form-data" && params["boundary"] != "":
+		// Each field is checked on its own (and file names), plus the raw
+		// body as before: a field may hold an encoded attack.
+		out := []Input{{Target: TargetBody, Field: "(raw)", Value: string(body)}}
+		mr := multipart.NewReader(bytes.NewReader(body), params["boundary"])
+		for i := 0; i < MaxInputs; i++ {
+			part, err := mr.NextPart()
+			if err != nil {
+				break
+			}
+			name := part.FormName()
+			if fn := part.FileName(); fn != "" {
+				out = append(out, Input{Target: TargetBody, Field: name + " (file name)", Value: fn})
+			}
+			value, _ := io.ReadAll(io.LimitReader(part, int64(MaxFieldBytes)+1))
+			if part.FileName() == "" || utf8.Valid(value) {
+				out = append(out, Input{Target: TargetBody, Field: name, Value: string(value)})
+			}
+		}
+		return out
 	case mediaType == "application/x-www-form-urlencoded":
 		if form, err := url.ParseQuery(string(body)); err == nil {
 			var out []Input

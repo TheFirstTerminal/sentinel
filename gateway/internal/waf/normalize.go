@@ -32,6 +32,7 @@ func Normalize(s string) string {
 		}
 		s = decoded
 	}
+	s = overlong.Replace(s)
 	s = html.UnescapeString(s)
 	s = foldWidth(s)
 	// A null byte (%00) is used to cut a filename short ("secret.bak%00.md"
@@ -45,6 +46,14 @@ func Normalize(s string) string {
 	s = newlines.ReplaceAllString(s, "\n") // kept: a newline separates shell commands
 	return strings.TrimSpace(s)
 }
+
+// overlong turns "overlong" UTF-8 forms of . / and \ (%C0%AE, %C0%AF,
+// %E0%80%AE...) back into the characters: old or lenient decoders read
+// %C0%AE%C0%AE%C0%AF as ../, so path traversal hides in them.
+var overlong = strings.NewReplacer(
+	"\xc0\xae", ".", "\xc0\xaf", "/", "\xc1\x9c", `\`,
+	"\xe0\x80\xae", ".", "\xe0\x80\xaf", "/", "\xe0\x81\x9c", `\`,
+)
 
 // foldWidth maps fullwidth ASCII (U+FF01-U+FF5E) and the ideographic space
 // to their ASCII forms.

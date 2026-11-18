@@ -172,7 +172,7 @@
   },
   {
     "id": "XSS-003",
-    "name": "javascript: URI",
+    "name": "javascript: URI (javascript:alert(1))",
     "category": "xss",
     "severity": 5,
     "targets": [
@@ -181,7 +181,7 @@
       "cookies",
       "headers"
     ],
-    "pattern": "javascript\\s*:"
+    "pattern": "javascript\\s*:\\S"
   },
   {
     "id": "XSS-004",
@@ -359,5 +359,142 @@
       "cookies"
     ],
     "pattern": "[\\r\\n]\\s*(?:set-cookie|location|content-length|content-type|x-[a-z-]+|http/1\\.[01])\\s*:?"
+  },
+  {
+    "id": "XSS-006",
+    "name": "JavaScript call used to probe XSS (alert?.(1), confirm.call(null,1))",
+    "category": "xss",
+    "severity": 5,
+    "targets": [
+      "path",
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "\\b(?:alert|confirm|prompt|eval)(?:\\?\\.)?(?:\\.(?:call|apply|bind))?\\(|\\bdocument\\?\\.(?:cookie|domain)"
+  },
+  {
+    "id": "NOSQL-001",
+    "name": "MongoDB command or operator in input (db.users.insert(, $where)",
+    "category": "sqli",
+    "severity": 5,
+    "targets": [
+      "path",
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "\\bdb\\.[a-z_][a-z0-9_]*\\.(?:insert|insertone|insertmany|find|findone|update|updateone|remove|delete|deleteone|drop|aggregate|mapreduce)\\s*\\(|[\\\"']?\\$where[\\\"']?\\s*:"
+  },
+  {
+    "id": "LDAP-001",
+    "name": "LDAP filter injection ((&(uid=admin)(...)), *)(uid=*)",
+    "category": "injection",
+    "severity": 5,
+    "targets": [
+      "path",
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "\\(\\s*[&|!]\\s*\\(\\s*[a-z0-9_-]*\\s*[=~<>!(]|\\*\\s*\\)\\s*\\(\\s*[a-z0-9_-]+\\s*[=~<>]"
+  },
+  {
+    "id": "MAIL-001",
+    "name": "Mail protocol command injected after a newline (IMAP/SMTP)",
+    "category": "injection",
+    "severity": 5,
+    "targets": [
+      "path",
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "\\n\\s*(?:[a-z]\\d+\\s+(?:capability|login|fetch|select|examine|store|copy|append|list|logout|authenticate)\\b|(?:rcpt\\s+to|mail\\s+from)\\s*:)"
+  },
+  {
+    "id": "CMDI-003",
+    "name": "Out-of-band callback host (Burp Collaborator, interactsh, dnslog)",
+    "category": "rce",
+    "severity": 5,
+    "targets": [
+      "path",
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "\\b(?:burpcollaborator\\.net|oastify\\.com|interact\\.sh|oast\\.(?:fun|me|site|live|pro|online)|dnslog\\.cn|ceye\\.io)\\b"
+  },
+  {
+    "id": "CMDI-004",
+    "name": "Shell command chained with getent, host or dig",
+    "category": "rce",
+    "severity": 5,
+    "targets": [
+      "path",
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "(?:;|\\||&&|\\$\\(|`)\\s*(?:getent|host|dig|nslookup|base64|xargs|perl|python[0-9.]*|php|ruby)\\s+\\S"
+  },
+  {
+    "id": "CMDI-005",
+    "name": "Option injection into git or ssh (--exec=, --upload-pack=, -oProxyCommand)",
+    "category": "rce",
+    "severity": 5,
+    "targets": [
+      "path",
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "--(?:exec|upload-pack|receive-pack|output)=|-o\\s*proxycommand\\s*="
+  },
+  {
+    "id": "SSTI-003",
+    "name": "Template expression probe with #{...} (Ruby, Java EL)",
+    "category": "ssti",
+    "severity": 5,
+    "targets": [
+      "path",
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "#\\{\\s*\\d+\\s*[*+]\\s*\\d+\\s*\\}|\\*\\{\\s*\\d+\\s*[*+]\\s*\\d+\\s*\\}"
+  },
+  {
+    "id": "LFI-003",
+    "name": "Windows network path to an admin share (\\\\host\\c$)",
+    "category": "lfi",
+    "severity": 5,
+    "targets": [
+      "path",
+      "query",
+      "body",
+      "cookies"
+    ],
+    "pattern": "\\\\\\\\[a-z0-9._:-]+\\\\[a-z]\\$"
+  },
+  {
+    "id": "XXE-002",
+    "name": "XML declared as UTF-7 (hides markup from filters)",
+    "category": "xxe",
+    "severity": 5,
+    "targets": [
+      "path",
+      "body",
+      "query"
+    ],
+    "pattern": "<\\?xml[^>]{0,100}encoding\\s*=\\s*[\\\"']utf-7"
   }
 ]
