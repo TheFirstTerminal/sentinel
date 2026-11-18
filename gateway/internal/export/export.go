@@ -43,7 +43,7 @@ func severity(e events.Event) (syslog int, otelNum int, otelText string) {
 }
 
 func message(e events.Event) string {
-	msg := e.Outcome + " " + e.Method + " " + e.Path + " from " + e.ClientIP
+	msg := e.Outcome + " " + e.Method + " " + printable(e.Path) + " from " + e.ClientIP
 	if e.Rule != "" {
 		msg += " rule=" + e.Rule
 	}
@@ -51,6 +51,24 @@ func message(e events.Event) string {
 		msg += " reason=" + strconv.Quote(e.Reason)
 	}
 	return msg
+}
+
+// printable escapes control characters. A request path is the attacker's
+// text (a "%0a" in the URL decodes to a newline), and a log receiver that
+// splits on lines must not be fed a forged second event.
+func printable(v string) string {
+	if strings.IndexFunc(v, func(r rune) bool { return r < 0x20 || r == 0x7f }) < 0 {
+		return v
+	}
+	var b strings.Builder
+	for _, r := range v {
+		if r < 0x20 || r == 0x7f {
+			fmt.Fprintf(&b, `\x%02x`, r)
+			continue
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
 }
 
 // ---- syslog ---------------------------------------------------------------
@@ -103,7 +121,7 @@ func (s *Syslog) Format(e events.Event) []byte {
 		if v == "" {
 			return
 		}
-		v = strings.NewReplacer(`\`, `\\`, `"`, `\"`, `]`, `\]`).Replace(v)
+		v = strings.NewReplacer(`\`, `\\`, `"`, `\"`, `]`, `\]`).Replace(printable(v))
 		sd += " " + k + `="` + v + `"`
 	}
 	add("outcome", e.Outcome)

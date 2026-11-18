@@ -2,6 +2,12 @@
 
 ## Unreleased
 - **ML model trained on real browser traffic**: values from recorded browsing sessions on half the sites of the open-appsec dataset (Apache-2.0) are now part of the normal training data. On the other half, sites the model never saw, it wrongly flags 0.7% of normal requests instead of 3.0%. Public attack payloads it never saw: 94.8% caught (was 96.1%). Report: `docs/ml-report.md`; trainer flag `-traffic`.
+- **Security hardening**:
+  - alert webhooks can no longer reach link-local addresses (the cloud metadata service at 169.254.169.254) and don't follow redirects, so a stolen admin session can't use them to fetch cloud credentials;
+  - control characters in exported syslog events are escaped: a `%0a` in a URL can't forge a second event in a log system that splits lines;
+  - the metrics server has full read, write and idle timeouts.
+- XSS-003 (`javascript:` URLs) no longer checks cookies: Adobe Analytics' `s_sq` cookie records clicked `javascript:void(0)` links.
+- Fuzzing covers multipart bodies and base64-decoded values.
 - The ML middleware's choice of what to score is one function (`middleware.MLInputs`), shared with the trainer.
 
 ## 0.16.2 · 2026-11-18

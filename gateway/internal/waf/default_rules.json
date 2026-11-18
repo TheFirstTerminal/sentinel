@@ -178,7 +178,6 @@
     "targets": [
       "query",
       "body",
-      "cookies",
       "headers"
     ],
     "pattern": "javascript\\s*:\\S"

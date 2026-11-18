@@ -104,3 +104,28 @@ func TestGlobalCap(t *testing.T) {
 		t.Errorf("%d alerts allowed in a minute", len(a.sent))
 	}
 }
+
+func TestSafeClientRefusesMetadata(t *testing.T) {
+	c := SafeClient()
+	for _, u := range []string{"http://169.254.169.254/latest/meta-data/", "http://[fe80::1]/", "http://0.0.0.0/"} {
+		if res, err := c.Get(u); err == nil {
+			res.Body.Close()
+			t.Errorf("%s: must be refused", u)
+		}
+	}
+}
+
+func TestSafeClientNoRedirects(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "http://169.254.169.254/", http.StatusFound)
+	}))
+	defer srv.Close()
+	res, err := SafeClient().Get(srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusFound {
+		t.Fatalf("redirect was followed: %d", res.StatusCode)
+	}
+}

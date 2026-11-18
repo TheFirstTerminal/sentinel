@@ -304,7 +304,8 @@ func main() {
 		reg.Gauge("sentinel_exclusions", "Exclusions in force.", "", func() float64 { return float64(len(middleware.Exclusions.List())) })
 		mux := http.NewServeMux()
 		mux.Handle("/metrics", reg.Handler())
-		msrv := &http.Server{Addr: cfg.MetricsAddr, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
+		msrv := &http.Server{Addr: cfg.MetricsAddr, Handler: mux, ReadHeaderTimeout: 5 * time.Second,
+			ReadTimeout: 10 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 64 << 10}
 		go func() {
 			log.Info("metrics for Prometheus", "url", "http://"+cfg.MetricsAddr+"/metrics")
 			if err := msrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {

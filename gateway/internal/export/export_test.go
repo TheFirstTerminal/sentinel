@@ -146,3 +146,11 @@ func TestParse(t *testing.T) {
 		t.Errorf("endpoint %s", o.Endpoint)
 	}
 }
+
+func TestSyslogNoForgedLines(t *testing.T) {
+	s := &Syslog{}
+	line := string(s.Format(events.Event{Outcome: "blocked", Method: "GET", Path: "/x\n<13>1 forged event", ClientIP: "1.2.3.4"}))
+	if strings.ContainsAny(line, "\n\r") {
+		t.Fatalf("control characters reached the syslog line: %q", line)
+	}
+}

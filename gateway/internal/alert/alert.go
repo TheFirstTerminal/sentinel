@@ -13,10 +13,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"sentinel/gateway/internal/events"
@@ -82,7 +84,7 @@ func (a *Alerter) init() {
 		a.last = map[string]time.Time{}
 		a.hits = map[string][]time.Time{}
 		if a.Client == nil {
-			a.Client = &http.Client{Timeout: 5 * time.Second}
+			a.Client = SafeClient()
 		}
 		if a.Cooldown <= 0 {
 			a.Cooldown = 10 * time.Minute
@@ -265,4 +267,32 @@ func (a *Alerter) payload(m Message) ([]byte, string) {
 	}
 	b, _ := json.Marshal(v)
 	return b, "application/json"
+}
+
+// SafeClient is the HTTP client for webhooks. The URL is set on the
+// dashboard, so a stolen admin session must not turn Sentinel into a way to
+// reach the cloud metadata service (169.254.169.254, which hands out
+// credentials) or bounce through redirects: link-local and unspecified
+// addresses are refused when connecting, and redirects are not followed.
+// Private addresses stay allowed (a self-hosted Mattermost or ntfy).
+func SafeClient() *http.Client {
+	d := &net.Dialer{Timeout: 5 * time.Second, Control: func(network, address string, _ syscall.RawConn) error {
+		host, _, err := net.SplitHostPort(address)
+		if err != nil {
+			return err
+		}
+		if ip := net.ParseIP(host); ip == nil || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() || ip.IsMulticast() {
+			return fmt.Errorf("webhook address %s is not allowed (link-local or metadata)", host)
+		}
+		return nil
+	}}
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.DialContext = d.DialContext
+	return &http.Client{
+		Timeout:   5 * time.Second,
+		Transport: tr,
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
 }
