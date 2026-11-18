@@ -33,37 +33,9 @@ func ML(m *ml.Model, mode string, threshold float64, skip []string, maxBody int6
 			}
 			var worst waf.Input
 			best := 0.0
-			for _, in := range waf.ExtractInputs(r, body) {
-				// Names are left to the rules: the model scores what users
-				// type, and a field called "pwd" is not a shell command.
-				// Cookies are left to the rules too: browsers and analytics
-				// scripts fill them with encoded JSON the model mistakes for
-				// injections (half of all false alarms on real traffic).
-				if in.Target == waf.TargetPath || in.Target == waf.TargetCookies || in.Field == "(raw)" || in.Name || len(in.Value) < 3 {
-					continue
-				}
+			for _, in := range MLInputs(r, body) {
 				if Exclusions.ExcludedOn(reqctx.From(r.Context()).Site, "ML", r.Method, r.URL.Path, in.Field) {
 					continue
-				}
-				if in.Target == waf.TargetHeaders && strings.EqualFold(in.Field, "Content-Type") {
-					continue // checked by rules (Struts exploits); random boundaries confuse the model
-				}
-				if in.Target == waf.TargetHeaders && (strings.EqualFold(in.Field, "Referer") || strings.EqualFold(in.Field, "Origin")) {
-					// A URL the browser sets: "http://localhost/..." looks like
-					// SSRF to the model. Score only its query, where an
-					// injected payload would be.
-					u, err := url.Parse(in.Value)
-					if err != nil {
-						continue
-					}
-					q, err := url.QueryUnescape(u.RawQuery)
-					if err != nil {
-						q = u.RawQuery
-					}
-					if len(q) < 3 {
-						continue
-					}
-					in.Value = q
 				}
 				if p, part := m.ScoreText(in.Value); p > best {
 					best, worst = p, in
@@ -104,4 +76,42 @@ func cut(s string, n int) string {
 		return s[:n] + "..."
 	}
 	return s
+}
+
+// MLInputs are the values of a request the ML model scores: what users type
+// (query and body fields, most headers), not names, the path or cookies.
+// Shared with the trainer so it learns from exactly what the gateway asks.
+func MLInputs(r *http.Request, body []byte) []waf.Input {
+	var out []waf.Input
+	for _, in := range waf.ExtractInputs(r, body) {
+		// Names are left to the rules: the model scores what users type,
+		// and a field called "pwd" is not a shell command. Cookies are left
+		// to the rules too: browsers and analytics scripts fill them with
+		// encoded JSON the model mistakes for injections.
+		if in.Target == waf.TargetPath || in.Target == waf.TargetCookies || in.Field == "(raw)" || in.Name || len(in.Value) < 3 {
+			continue
+		}
+		if in.Target == waf.TargetHeaders && strings.EqualFold(in.Field, "Content-Type") {
+			continue // checked by rules (Struts exploits); random boundaries confuse the model
+		}
+		if in.Target == waf.TargetHeaders && (strings.EqualFold(in.Field, "Referer") || strings.EqualFold(in.Field, "Origin")) {
+			// A URL the browser sets: "http://localhost/..." looks like
+			// SSRF to the model. Score only its query, where an injected
+			// payload would be.
+			u, err := url.Parse(in.Value)
+			if err != nil {
+				continue
+			}
+			q, err := url.QueryUnescape(u.RawQuery)
+			if err != nil {
+				q = u.RawQuery
+			}
+			if len(q) < 3 {
+				continue
+			}
+			in.Value = q
+		}
+		out = append(out, in)
+	}
+	return out
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+- **ML model trained on real browser traffic**: values from recorded browsing sessions on half the sites of the open-appsec dataset (Apache-2.0) are now part of the normal training data. On the other half, sites the model never saw, it wrongly flags 0.7% of normal requests instead of 3.0%. Public attack payloads it never saw: 94.8% caught (was 96.1%). Report: `docs/ml-report.md`; trainer flag `-traffic`.
+- The ML middleware's choice of what to score is one function (`middleware.MLInputs`), shared with the trainer.
+
 ## 0.16.2 · 2026-11-18
 - **Sentinel moved to the TheFirstTerminal organization**: the repository is `github.com/TheFirstTerminal/sentinel` (old links redirect), the docs are at https://sentinel.tft.markets, the image is `ghcr.io/thefirstterminal/sentinel`, Homebrew is `brew tap thefirstterminal/sentinel https://github.com/TheFirstTerminal/sentinel`, and the contact address is support@tft.markets. Images up to 0.16.1 stay at `ghcr.io/tsxmamii/sentinel`.
 
