@@ -11,7 +11,6 @@
 package proxy
 
 import (
-	"sentinel/gateway/internal/reqctx"
 	"context"
 	"errors"
 	"fmt"
@@ -20,6 +19,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"sentinel/gateway/internal/reqctx"
 	"sort"
 	"strings"
 	"sync/atomic"

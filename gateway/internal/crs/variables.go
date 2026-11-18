@@ -1,7 +1,6 @@
 package crs
 
 import (
-	"net"
 	"bytes"
 	"encoding/json"
 	"encoding/xml"
@@ -9,6 +8,7 @@ import (
 	"io"
 	"mime"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"net/url"
 	"path"

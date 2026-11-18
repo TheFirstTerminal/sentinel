@@ -1,12 +1,12 @@
 package auth
 
 import (
-	"sync"
 	"context"
 	"encoding/base64"
 	"errors"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )

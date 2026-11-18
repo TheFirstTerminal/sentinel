@@ -323,7 +323,7 @@ var normals = map[string]func(g gen) string{
 		)
 	},
 	"socketio": func(g gen) string {
-		return g.pick("polling", "websocket", "4", "40", "2", "3", `42["notification received","`+g.pick(products...)+`"]`, `40{"sid":"`+fmt.Sprint(g.r.Int63())+`"}`, "1:EIO=4", "ok")
+		return g.pick("polling", "websocket", "4", "40", "2", "3", `42["notification received","`+g.pick(products...)+`"]`, `40{"sid":"`+fmt.Sprintf("%x", g.r.Int63())+`"}`, "1:EIO=4", "ok")
 	},
 	"payment": func(g gen) string {
 		return g.pick(fmt.Sprintf("4%015d", g.r.Int63n(1e15)), fmt.Sprintf("%02d/%02d", g.n(1, 12), g.n(26, 32)), fmt.Sprint(g.n(100, 999)), "VISA", "Mastercard", fmt.Sprintf("%d", g.n(1, 12)))

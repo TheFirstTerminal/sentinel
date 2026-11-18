@@ -259,7 +259,7 @@
       "cookies",
       "headers"
     ],
-    "pattern": "(?:;|\\||&&|\\$\\(|`)\\s*(?:cat|ls|id|whoami|uname|pwd|wget|curl|nc|ncat|bash|sh|ping|nslookup|powershell|cmd)\\b"
+    "pattern": "(?:;|\\||&&|\\$\\(|`)\\s*(?:cat|ls|id|whoami|uname|pwd|wget|curl|nc|ncat|bash|sh|ping|nslookup|powershell|cmd)(?:$|[\\s;|&<>'\"`)$])"
   },
   {
     "id": "CMDI-002",
