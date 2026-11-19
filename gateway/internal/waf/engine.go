@@ -119,11 +119,16 @@ func (e *Engine) Inspect(r *http.Request, body []byte) Decision {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 	inputs := ExtractInputs(r, body)
-	if len(inputs) > MaxInputs {
+	limit := MaxInputs
+	if mt, _, _ := mime.ParseMediaType(SingleContentType(r.Header.Get("Content-Type"))); mt == "application/json" || strings.HasSuffix(mt, "+json") {
+		limit = MaxJSONInputs
+	}
+	if len(inputs) > limit {
 		// Thousands of fields cost CPU in every check and are a known way to
-		// exhaust a WAF; no real form or API sends that many.
+		// exhaust a WAF (and to pollute parameters): no real form sends that
+		// many. JSON gets more room: analytics batches carry thousands.
 		return Decision{Score: 5, Attack: e.threshold <= 5, Matches: []Match{{RuleID: "BODY-002",
-			Name: fmt.Sprintf("more than %d parameters or fields", MaxInputs), Category: "protocol", Severity: 5,
+			Name: fmt.Sprintf("more than %d parameters or fields", limit), Category: "protocol", Severity: 5,
 			Target: TargetBody, Excerpt: fmt.Sprintf("%d inputs", len(inputs))}}}
 	}
 
@@ -136,6 +141,12 @@ func (e *Engine) Inspect(r *http.Request, body []byte) Decision {
 			d.Matches = append(d.Matches, Match{RuleID: "BODY-001", Name: fmt.Sprintf("JSON nested deeper than %d levels", MaxJSONDepth),
 				Category: "protocol", Severity: 5, Target: TargetBody, Field: in.Field, Excerpt: "(nesting)"})
 			continue
+		}
+		if MaxFieldBytes > 0 && len(in.Value) > MaxFieldBytes && in.Field == "(raw)" && in.Target == TargetBody && looksBinary(in.Value) {
+			// A large binary body (gzip or protobuf analytics, session
+			// replay uploads): the rules can only match its readable text,
+			// so inspect that. Refused below only if the text alone is too big.
+			in.Value = TextRuns(in.Value, 6)
 		}
 		if MaxFieldBytes > 0 && len(in.Value) > MaxFieldBytes {
 			// Running every rule over one huge value costs about a second of
@@ -157,11 +168,13 @@ func (e *Engine) Inspect(r *http.Request, body []byte) Decision {
 		// A body that isn't text (compressed or protobuf analytics, file
 		// uploads) has zero bytes in it by nature: that's not an injection.
 		binary := in.Field == "(raw)" && !utf8.ValidString(in.Value)
+		// "$where" is a common GraphQL variable name, not a MongoDB operator.
+		gqlDoc := isGraphQLField(in.Field) && !in.Name && PlainGraphQL(in.Value)
 		for _, rule := range e.rules {
 			if fired[rule.ID] || !rule.targets[in.Target] {
 				continue
 			}
-			if binary && rule.ID == "NULL-001" {
+			if binary && rule.ID == "NULL-001" || gqlDoc && rule.ID == "NOSQL-001" {
 				continue
 			}
 			if rule.pre != nil && !rule.pre.MayMatch(lower) {
@@ -187,9 +200,18 @@ func (e *Engine) Inspect(r *http.Request, body []byte) Decision {
 	if e.crs != nil && !fired["BODY-003"] {
 		res := e.crs.Evaluate(r, body)
 		d.Score += res.Score
+		gql := plainGraphQLQueries(inputs)
+		ct := r.Header.Get("Content-Type")
+		// The same type sent twice: CRS calls it malformed, the body is
+		// still parsed and inspected as that type.
+		dupCT := strings.Contains(ct, ",") && SingleContentType(ct) != ct
 		for _, m := range res.Matches {
 			if m.Paranoia > e.crs.Paranoia {
 				continue // detection-only rule above the blocking level
+			}
+			if crsFalseAlarm(m.ID, m.Var, m.Value, gql) || dupCT && (m.ID == 920420 || m.ID == 920470 || m.ID == 921421) {
+				d.Score -= crsSeverity(m.Severity)
+				continue
 			}
 			d.Matches = append(d.Matches, Match{
 				RuleID: fmt.Sprintf("CRS-%d", m.ID), Name: m.Msg, Category: orDefault(m.Category, "protocol"),
@@ -199,6 +221,70 @@ func (e *Engine) Inspect(r *http.Request, body []byte) Decision {
 	}
 	d.Attack = d.Score >= e.threshold
 	return d
+}
+
+// plainGraphQLQueries is true when the request has "query" inputs and
+// every one of them is a plain GraphQL document.
+func plainGraphQLQueries(inputs []Input) bool {
+	seen := false
+	for _, in := range inputs {
+		if in.Name || !isGraphQLField(in.Field) || in.Target == TargetHeaders || in.Target == TargetCookies {
+			continue
+		}
+		if !PlainGraphQL(in.Value) {
+			return false
+		}
+		seen = true
+	}
+	return seen
+}
+
+// SingleContentType turns a repeated Content-Type ("application/json,
+// application/json", from clients that set the header twice) into one.
+// Anything else is returned unchanged.
+func SingleContentType(ct string) string {
+	parts := strings.Split(ct, ",")
+	for _, p := range parts[1:] {
+		if strings.TrimSpace(p) != strings.TrimSpace(parts[0]) {
+			return ct
+		}
+	}
+	return strings.TrimSpace(parts[0])
+}
+
+// looksBinary: not UTF-8, or binary that a client already decoded as
+// UTF-8 (one in a hundred characters or more is U+FFFD, the replacement
+// for bytes that weren't text).
+func looksBinary(v string) bool {
+	if !utf8.ValidString(v) {
+		return true
+	}
+	return strings.Count(v, "�")*100 >= utf8.RuneCountInString(v)
+}
+
+// TextRuns keeps the runs of at least min printable ASCII characters in a
+// binary value, one per line: the part of it an injection could live in.
+func TextRuns(v string, min int) string {
+	var b strings.Builder
+	start := -1
+	flush := func(end int) {
+		if start >= 0 && end-start >= min {
+			b.WriteString(v[start:end])
+			b.WriteByte('\n')
+		}
+		start = -1
+	}
+	for i := 0; i < len(v); i++ {
+		if c := v[i]; c >= 0x20 && c < 0x7f || c == '\t' {
+			if start < 0 {
+				start = i
+			}
+			continue
+		}
+		flush(i)
+	}
+	flush(len(v))
+	return b.String()
 }
 
 // Without drops the matches drop says to (exclusions) and scores again.
@@ -358,7 +444,7 @@ func Base64Text(v string) (string, bool) {
 }
 
 func bodyInputs(contentType string, body []byte) []Input {
-	mediaType, params, _ := mime.ParseMediaType(contentType)
+	mediaType, params, _ := mime.ParseMediaType(SingleContentType(contentType))
 
 	switch {
 	case mediaType == "application/json" || strings.HasSuffix(mediaType, "+json"):
@@ -375,7 +461,10 @@ func bodyInputs(contentType string, body []byte) []Input {
 	case mediaType == "multipart/form-data" && params["boundary"] != "":
 		// Each field is checked on its own (and file names), plus the raw
 		// body as before: a field may hold an encoded attack.
-		out := []Input{{Target: TargetBody, Field: "(raw)", Value: string(body)}}
+		// The "--boundary" lines are left out: after a field's closing
+		// quote they read as a SQL comment.
+		raw := strings.ReplaceAll(string(body), "--"+params["boundary"], "\n")
+		out := []Input{{Target: TargetBody, Field: "(raw)", Value: raw}}
 		mr := multipart.NewReader(bytes.NewReader(body), params["boundary"])
 		for i := 0; i < MaxInputs; i++ {
 			part, err := mr.NextPart()
@@ -410,6 +499,11 @@ func bodyInputs(contentType string, body []byte) []Input {
 
 // MaxInputs is the most parameters, fields and headers inspected per request.
 const MaxInputs = 1000
+
+// MaxJSONInputs is the same limit for a JSON body. Analytics and
+// session-replay batches often carry a few thousand fields (1,000 refused
+// about 1 in 200 real requests); the size limits still bound the work.
+const MaxJSONInputs = 10000
 
 // MaxFieldBytes is the largest single value (field, header, raw body) that
 // is inspected; larger ones are refused (rule BODY-003). 0 turns the check

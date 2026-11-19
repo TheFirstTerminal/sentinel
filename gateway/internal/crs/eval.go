@@ -36,8 +36,9 @@ func (s *Set) Evaluate(r *http.Request, body []byte) Result {
 	tx.tx["crs_xml_attr_inspect"] = "1"
 	// CRS's list plus what browsers send on their own: navigator.sendBeacon
 	// and analytics posts use text/plain, and CSP/Reporting API reports
-	// have their own types. Rule 920420 blocked ~5% of real traffic without.
-	tx.tx["allowed_request_content_type"] = "|application/x-www-form-urlencoded| |multipart/form-data| |text/xml| |application/xml| |application/soap+xml| |application/json| |text/plain| |application/csp-report| |application/reports+json|"
+	// have their own types, and Oblivious HTTP (RFC 9458) carries
+	// encrypted requests as message/ohttp-req. Rule 920420 blocked ~5% of real traffic without.
+	tx.tx["allowed_request_content_type"] = "|application/x-www-form-urlencoded| |multipart/form-data| |text/xml| |application/xml| |application/soap+xml| |application/json| |text/plain| |application/csp-report| |application/reports+json| |message/ohttp-req|"
 
 	for _, phase := range s.phases {
 		skipTo := ""

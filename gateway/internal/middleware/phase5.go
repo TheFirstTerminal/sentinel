@@ -1,16 +1,15 @@
 package middleware
 
 import (
-	"net/url"
-
-	"sentinel/gateway/internal/exclude"
-
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"regexp"
 	"strings"
 
 	"sentinel/gateway/internal/audit"
+	"sentinel/gateway/internal/exclude"
 	"sentinel/gateway/internal/ml"
 	"sentinel/gateway/internal/reqctx"
 	"sentinel/gateway/internal/waf"
@@ -78,6 +77,31 @@ func cut(s string, n int) string {
 	return s
 }
 
+// Values too plain to carry an injection, which the model still flagged on
+// real traffic: a bare word ("name" as a sort field: SQL vocabulary), an
+// IP address with a port, the IAB privacy string "1---", and a GraphQL
+// document without string literals. Bare shell commands stay scored: an
+// app that runs a parameter as a command is exploited by "whoami" alone.
+var (
+	bareWord      = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{0,40}$`)
+	ipPort        = regexp.MustCompile(`^\d{1,3}(?:\.\d{1,3}){3}(?::\d{1,5})?$`)
+	privacyString = regexp.MustCompile(`(?i)^1[-yn]{3}$`)
+	shellCommands = map[string]bool{"id": true, "whoami": true, "uname": true, "ls": true, "pwd": true, "dir": true,
+		"ifconfig": true, "ipconfig": true, "hostname": true, "phpinfo": true, "env": true, "set": true, "ver": true,
+		"systeminfo": true, "netstat": true, "ps": true, "sh": true, "bash": true, "cmd": true, "powershell": true,
+		"reboot": true, "shutdown": true, "halt": true, "passwd": true, "nc": true, "wget": true, "curl": true}
+)
+
+func inertValue(v string) bool {
+	switch {
+	case bareWord.MatchString(v):
+		return !shellCommands[strings.ToLower(v)]
+	case ipPort.MatchString(v), privacyString.MatchString(v):
+		return true
+	}
+	return waf.PlainGraphQL(v)
+}
+
 // MLInputs are the values of a request the ML model scores: what users type
 // (query and body fields, most headers), not names, the path or cookies.
 // Shared with the trainer so it learns from exactly what the gateway asks.
@@ -89,6 +113,9 @@ func MLInputs(r *http.Request, body []byte) []waf.Input {
 		// to the rules too: browsers and analytics scripts fill them with
 		// encoded JSON the model mistakes for injections.
 		if in.Target == waf.TargetPath || in.Target == waf.TargetCookies || in.Field == "(raw)" || in.Name || len(in.Value) < 3 {
+			continue
+		}
+		if inertValue(in.Value) {
 			continue
 		}
 		if in.Target == waf.TargetHeaders && strings.EqualFold(in.Field, "Content-Type") {
