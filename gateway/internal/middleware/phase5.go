@@ -41,6 +41,17 @@ func ML(m *ml.Model, mode string, threshold float64, skip []string, maxBody int6
 					worst.Value = part
 				}
 			}
+			cookieBar := max(threshold, CookieThreshold)
+			for _, in := range MLCookieInputs(r) {
+				if Exclusions.ExcludedOn(reqctx.From(r.Context()).Site, "ML", r.Method, r.URL.Path, in.Field) {
+					continue
+				}
+				// Cookies count only past their own, higher bar.
+				if p, part := m.ScoreText(in.Value); p >= cookieBar && p > best {
+					best, worst = p, in
+					worst.Value = part
+				}
+			}
 			if best < threshold {
 				next.ServeHTTP(w, r)
 				return
@@ -102,11 +113,47 @@ func inertValue(v string) bool {
 	return waf.PlainGraphQL(v)
 }
 
+// CookieThreshold is the model's bar for cookie values. Tracking cookies
+// hold encoded JSON, so cookies are scored only when a value has what an
+// injection needs, and only count from this probability. On 75,000 real
+// browser requests this flagged 1; it catches payloads moved into a cookie.
+const CookieThreshold = 0.98
+
+// MLCookieInputs are the cookie values the model scores (see
+// CookieThreshold), URL-decoded as most frameworks hand them to the app.
+func MLCookieInputs(r *http.Request) []waf.Input {
+	var out []waf.Input
+	for _, c := range r.Cookies() {
+		if strings.HasPrefix(c.Name, "__sentinel_") {
+			continue
+		}
+		v := c.Value
+		if d, err := url.QueryUnescape(v); err == nil {
+			v = d
+		}
+		if len(v) < 3 || len(v) > 2000 || !strings.ContainsAny(v, "'\";|<($` ") || inertValue(v) {
+			continue
+		}
+		out = append(out, waf.Input{Target: waf.TargetCookies, Field: c.Name, Value: v})
+	}
+	return out
+}
+
 // MLInputs are the values of a request the ML model scores: what users type
 // (query and body fields, most headers), not names, the path or cookies.
 // Shared with the trainer so it learns from exactly what the gateway asks.
 func MLInputs(r *http.Request, body []byte) []waf.Input {
 	var out []waf.Input
+	// REST APIs take parameters in the path (/users/{id}), so a payload can
+	// sit there. Slugs and IDs are scored only when a segment holds what an
+	// injection needs: a quote, ; | < ( $ ` or a space.
+	for _, seg := range strings.Split(r.URL.EscapedPath(), "/") {
+		dec, err := url.PathUnescape(seg)
+		if err != nil || len(dec) < 3 || !strings.ContainsAny(dec, "'\";|<($` ") {
+			continue
+		}
+		out = append(out, waf.Input{Target: waf.TargetPath, Field: "path segment", Value: dec})
+	}
 	for _, in := range waf.ExtractInputs(r, body) {
 		// Names are left to the rules: the model scores what users type,
 		// and a field called "pwd" is not a shell command. Cookies are left

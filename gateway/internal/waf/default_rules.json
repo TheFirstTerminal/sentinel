@@ -480,7 +480,8 @@
       "path",
       "query",
       "body",
-      "cookies"
+      "cookies",
+      "headers"
     ],
     "pattern": "\\\\\\\\[a-z0-9._:-]+\\\\[a-z]\\$"
   },
@@ -493,7 +494,8 @@
       "path",
       "query",
       "body",
-      "cookies"
+      "cookies",
+      "headers"
     ],
     "pattern": "(?i)(?:^|[^a-z0-9]|0x(?:2f|5c))etc(?:[^a-z0-9\\s]|0x(?:2f|5c))+(?:passwd|shadow|issue|hosts|group)(?:$|[^a-z0-9])|windows(?:[^a-z0-9\\s]|0x(?:2f|5c))+system32(?:[^a-z0-9\\s]|0x(?:2f|5c))+(?:drivers|config|cmd\\.exe)"
   },

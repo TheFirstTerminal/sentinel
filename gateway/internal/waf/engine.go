@@ -10,22 +10,21 @@ package waf
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/json"
+	"fmt"
 	"io"
+	"mime"
 	"mime/multipart"
+	"net/http"
+	"net/url"
+	"regexp"
+	"sort"
+	"strings"
 	"sync"
 	"unicode/utf8"
 
-	"sentinel/gateway/internal/prefilter"
-
 	"sentinel/gateway/internal/crs"
-
-	"encoding/json"
-	"fmt"
-	"mime"
-	"net/http"
-	"net/url"
-	"sort"
-	"strings"
+	"sentinel/gateway/internal/prefilter"
 )
 
 // Input is one piece of the request that gets inspected.
@@ -494,8 +493,58 @@ func bodyInputs(contentType string, body []byte) []Input {
 		}
 	}
 	// Unknown type or unparseable body (often a sign of tampering): inspect raw.
-	return []Input{{Target: TargetBody, Field: "(raw)", Value: string(body)}}
+	out := []Input{{Target: TargetBody, Field: "(raw)", Value: string(body)}}
+	// Some servers parse a body by its content, not its declared type
+	// (PHP's php://input, Express with type "*/*"). If it reads as a form,
+	// check its fields too, so the ML model sees what a payload hidden
+	// there would be: an attacker's way around the field checks.
+	if mediaType != "application/json" && !strings.HasSuffix(mediaType, "+json") && mediaType != "application/x-www-form-urlencoded" {
+		out = append(out, fieldsByContent(body)...)
+	}
+	return out
 }
+
+// fieldsByContent splits a body of another declared type into form fields,
+// when it starts like a form.
+func fieldsByContent(body []byte) []Input {
+	b := bytes.TrimSpace(body)
+	if len(b) == 0 || !utf8.Valid(b) {
+		return nil
+	}
+	// JSON sent as text/plain is left raw: those are analytics beacons and
+	// CSP reports, whose fields the model mistakes for code.
+	first := formName.FindSubmatch(b)
+	if first == nil {
+		return nil
+	}
+	// Not url.ParseQuery: it refuses ";" and turns "+" into a space, and
+	// command payloads are full of both. Each value is checked as sent
+	// and, if different, decoded; and everything after the first "name="
+	// as one value, since a payload may contain "&" itself.
+	var out []Input
+	add := func(k, v string) {
+		out = append(out, Input{Target: TargetBody, Field: k, Value: v})
+		if dec, err := url.QueryUnescape(v); err == nil && dec != v {
+			out = append(out, Input{Target: TargetBody, Field: k, Value: dec})
+		}
+	}
+	s := string(b)
+	add(string(first[1]), s[len(first[0]):])
+	if strings.Contains(s, "&") {
+		for _, piece := range strings.Split(s, "&") {
+			if k, v, ok := strings.Cut(piece, "="); ok && formKey.MatchString(k) {
+				add(k, v)
+			}
+		}
+	}
+	return out
+}
+
+// formName is how a form body starts: a short field name and "=".
+var (
+	formName = regexp.MustCompile(`^([A-Za-z0-9_.\[\]-]{1,64})=`)
+	formKey  = regexp.MustCompile(`^[A-Za-z0-9_.\[\]%-]{1,64}$`)
+)
 
 // MaxInputs is the most parameters, fields and headers inspected per request.
 const MaxInputs = 1000
