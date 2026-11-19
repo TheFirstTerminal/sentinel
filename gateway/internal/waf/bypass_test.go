@@ -103,3 +103,33 @@ func TestRealTrafficNotCommands(t *testing.T) {
 		t.Error("null byte in a text body must still block")
 	}
 }
+
+// TestDisguisedTraversal: separators hidden as overlong UTF-8, control bytes
+// or "0x5c" still reach a sensitive file; prose that mentions one does not.
+func TestDisguisedTraversal(t *testing.T) {
+	rules, _ := LoadRules("")
+	e := NewEngine(rules, 5)
+	check := func(raw string) Decision {
+		return e.Inspect(httptest.NewRequest("GET", "/x?p="+raw, nil), nil)
+	}
+	for _, a := range []string{
+		"%c0%fe%c0%fe%c1%9cetc%c1%9cissue",
+		"..0x5c..0x5c..0x5cetc0x5cissue",
+		"%f8%80%80%80%ae%f8%80%80%80%ae%01etc%01passwd",
+		"..%01..%01windows%01system32%01drivers%01etc%01hosts",
+		"0x2e0x2e%c0%af0x2e0x2e%c0%afetc%c0%afpasswd",
+	} {
+		if d := check(a); !d.Attack {
+			t.Errorf("not blocked: %q", a)
+		}
+	}
+	for _, n := range []string{
+		url.QueryEscape("refunds, returns, etc. issues with your order"),
+		url.QueryEscape("Windows 11 system32 folder size"),
+		url.QueryEscape("sketch-hosts-group"),
+	} {
+		if d := check(n); d.Attack {
+			t.Errorf("false alarm: %q %v", n, d.Matches)
+		}
+	}
+}

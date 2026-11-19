@@ -485,6 +485,19 @@
     "pattern": "\\\\\\\\[a-z0-9._:-]+\\\\[a-z]\\$"
   },
   {
+    "id": "LFI-004",
+    "name": "Sensitive system file behind disguised separators",
+    "category": "traversal",
+    "severity": 5,
+    "targets": [
+      "path",
+      "query",
+      "body",
+      "cookies"
+    ],
+    "pattern": "(?i)(?:^|[^a-z0-9]|0x(?:2f|5c))etc(?:[^a-z0-9\\s]|0x(?:2f|5c))+(?:passwd|shadow|issue|hosts|group)(?:$|[^a-z0-9])|windows(?:[^a-z0-9\\s]|0x(?:2f|5c))+system32(?:[^a-z0-9\\s]|0x(?:2f|5c))+(?:drivers|config|cmd\\.exe)"
+  },
+  {
     "id": "XXE-002",
     "name": "XML declared as UTF-7 (hides markup from filters)",
     "category": "xxe",
