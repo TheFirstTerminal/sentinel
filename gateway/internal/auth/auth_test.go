@@ -305,3 +305,34 @@ func TestParallelWrongCodes(t *testing.T) {
 		t.Fatalf("%d codes were checked, limit is %d", tried, maxMFAAttempts)
 	}
 }
+
+// TestSessionAfterEnable: turning 2FA on logs the user in with mfa=true and
+// retires the password-only token it was done with.
+func TestSessionAfterEnable(t *testing.T) {
+	ctx := context.Background()
+	svc := newService(t, NewMemoryStore())
+	r, _ := svc.Login(ctx, "alice", "Alice#2026")
+	c, err := svc.Authenticate(ctx, r.Token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.SessionAfterEnable(ctx, c); !errors.Is(err, ErrNo2FASetup) {
+		t.Fatalf("before 2FA is on: %v", err)
+	}
+	secret, _, _ := svc.Begin2FA(ctx, "alice")
+	code, _ := TOTPCode(secret, time.Now())
+	if err := svc.Enable2FA(ctx, "alice", code); err != nil {
+		t.Fatal(err)
+	}
+	res, err := svc.SessionAfterEnable(ctx, c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ac, err := svc.Authenticate(ctx, res.Token)
+	if err != nil || !ac.MFA {
+		t.Fatalf("new token: %+v %v", ac, err)
+	}
+	if _, err := svc.Authenticate(ctx, r.Token); err == nil {
+		t.Fatal("the password-only token must be revoked")
+	}
+}

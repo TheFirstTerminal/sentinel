@@ -233,6 +233,30 @@ func (s *Service) Enable2FA(ctx context.Context, username, code string) error {
 	return s.store.SetTOTP(ctx, username, u.TOTPSecretEnc, true)
 }
 
+// SessionAfterEnable: right after Enable2FA the user has proved both the
+// password (the token c came from a login) and a code, which is what a full
+// login with 2FA asks for. So the enrolment token is revoked and swapped for
+// an access token with mfa=true, instead of making them wait for the next
+// code to log in again.
+func (s *Service) SessionAfterEnable(ctx context.Context, c *Claims) (*LoginResult, error) {
+	u, err := s.store.UserByName(ctx, c.Sub)
+	if err != nil {
+		return nil, err
+	}
+	if !u.TOTPEnabled {
+		return nil, ErrNo2FASetup
+	}
+	if err := s.Logout(ctx, c); err != nil {
+		return nil, err
+	}
+	access := Claims{Sub: u.Username, Role: u.Role, Dept: u.Department, MFA: true, Purpose: PurposeAccess}
+	tok, _, err := s.signer.Sign(access, AccessTTL)
+	if err != nil {
+		return nil, err
+	}
+	return &LoginResult{Token: tok, ExpiresIn: int(AccessTTL.Seconds()), User: u.Username, Role: u.Role}, nil
+}
+
 // AdminOnly: only admin accounts can log in (set to false by editions
 // that log users in to the protected apps).
 var AdminOnly = true

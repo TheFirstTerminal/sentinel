@@ -177,7 +177,13 @@ func (h *Handlers) enable2FA(w http.ResponseWriter, r *http.Request, c *Claims) 
 		h.fail(w, r, err)
 	default:
 		h.audit(r, "2fa_enabled", map[string]any{"username": c.Sub})
-		writeJSON(w, r, http.StatusOK, map[string]any{"status": "2FA enabled, your next login will ask for a code"})
+		res, err := h.svc.SessionAfterEnable(r.Context(), c)
+		if err != nil {
+			writeJSON(w, r, http.StatusOK, map[string]any{"status": "2FA enabled, your next login will ask for a code"})
+			return
+		}
+		reqctx.From(r.Context()).SetOutcome(reqctx.Outcome{Kind: "login", Reason: "2FA turned on, logged in", Detail: "user: " + res.User + "  role: " + res.Role})
+		writeJSON(w, r, http.StatusOK, map[string]any{"status": "2FA enabled", "token": res.Token, "expires_in": res.ExpiresIn, "user": res.User, "role": res.Role})
 	}
 }
 

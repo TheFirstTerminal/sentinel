@@ -39,7 +39,7 @@ func buildEngine(cfg *config.Config, log *slog.Logger) (*waf.Engine, error) {
 		log.Info("OWASP Core Rule Set loaded", "dir", dir, "rules", set.Stats.Rules,
 			"skipped", set.Stats.Skipped, "excluded", set.Stats.Excluded, "paranoia", cfg.CRSParanoia)
 		for why, n := range set.Stats.SkipReasons {
-			log.Warn("CRS rules skipped (feature not supported)", "reason", why, "count", n)
+			log.Info("CRS rules skipped (feature not supported)", "reason", why, "count", n)
 		}
 	}
 	return engine, nil

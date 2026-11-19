@@ -32,10 +32,11 @@ type Event struct {
 	Duration  float64   `json:"duration_ms"`
 }
 
-// Stopped reports whether Sentinel refused the request.
+// Stopped reports whether Sentinel refused the request. "detected" and
+// "monitored" were let through (monitor mode): they would have been stopped.
 func (e Event) Stopped() bool {
 	switch e.Outcome {
-	case "allowed", "login", "mfa_required", "mfa_ok", "detected":
+	case "allowed", "login", "mfa_required", "mfa_ok", "detected", "monitored":
 		return false
 	}
 	return true
@@ -134,9 +135,10 @@ type Stats struct {
 	Window     string         `json:"window"`
 	Total      int            `json:"total"`
 	Stopped    int            `json:"stopped"`
+	Flagged    int            `json:"flagged"` // would have been stopped, but the site is in monitor mode
 	ByOutcome  map[string]int `json:"by_outcome"`
-	TopIPs     []Count        `json:"top_ips"`   // most stopped requests
-	TopRules   []Count        `json:"top_rules"` // rules that stopped the most
+	TopIPs     []Count        `json:"top_ips"`   // most stopped or flagged requests
+	TopRules   []Count        `json:"top_rules"` // rules that stopped or flagged the most
 	TopCountry []Count        `json:"top_countries"`
 	PerMinute  []Minute       `json:"per_minute"` // oldest first
 }
@@ -176,8 +178,16 @@ func (h *Hub) Stats(window time.Duration, site ...string) Stats {
 		s.Total++
 		s.ByOutcome[e.Outcome]++
 		stopped := e.Stopped()
+		flagged := e.Outcome == "detected" || e.Outcome == "monitored"
+		if flagged {
+			s.Flagged++
+		}
 		if stopped {
 			s.Stopped++
+		}
+		// In monitor mode nothing is stopped; the tables still show what
+		// would have been, or a new install looks like it caught nothing.
+		if stopped || flagged {
 			ips[e.ClientIP]++
 			if e.Rule != "" {
 				rules[e.Rule]++

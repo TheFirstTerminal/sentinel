@@ -249,7 +249,7 @@ body:not(.multi) .site-col { display: none; }
       <div class="legend"><span><i style="background:var(--ok)"></i>let through</span><span><i style="background:var(--bad)"></i>stopped</span><span id="chart-range"></span></div>
     </div>
     <div class="card">
-      <h2>Why requests were stopped</h2>
+      <h2>Why requests were stopped or flagged</h2>
       <table id="t-rules"></table>
     </div>
   </div>
@@ -404,6 +404,11 @@ $("f3").onsubmit = async (e) => {
     headers: { "Content-Type": "application/json", Authorization: "Bearer " + enrolToken }, body: JSON.stringify({ code: $("c3").value.trim() }) });
   const out = await res.json().catch(() => ({}));
   if (!res.ok) { $("err").textContent = out.error || ("HTTP " + res.status); return; }
+  if (out.token) { // the code just typed counts as the 2FA login
+    enrolToken = null; $("f3").classList.add("hidden"); $("p").value = "";
+    token = out.token; try { sessionStorage.setItem("sentinel_token", token); } catch (x) {}
+    start(); return;
+  }
   try { await fetch("/__sentinel/auth/logout", { method: "POST", headers: { Authorization: "Bearer " + enrolToken } }); } catch (x) {}
   enrolToken = null; $("f3").classList.add("hidden");
   // Log in again with the password just typed, so only a code is needed.
@@ -497,7 +502,8 @@ async function refresh() {
     const [s, bans, audit] = await Promise.all([api("stats?minutes=60" + site), api("bans"),
       document.body.classList.contains("f-audit") ? api("audit").catch(() => null) : null]);
     $("k-total").textContent = s.total; $("k-stopped").textContent = s.stopped;
-    $("k-rate").textContent = (s.total ? Math.round(100 * s.stopped / s.total) : 0) + "% of requests";
+    $("k-rate").textContent = (s.total ? Math.round(100 * s.stopped / s.total) : 0) + "% of requests" +
+      (s.flagged ? " · " + s.flagged + " more flagged in monitor mode" : "");
     $("k-bans").textContent = (bans || []).length;
     drawChart(s.per_minute);
     table("t-rules", s.top_rules, "Rule / check", true);
@@ -631,7 +637,7 @@ function feedVisible(tr) { return !($("only-stopped").checked && tr.dataset.stop
 function refilter() { document.querySelectorAll("#feed tr").forEach(tr => tr.classList.toggle("hidden", !feedVisible(tr))); conRender(); }
 $("only-stopped").onchange = refilter;
 
-function noise(p) { return /\.(js|css|png|jpe?g|svg|ico|woff2?|ttf|map|gif)$/.test(p) || p.startsWith("/socket.io/") || p.startsWith("/assets/") || p.startsWith("/__sentinel/api/") || p.startsWith("/__sentinel/dashboard") || p === "/__sentinel/health"; }
+function noise(p) { return /\.(js|css|png|jpe?g|svg|ico|woff2?|ttf|map|gif)$/.test(p) || p.startsWith("/socket.io/") || p.startsWith("/assets/") || p.startsWith("/__sentinel/api/") || p.startsWith("/__sentinel/dashboard") || p.startsWith("/__sentinel/setup") || p.startsWith("/__sentinel/auth/2fa/") || p === "/__sentinel/health"; }
 
 
 // ---- Console --------------------------------------------------------------
@@ -885,7 +891,7 @@ async function loadInfo() {
       ed.href = "https://sentinel.tft.markets/pro.html";
       ed.className = "pill";
     }
-    const rows = [["Mode", i.mode === "monitor" ? "MONITOR: logging only, nothing is blocked" : "protect"], ["WAF", i.waf_mode + ", " + i.waf_rules + " rules"], ["Rate limits", (i.rate_limits || []).join("  ") || "off"], ["Shared store", i.store],
+    const rows = [["Mode", i.mode === "monitor" ? "MONITOR: logging only, nothing is blocked" : "protect"], ["WAF", i.waf_mode + ", " + i.waf_rules + " rules"], ["Rate limits", (i.rate_limits || []).join("  ") || "per site, shown on each site above"], ["Shared store", i.store],
       ["Geo", i.geo], ["AI prompt guard", (i.prompt_guard_paths || []).join(", ") || "off"], ["ML classifier", i.ml], ...(i.extra || []), ["Started", new Date(i.started).toLocaleString()]];
     for (const f of i.features || []) document.body.classList.add("f-" + f);
     $("t-info").innerHTML = rows.map(r => "<tr><td class='muted' style='width:160px'>" + r[0] + "</td><td>" + esc(r[1]) + "</td></tr>").join("");
@@ -898,6 +904,7 @@ async function stream() {
   const live = $("live");
   try {
     const res = await fetch("/__sentinel/api/stream", { headers: { Authorization: "Bearer " + token }, signal: streamAbort.signal });
+    if (res.status === 401) { logout("Your session ended. Log in again."); return; } // e.g. Sentinel restarted
     if (!res.ok) throw new Error(res.status);
     live.className = "pill live"; live.textContent = "● live";
     const reader = res.body.getReader(), dec = new TextDecoder();

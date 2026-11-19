@@ -69,3 +69,20 @@ func TestStatsPerSite(t *testing.T) {
 		t.Errorf("all sites: %+v", s)
 	}
 }
+
+// TestStatsMonitorMode: requests let through in monitor mode are flagged,
+// not stopped, and still show in the rule and IP tables.
+func TestStatsMonitorMode(t *testing.T) {
+	hub := NewHub(10)
+	now := time.Now()
+	hub.Publish(Event{Time: now, Outcome: "detected", Rule: "SQLI-001", ClientIP: "1.2.3.4"})
+	hub.Publish(Event{Time: now, Outcome: "monitored", ClientIP: "1.2.3.4"})
+	hub.Publish(Event{Time: now, Outcome: "allowed"})
+	s := hub.Stats(time.Hour)
+	if s.Stopped != 0 || s.Flagged != 2 {
+		t.Errorf("stopped %d flagged %d, want 0 and 2", s.Stopped, s.Flagged)
+	}
+	if len(s.TopRules) != 2 || len(s.TopIPs) != 1 || s.TopIPs[0].Count != 2 {
+		t.Errorf("tables: %+v %+v", s.TopRules, s.TopIPs)
+	}
+}
