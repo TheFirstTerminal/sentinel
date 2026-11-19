@@ -55,7 +55,8 @@ never saw, for every WAF. Attacks: all 11,054.
 
 | WAF | Attacks blocked | Normal requests wrongly blocked | Balanced accuracy |
 |---|---|---|---|
-| **Sentinel 0.16.3** | 93.4% | **4.4%** | **94.5%** |
+| **Sentinel 0.16.4** | **95.4%** | **4.4%** | **95.5%** |
+| Sentinel 0.16.3 | 93.4% | 4.4% | 94.5% |
 | Sentinel 0.16.1 | 95.0% | 7.5% | 93.7% |
 | Sentinel 0.16.0 | 85.3% | 14.6% (all sites) | 85.4% |
 | ModSecurity + OWASP CRS (PL1) | 90.3% | 26.7% | 81.8% |
@@ -66,8 +67,10 @@ request in 23, against more than 1 in 4 for the others. From 0.16.0 on, every
 false alarm was traced to the rule or model input behind it (tracking cookies,
 analytics beacons, GraphQL, binary bodies) and fixed. Those rule fixes were
 found on this dataset, so treat the gap as an upper bound; they are general
-(no rule names a site). 0.16.3 trades 1.6 points of attacks for 40% fewer
-false alarms. The normal traffic here includes many unusual requests, so all
+(no rule names a site). 0.16.3 traded 1.6 points of attacks for 40% fewer
+false alarms; 0.16.4 won them back with a rule for traversal payloads that
+disguise their slashes (LFI-004), which wrongly blocks none of the normal
+requests. The normal traffic here includes many unusual requests, so all
 numbers are worse than on a typical site; start in monitor mode and check the
 dashboard before blocking.
 

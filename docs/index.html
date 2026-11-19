@@ -1,0 +1,207 @@
+---
+layout: null
+permalink: /
+---
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sentinel, a web security gateway that explains itself</title>
+<meta name="description" content="Sentinel sits in front of your web app, API or AI endpoint, stops attacks and abuse, and tells you exactly why it stopped each request. Self-hosted. Free edition for any number of servers.">
+<meta property="og:title" content="Sentinel">
+<meta property="og:description" content="A web security gateway that explains every decision. Self-hosted.">
+<meta property="og:image" content="https://sentinel.tft.markets/social-preview.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #E8EBEC; --sheet: #F6F7F7; --ink: #14202B; --muted: #4F5D68; --rule: #C9D0D4;
+  --amber: #A86F00; --amber-bg: #FFF1CC; --red: #B23A26; --red-bg: #FBE3DE; --teal: #22685B; --teal-bg: #DDF0EB;
+  --term: #17232E; --term-ink: #D9E2E8; --term-dim: #8798A6;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 17px/1.6 "IBM Plex Sans", system-ui, sans-serif; }
+a { color: var(--ink); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { color: var(--teal); }
+:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
+.wrap { max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+.prose { max-width: 68ch; }
+header.top { display: flex; align-items: center; justify-content: space-between; padding: 22px 0; gap: 16px; flex-wrap: wrap; }
+.brand { font: 700 20px "IBM Plex Sans Condensed", sans-serif; text-decoration: none; display: flex; align-items: center; gap: 10px; }
+.brand svg { width: 22px; height: 22px; }
+nav a { margin-left: 22px; font-weight: 500; text-decoration: none; color: var(--muted); }
+nav a:hover { color: var(--ink); }
+h1, h2, h3 { font-family: "IBM Plex Sans Condensed", sans-serif; line-height: 1.08; margin: 0; }
+h1 { font-size: clamp(40px, 6.4vw, 74px); letter-spacing: -0.01em; max-width: 15ch; margin-top: 48px; }
+.lede { font-size: 20px; color: var(--muted); max-width: 56ch; margin: 22px 0 0; }
+h2 { font-size: clamp(28px, 3.6vw, 40px); margin-bottom: 18px; }
+h3 { font-size: 21px; margin-bottom: 6px; }
+section { padding: 72px 0; border-top: 1px solid var(--rule); }
+.hero { padding: 0 0 72px; border: 0; }
+
+/* The terminal: Sentinel's own output, the product's most characteristic thing. */
+.term { margin-top: 44px; background: var(--term); color: var(--term-ink); border-radius: 10px; padding: 22px 0; font: 14.5px/1.55 "JetBrains Mono", ui-monospace, monospace; overflow-x: auto; box-shadow: 0 30px 60px -30px rgba(20,32,43,.55); }
+.term .line { padding: 6px 26px; white-space: pre; opacity: 0; animation: in .35s ease-out forwards; }
+.term .line:nth-child(2) { animation-delay: .5s } .term .line:nth-child(3) { animation-delay: 1s } .term .line:nth-child(4) { animation-delay: 1.5s }
+@keyframes in { to { opacity: 1 } }
+@media (prefers-reduced-motion: reduce) { .term .line { animation: none; opacity: 1 } }
+.t { color: var(--term-dim) } .why { color: var(--term-dim) }
+.ok { color: #6FD3B8; font-weight: 600 } .det { color: #F2C14E; font-weight: 600 } .blk { color: #FF8A73; font-weight: 600 }
+.rule { color: #fff; font-weight: 600 }
+.caption { font-size: 15px; color: var(--muted); margin-top: 14px; }
+
+.actions { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 34px; }
+.btn { display: inline-block; padding: 13px 22px; border-radius: 6px; font-weight: 600; text-decoration: none; border: 2px solid var(--ink); }
+.btn.primary { background: var(--ink); color: var(--sheet); }
+.btn.primary:hover { background: var(--teal); border-color: var(--teal); color: #fff; }
+.btn:hover { color: var(--teal); border-color: var(--teal); }
+
+/* The order of checks is a real sequence, so it is numbered. */
+ol.flow { list-style: none; padding: 0; margin: 30px 0 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0; border-left: 1px solid var(--rule); }
+ol.flow li { padding: 4px 22px 22px; border-right: 1px solid var(--rule); counter-increment: step; }
+ol.flow li::before { content: counter(step); display: block; font: 700 34px "IBM Plex Sans Condensed"; color: var(--rule); margin-bottom: 6px; }
+ol.flow p { margin: 0; color: var(--muted); font-size: 15.5px; }
+
+table { width: 100%; border-collapse: collapse; margin-top: 26px; font-size: 16px; background: var(--sheet); }
+th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--rule); }
+th { font-weight: 600; color: var(--muted); font-size: 14.5px; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+tr.us td { font-weight: 600; background: var(--teal-bg); }
+.bar { display: inline-block; height: 8px; border-radius: 4px; vertical-align: middle; margin-left: 10px; background: var(--red); opacity: .75; }
+.tablewrap { overflow-x: auto; }
+
+.editions { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 30px; }
+.edition { background: var(--sheet); border-top: 4px solid var(--ink); padding: 26px 28px 30px; }
+.edition.pro { border-top-color: var(--teal); }
+.price { font: 700 34px "IBM Plex Sans Condensed"; margin: 8px 0 2px; }
+.price small { font: 400 16px "IBM Plex Sans"; color: var(--muted); }
+.edition ul { padding-left: 20px; margin: 16px 0 0; }
+.edition li { margin: 6px 0; }
+.note { color: var(--muted); font-size: 15px; }
+
+pre.cmd { background: var(--term); color: var(--term-ink); padding: 18px 22px; border-radius: 8px; font: 14px/1.6 "JetBrains Mono", monospace; overflow-x: auto; margin: 18px 0; }
+footer { padding: 40px 0 60px; color: var(--muted); font-size: 15px; border-top: 1px solid var(--rule); }
+footer a { color: var(--muted); }
+
+@media (max-width: 720px) {
+  body { font-size: 16px; }
+  .wrap { padding: 0 16px; }
+  nav a { margin: 0 18px 0 0; }
+  .editions { grid-template-columns: 1fr; }
+  .term { font-size: 12.5px; border-radius: 0; margin-left: -16px; margin-right: -16px; }
+  .term .line { padding: 6px 16px; }
+  h1 { margin-top: 28px; }
+  section { padding: 52px 0; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2l8 3v6c0 5-3.5 9.5-8 11-4.5-1.5-8-6-8-11V5z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>Sentinel</a>
+    <nav><a href="README.html">Docs</a><a href="benchmarks.html">Benchmarks</a><a href="pro.html">Pricing</a><a href="https://github.com/TheFirstTerminal/sentinel">GitHub</a></nav>
+  </header>
+
+  <div class="hero">
+    <h1>Stops attacks on your app, and says exactly why.</h1>
+    <p class="lede">Sentinel runs in front of your web app, API or AI endpoint. It checks every request for attacks and abuse, and every decision comes with the rule, the field and the text that set it off. It runs on your own server, and the free edition covers any number of them.</p>
+    <div class="term" role="img" aria-label="Sentinel's terminal output: a normal request allowed, two SQL injections blocked with the matched text, a prompt injection blocked">
+      <div class="line"><span class="t">14:02:09</span>  <span class="ok">✓ ALLOWED   </span>  GET    /products                    200</div>
+      <div class="line"><span class="t">14:02:11</span>  <span class="blk">✗ BLOCKED   </span>  GET    /                            403  <span class="rule">SQLI-001</span>  UNION-based SQL injection
+                        <span class="why">field: id  matched: 1' union select password from users</span></div>
+      <div class="line"><span class="t">14:02:14</span>  <span class="blk">✗ BLOCKED   </span>  POST   /api/search                  403  <span class="rule">SQLI-005</span>  Time-based blind SQL injection
+                        <span class="why">field: q  matched: 1 and pg_sleep(5)</span></div>
+      <div class="line"><span class="t">14:02:20</span>  <span class="det">✗ PROMPT INJ</span>  POST   /api/chat                    403  <span class="rule">PI-001</span>  Instruction override
+                        <span class="why">field: message  matched: ignore all previous instructions</span></div>
+    </div>
+    <p class="caption">What Sentinel prints in your terminal. The dashboard shows the same, with an <em>Allow</em> button for anything that shouldn't have been stopped.</p>
+    <div class="actions">
+      <a class="btn primary" href="#install">Install in one command</a>
+      <a class="btn" href="pro.html">Compare Free and Pro</a>
+    </div>
+  </div>
+
+  <section>
+    <div class="prose">
+      <h2>What happens to a request</h2>
+      <p>Cheap checks run first, so a banned address is turned away before any pattern is matched. You start in monitor mode: everything is checked and logged, nothing is blocked, until you've seen what it would do on your traffic.</p>
+    </div>
+    <ol class="flow">
+      <li><h3>Who is asking</h3><p>Banned IPs, countries you don't serve, honeypot paths only scanners visit, known attack tools.</p></li>
+      <li><h3>How often</h3><p>Rate limits per path, password-spraying detection, an optional proof-of-work check for bots.</p></li>
+      <li><h3>What it contains</h3><p>Sentinel's rules after decoding evasions, the OWASP Core Rule Set, and an ML model for attacks no rule describes.</p></li>
+      <li><h3>What goes back</h3><p>Database errors, stack traces and keys in responses are withheld. Card numbers are masked.</p></li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="prose">
+      <h2>Tested against real traffic</h2>
+      <p>On open-appsec's public WAF comparison: real browsing traffic recorded on hundreds of sites, and 11,054 public attack payloads. Every WAF ran with default settings, in blocking mode, in front of the same app. Sentinel's model never saw the sites counted below.</p>
+    </div>
+    <div class="tablewrap">
+    <table>
+      <tr><th>Gateway</th><th class="n">Attacks blocked</th><th class="n">Normal requests wrongly blocked</th></tr>
+      <tr class="us"><td>Sentinel</td><td class="n" id="b-att">95.4%</td><td class="n"><span id="b-fp">4.4%</span><span class="bar" style="width:20px"></span></td></tr>
+      <tr><td>ModSecurity with the OWASP Core Rule Set</td><td class="n">90.3%</td><td class="n">26.7%<span class="bar" style="width:120px"></span></td></tr>
+      <tr><td>BunkerWeb</td><td class="n">90.3%</td><td class="n">28.8%<span class="bar" style="width:130px"></span></td></tr>
+    </table>
+    </div>
+    <p class="note">This dataset is full of unusual requests, so every number is worse than on a typical site. Method, the rule fixes behind these numbers and their limits: <a href="benchmarks.html">benchmarks</a>.</p>
+  </section>
+
+  <section id="install">
+    <div class="prose">
+      <h2>Try it on your machine</h2>
+      <p>Put Sentinel in front of an app on port 3000:</p>
+    </div>
+<pre class="cmd">docker run --rm -it -p 8080:8080 -v sentinel-data:/var/lib/sentinel \
+  -e UPSTREAM_URL=http://host.docker.internal:3000 \
+  --add-host=host.docker.internal:host-gateway \
+  ghcr.io/thefirstterminal/sentinel</pre>
+    <div class="prose">
+      <p>Open the one-time link it prints to create your admin account. On a Linux server, one line installs it as a service; there are also Debian and RPM packages, Homebrew, Helm and plain binaries. <a href="README.html">Every way to install</a>.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Free and Pro</h2>
+    <div class="editions">
+      <div class="edition">
+        <h3>Sentinel Free</h3>
+        <div class="price">$0 <small>any number of servers, in production too</small></div>
+        <ul>
+          <li>Rules, OWASP Core Rule Set and the ML model</li>
+          <li>Prompt-injection guard for AI endpoints</li>
+          <li>Rate limits, bans, honeypots, bot check</li>
+          <li>Several sites, load balancing, automatic HTTPS</li>
+          <li>Dashboard with 2FA, alerts, syslog and OpenTelemetry</li>
+        </ul>
+      </div>
+      <div class="edition pro">
+        <h3>Sentinel Pro</h3>
+        <div class="price">$29 <small>per server a month, or $290 a year</small></div>
+        <ul>
+          <li>Everything in Free</li>
+          <li>Single sign-on and 2FA logins for your own apps</li>
+          <li>Access rules by role, department, ownership, time and network</li>
+          <li>Step-up checks for unusual countries, IPs and hours</li>
+          <li>Client certificates, tamper-evident audit log, email support</li>
+        </ul>
+        <p class="note">The first 50 customers pay $19 a month for as long as they renew. Write to <a href="mailto:support@tft.markets">support@tft.markets</a> with your company and number of servers.</p>
+      </div>
+    </div>
+  </section>
+</div>
+<footer>
+  <div class="wrap">
+    Sentinel is made by The First Terminal. © 2026 Saif Zahid. Free edition under PolyForm Shield 1.0.0.
+    <a href="https://github.com/TheFirstTerminal/sentinel/blob/main/SECURITY.md">Report a security problem</a> ·
+    <a href="mailto:support@tft.markets">support@tft.markets</a>
+  </div>
+</footer>
+</body>
+</html>

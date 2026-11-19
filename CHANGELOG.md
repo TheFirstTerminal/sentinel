@@ -1,6 +1,16 @@
 # Changelog
 
-## Unreleased
+## 0.16.4 · 2026-11-19
+- **More attacks blocked, same false alarms**: on the open-appsec comparison (normal traffic counted only on sites the ML model never saw) Sentinel now blocks 95.4% of attacks (0.16.3: 93.4%) and still wrongly blocks 4.4% of normal requests. New rule LFI-004 catches path traversal that hides its slashes (overlong UTF-8, control bytes, `0x5c`) on the way to `/etc/passwd`, `/etc/issue`, `windows/system32/...`; the ML model had caught some of these before it was retrained on real traffic.
+- **Dashboard, first run**:
+  - turning on 2FA logs you in straight away, instead of logging you out and making you wait for the next code;
+  - in monitor mode the dashboard counts what would have been stopped ("flagged") and shows it in the rule and IP tables; before, a new install looked as if it caught nothing;
+  - fix: requests let through in monitor mode by a rate limit, ban or honeypot (outcome `monitored`) were counted as stopped;
+  - an expired session (e.g. after a restart without a data volume) logs out instead of retrying the live stream every 3 seconds;
+  - the dashboard's own setup and 2FA requests are hidden from the live views like its other housekeeping;
+  - the configuration panel no longer says rate limits are "off" when they are set per site.
+- The note about one unsupported Core Rule Set rule at startup is information, not a warning.
+- The documentation site has a front page: https://sentinel.tft.markets.
 - Dependencies updated: libinjection-go 0.3.6 (detection on the open-appsec attack set unchanged), pgx 5.13.0, golang.org/x/net 0.63.0.
 
 ## 0.16.3 · 2026-11-19

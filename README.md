@@ -28,10 +28,12 @@ anything.
   evasions first (URL, HTML and Unicode encodings, SQL comments, fullwidth
   letters). The OWASP Core Rule Set runs in a built-in engine that passes
   **99.3%** of CRS's own regression suite. An ML model catches what no rule
-  was written for. Together they caught **99.8%** of the attacks and evasion
-  variants in our tests, with no normal input wrongly blocked: when only the
-  Core Rule Set fires on something the model is sure is harmless, it is
-  logged instead of blocked ([benchmarks](docs/benchmarks.md)).
+  was written for. On an independent dataset of real browsing traffic and
+  public attack payloads, Sentinel blocked more attacks than ModSecurity and
+  BunkerWeb while wrongly blocking about 1 normal request in 23, against more
+  than 1 in 4 for them. When only the Core Rule Set fires on something the
+  model is sure is harmless, it is logged instead of blocked
+  ([benchmarks](docs/benchmarks.md)).
 - **Protection for AI endpoints.** A prompt-injection guard normalises
   look-alike letters, spacing and base64 tricks. A canary check withholds any
   reply that leaks your hidden prompt, even reversed or encoded.

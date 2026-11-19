@@ -28,12 +28,13 @@ with every release.
 | [`supply-chain.md`](supply-chain.md) | Whoever releases or installs Sentinel | SBOM, vulnerability scans, signatures, how to verify |
 | [`../SECURITY.md`](../SECURITY.md) | Everyone | How to report a security problem privately |
 
-## Updating your copy
+## Updating
 
-```bash
-bash lab/update.sh
-```
+- **Docker:** `docker pull ghcr.io/thefirstterminal/sentinel` and start the container again. Your account, exclusions and history are in the `sentinel-data` volume.
+- **Linux install script:** run the same one-line command again.
+- **Debian/Ubuntu or Fedora/RHEL package:** install the new package over the old one.
+- **Homebrew:** `brew upgrade sentinel`.
+- **The demo lab in a clone of this repository:** `bash lab/update.sh`.
 
-Pulls the latest version and restarts the lab. See [`CHANGELOG.md`](../CHANGELOG.md)
-for what changed. Questions and bug reports: [GitHub issues](https://github.com/TheFirstTerminal/sentinel/issues).
+See [`CHANGELOG.md`](../CHANGELOG.md) for what changed. Questions and bug reports: [GitHub issues](https://github.com/TheFirstTerminal/sentinel/issues).
 Security problems: see [`SECURITY.md`](../SECURITY.md), not a public issue.
