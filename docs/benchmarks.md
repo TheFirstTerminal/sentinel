@@ -55,7 +55,8 @@ never saw, for every WAF. Attacks: all 11,054.
 
 | WAF | Attacks blocked | Normal requests wrongly blocked | Balanced accuracy |
 |---|---|---|---|
-| **Sentinel 0.16.4** | **95.4%** | **4.4%** | **95.5%** |
+| **Sentinel 0.17.0** | **99.9%** | **2.5%** | **98.7%** |
+| Sentinel 0.16.4 | 95.4% | 4.4% | 95.5% |
 | Sentinel 0.16.3 | 93.4% | 4.4% | 94.5% |
 | Sentinel 0.16.1 | 95.0% | 7.5% | 93.7% |
 | Sentinel 0.16.0 | 85.3% | 14.6% (all sites) | 85.4% |
@@ -63,14 +64,19 @@ never saw, for every WAF. Attacks: all 11,054.
 | BunkerWeb | 90.3% | 28.8% | 80.8% |
 
 Sentinel blocks more attacks than both and wrongly blocks about 1 normal
-request in 23, against more than 1 in 4 for the others. From 0.16.0 on, every
+request in 40, against more than 1 in 4 for the others. From 0.16.0 on, every
 false alarm was traced to the rule or model input behind it (tracking cookies,
 analytics beacons, GraphQL, binary bodies) and fixed. Those rule fixes were
 found on this dataset, so treat the gap as an upper bound; they are general
 (no rule names a site). 0.16.3 traded 1.6 points of attacks for 40% fewer
 false alarms; 0.16.4 won them back with a rule for traversal payloads that
 disguise their slashes (LFI-004), which wrongly blocks none of the normal
-requests. The normal traffic here includes many unusual requests, so all
+requests. 0.17.0 cut false alarms by 43% by tracing the rest on the half of
+the sites not counted here, then checked the result on this half. Its attack
+number is less independent: LFI-004 was widened using this dataset's missed
+traversal payloads (broken and `%u`-encoded separators), and that accounts
+for most of the jump to 99.9%. Expect a lower number on attacks you write
+yourself. The normal traffic here includes many unusual requests, so all
 numbers are worse than on a typical site; start in monitor mode and check the
 dashboard before blocking.
 

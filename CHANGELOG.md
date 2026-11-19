@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.17.0 · 2026-11-19
+- **Fewer false alarms**: on the open-appsec comparison (normal traffic counted only on sites never used for tuning) Sentinel wrongly blocks 2.5% of normal requests, down from 4.4%, and blocks 99.9% of attacks (0.16.4: 95.4%; see the benchmarks page for how independent that number is). Fixed false alarms:
+  - Core Rule Set rules no longer fire on URL-encoded newlines in the Cookie header, the IAB privacy string `1---`, plain GraphQL documents, bodies sent without a Content-Type (beacons), protocol names such as `http/1.1`, or a Content-Type header sent twice;
+  - the ML model skips values too plain to carry an attack: bare words, IP addresses, `1---` and GraphQL documents;
+  - large binary bodies (compressed analytics, session replay) are checked by their readable text instead of refused;
+  - JSON bodies may hold 10,000 fields (forms stay at 1,000);
+  - multipart boundary lines no longer read as SQL comments.
+- **Fewer ways around the checks**, found by moving caught attacks to other parts of the request:
+  - the ML model checks URL path segments that contain a quote, `;`, `|`, `<`, `(`, `$`, a backtick or a space;
+  - a body of another type that reads as a form is checked field by field;
+  - cookie values with injection characters are checked by the model at a stricter threshold (0.98);
+  - custom headers holding injection characters are checked by the Core Rule Set's argument rules;
+  - LFI-003 and LFI-004 check headers; LFI-004 also catches separators written as `%u2215` or as broken percent-escapes.
+
 ## 0.16.4 · 2026-11-19
 - **More attacks blocked, same false alarms**: on the open-appsec comparison (normal traffic counted only on sites the ML model never saw) Sentinel now blocks 95.4% of attacks (0.16.3: 93.4%) and still wrongly blocks 4.4% of normal requests. New rule LFI-004 catches path traversal that hides its slashes (overlong UTF-8, control bytes, `0x5c`) on the way to `/etc/passwd`, `/etc/issue`, `windows/system32/...`; the ML model had caught some of these before it was retrained on real traffic.
 - **Dashboard, first run**:
