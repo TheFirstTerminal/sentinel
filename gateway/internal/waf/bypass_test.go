@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -123,8 +124,23 @@ func TestDisguisedTraversal(t *testing.T) {
 			t.Errorf("not blocked: %q", a)
 		}
 	}
+	// Broken percent-escapes and %u forms: the body can't be decoded, so it
+	// is checked raw.
+	for _, a := range []string{
+		"p=%c0%ae%c0%ae%bg%qf%c0%ae%c0%ae%bg%qfetc%bg%qfpasswd",
+		"p=%c0%ae%c0%ae%c0%9vwindows%c0%9vsystem32%c0%9vdrivers%c0%9vetc%c0%9vhosts",
+		"p=??%u2215??%u2215etc%u2215passwd",
+		"p=%pcetc%c1%pcissue",
+	} {
+		r := httptest.NewRequest("POST", "/x", strings.NewReader(a))
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		if d := e.Inspect(r, []byte(a)); !d.Attack {
+			t.Errorf("not blocked: %q", a)
+		}
+	}
 	for _, n := range []string{
 		url.QueryEscape("refunds, returns, etc. issues with your order"),
+		url.QueryEscape("etc passwd reset help"),
 		url.QueryEscape("Windows 11 system32 folder size"),
 		url.QueryEscape("sketch-hosts-group"),
 	} {

@@ -183,6 +183,21 @@ func newTx(r *http.Request, body []byte) *Tx {
 			hdr(k, v)
 		}
 	}
+	// Custom headers (X-Search, X-User-Id...) reach application code the
+	// way parameters do, but CRS checks only a few headers by name. Those
+	// holding injection characters are checked as arguments too. Not
+	// ARGS_GET/POST or the names: those count real parameters.
+	for _, k := range sortedKeys(r.Header) {
+		if standardHeader(k) {
+			continue
+		}
+		for _, v := range r.Header[k] {
+			if strings.ContainsAny(v, "'\";|`$(<") {
+				tx.vcache = nil
+				add("ARGS", "header:"+k, v)
+			}
+		}
+	}
 	if len(r.TransferEncoding) > 0 {
 		hdr("Transfer-Encoding", strings.Join(r.TransferEncoding, ","))
 	}
@@ -305,6 +320,25 @@ func newTx(r *http.Request, body []byte) *Tx {
 }
 
 func (tx *Tx) add(col, k, v string) { tx.cols[col] = append(tx.cols[col], kv{k, v}) }
+
+// standardHeader: headers browsers, proxies and tracing set, whose format
+// is fixed (Sec-CH-UA is full of quotes); CRS checks the risky ones by name.
+func standardHeader(k string) bool {
+	k = http.CanonicalHeaderKey(k)
+	if strings.HasPrefix(k, "Sec-") || strings.HasPrefix(k, "Accept") || strings.HasPrefix(k, "Content-") ||
+		strings.HasPrefix(k, "If-") || strings.HasPrefix(k, "X-Forwarded-") || strings.HasPrefix(k, "Access-Control-") {
+		return true
+	}
+	switch k {
+	case "Host", "User-Agent", "Referer", "Cookie", "Origin", "Authorization", "Cache-Control", "Pragma",
+		"Connection", "Upgrade-Insecure-Requests", "Priority", "Dnt", "Te", "Range", "X-Requested-With",
+		"X-Real-Ip", "Via", "Forwarded", "Purpose", "Save-Data", "Viewport-Width", "Dpr", "Device-Memory",
+		"Rtt", "Downlink", "Ect", "Traceparent", "Tracestate", "Baggage", "Upgrade", "Keep-Alive",
+		"Expect", "Max-Forwards", "Proxy-Authorization", "Transfer-Encoding", "Early-Data", "Width":
+		return true
+	}
+	return false
+}
 
 func (tx *Tx) addArg(src, k, v string) {
 	tx.vcache = nil
