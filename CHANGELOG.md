@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.17.2 · 2026-11-21
+- **Fewer false alarms**: the Core Rule Set no longer fires on URL-encoded JSON cookies without SQL in them (Mixpanel's `mp_*_mixpanel`), or on ad-tag placeholders with dotted names or calls such as `${user.gdpr}` and `${uipid()}`. Shell expansions (`${IFS}`, `${jndi:...}`, `$(...)`) are still caught. On the open-appsec comparison: 99.9% of attacks blocked, 2.2% of normal requests wrongly blocked (5 fewer than 0.17.1).
+
 ## 0.17.1 · 2026-11-20
 - **Faster Core Rule Set**: about a quarter less CPU on real browser traffic, with exactly the same verdicts. 214 of CRS's regular expressions can only start a match on a few characters (the Unix command rules need `;`, `|`, `&`, `$(` or "busybox" in front of the command name), so Sentinel now runs them only from those positions instead of from every byte of every value. Checked against the plain regexes on 25,000 real request values plus random ones, and against CRS's own regression suite (unchanged at 4,775/4,812). A value with many possible start positions goes to the plain regex, so a crafted value can't make it much slower than before.
 - **Compressed request bodies are inspected**: a body sent with `Content-Encoding: gzip` or `deflate`, or gzip without saying so (some analytics beacons), is expanded (up to 1 MB) and checked like any other body. Before, rules saw only the compressed bytes, and CRS blocked the header itself.

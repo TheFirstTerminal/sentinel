@@ -2,6 +2,7 @@ package waf
 
 import (
 	"encoding/json"
+	"net/url"
 	"regexp"
 	"strings"
 )
@@ -134,9 +135,10 @@ func PlainGraphQL(v string) bool {
 var shellTilde = regexp.MustCompile(`(?:^|[^A-Za-z0-9])~`)
 
 // placeholder is a template slot that ad and analytics tags leave unfilled,
-// such as ${user_id} or ${random}. Shell evasion uses ${IFS}, ${PATH:0:1}
-// or $(...), which this doesn't match.
-var placeholder = regexp.MustCompile(`\$\{[a-z][a-z0-9_]{2,}\}`)
+// such as ${user_id}, ${user.gdpr} or ${uipid()}. Shell evasion uses
+// ${IFS}, ${PATH:0:1} or $(...), which this doesn't match; in a shell a
+// dot or () inside ${} is a syntax error.
+var placeholder = regexp.MustCompile(`\$\{[a-z][a-z0-9_]{2,}(?:\.[a-z][a-z0-9_]*)*(?:\(\))?\}`)
 
 // onlyPlaceholders reports whether every "${" in v opens a template slot
 // and v has no other shell substitution.
@@ -156,6 +158,14 @@ var sqlWord = regexp.MustCompile(`(?i)\b(?:select|union|insert|update|delete|dro
 // every JSON value nested in a string.
 func plainJSON(v string) bool {
 	t := strings.TrimSpace(v)
+	if strings.HasPrefix(t, "%7B") || strings.HasPrefix(t, "%7b") || strings.HasPrefix(t, "%5B") || strings.HasPrefix(t, "%5b") {
+		// URL-encoded, as analytics cookies (Mixpanel) store it.
+		d, err := url.PathUnescape(t)
+		if err != nil {
+			return false
+		}
+		t = d
+	}
 	if t == "" || (t[0] != '{' && t[0] != '[') || !json.Valid([]byte(t)) {
 		return false
 	}
