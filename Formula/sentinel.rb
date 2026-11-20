@@ -4,27 +4,27 @@
 class Sentinel < Formula
   desc "Security gateway for web apps, APIs and AI endpoints that explains every decision"
   homepage "https://github.com/TheFirstTerminal/sentinel"
-  version "0.17.1"
+  version "0.17.2"
   license :cannot_represent # PolyForm Shield 1.0.0
 
   on_macos do
     on_arm do
-      url "https://github.com/TheFirstTerminal/sentinel/releases/download/v0.17.1/sentinel-0.17.1-darwin-arm64"
-      sha256 "729ee9575735df488639b4d413df9f27f686124fd8afcf7cd8fe0a6fe0562e0c"
+      url "https://github.com/TheFirstTerminal/sentinel/releases/download/v0.17.2/sentinel-0.17.2-darwin-arm64"
+      sha256 "7609cd5931040e5407018fa3b9f9b1813c8e4ce057c51caa966bd0ac7cac5f2d"
     end
     on_intel do
-      url "https://github.com/TheFirstTerminal/sentinel/releases/download/v0.17.1/sentinel-0.17.1-darwin-amd64"
-      sha256 "1825048d0af5f2d33ca8951e6a24ed9fe4e6bdee02750064dbb7d76b0562939c"
+      url "https://github.com/TheFirstTerminal/sentinel/releases/download/v0.17.2/sentinel-0.17.2-darwin-amd64"
+      sha256 "077997b553ffd0a056dd5a6a7b903315cf4339259d3be3718cc34580ac3e32d8"
     end
   end
   on_linux do
     on_arm do
-      url "https://github.com/TheFirstTerminal/sentinel/releases/download/v0.17.1/sentinel-0.17.1-linux-arm64"
-      sha256 "c64d0b383b189ebdbd330d3ddc09a0912da46d7ea12e8207425eb2481f3e536d"
+      url "https://github.com/TheFirstTerminal/sentinel/releases/download/v0.17.2/sentinel-0.17.2-linux-arm64"
+      sha256 "11c5f81d878a5cc6c381d4d58bd4d4d282b39396a58571878f7269b464541757"
     end
     on_intel do
-      url "https://github.com/TheFirstTerminal/sentinel/releases/download/v0.17.1/sentinel-0.17.1-linux-amd64"
-      sha256 "7be56f17f57b0368d040289bfdf166371a6a9025750b86e0fe9fd7b08b217c19"
+      url "https://github.com/TheFirstTerminal/sentinel/releases/download/v0.17.2/sentinel-0.17.2-linux-amd64"
+      sha256 "685498015e76ea6fe96cd2643af2f4f2dabb0cd071a659b66068c1be21e79f61"
     end
   end
 
