@@ -117,6 +117,7 @@ var skippedHeaders = map[string]bool{
 func (e *Engine) Inspect(r *http.Request, body []byte) Decision {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
+	enc, body := decodeBody(r, body)
 	inputs := ExtractInputs(r, body)
 	limit := MaxInputs
 	if mt, _, _ := mime.ParseMediaType(SingleContentType(r.Header.Get("Content-Type"))); mt == "application/json" || strings.HasSuffix(mt, "+json") {
@@ -131,6 +132,13 @@ func (e *Engine) Inspect(r *http.Request, body []byte) Decision {
 			Target: TargetBody, Excerpt: fmt.Sprintf("%d inputs", len(inputs))}}}
 	}
 
+	inputs = splitLargeJSON(inputs)
+	bodyFields := 0
+	for _, in := range inputs {
+		if in.Target == TargetBody && in.Field != "(raw)" {
+			bodyFields++
+		}
+	}
 	var d Decision
 	fired := map[string]bool{} // count each rule once per request
 	for _, in := range inputs {
@@ -146,6 +154,12 @@ func (e *Engine) Inspect(r *http.Request, body []byte) Decision {
 			// replay uploads): the rules can only match its readable text,
 			// so inspect that. Refused below only if the text alone is too big.
 			in.Value = TextRuns(in.Value, 6)
+		}
+		if MaxFieldBytes > 0 && len(in.Value) > MaxFieldBytes && in.Field == "(raw)" && in.Target == TargetBody && bodyFields > 1 {
+			// A large JSON or form body that parsed into fields: each field
+			// is checked on its own (and refused if one alone is too big),
+			// so the whole body adds nothing but cost.
+			continue
 		}
 		if MaxFieldBytes > 0 && len(in.Value) > MaxFieldBytes {
 			// Running every rule over one huge value costs about a second of
@@ -208,7 +222,7 @@ func (e *Engine) Inspect(r *http.Request, body []byte) Decision {
 			if m.Paranoia > e.crs.Paranoia {
 				continue // detection-only rule above the blocking level
 			}
-			if crsFalseAlarm(m.ID, m.Var, m.Value, gql) || dupCT && (m.ID == 920420 || m.ID == 920470 || m.ID == 921421) {
+			if crsFalseAlarm(m.ID, m.Var, m.Value, gql) || enc && m.ID == 920450 && strings.HasSuffix(m.Var, "_content-encoding") || dupCT && (m.ID == 920420 || m.ID == 920470 || m.ID == 921421) {
 				d.Score -= crsSeverity(m.Severity)
 				continue
 			}
@@ -255,7 +269,7 @@ func SingleContentType(ct string) string {
 // UTF-8 (one in a hundred characters or more is U+FFFD, the replacement
 // for bytes that weren't text).
 func looksBinary(v string) bool {
-	if !utf8.ValidString(v) {
+	if !utf8.ValidString(v) || strings.HasPrefix(v, "\x1f\x8b") {
 		return true
 	}
 	return strings.Count(v, "�")*100 >= utf8.RuneCountInString(v)

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.17.1 · 2026-11-20
+- **Faster Core Rule Set**: about a quarter less CPU on real browser traffic, with exactly the same verdicts. 214 of CRS's regular expressions can only start a match on a few characters (the Unix command rules need `;`, `|`, `&`, `$(` or "busybox" in front of the command name), so Sentinel now runs them only from those positions instead of from every byte of every value. Checked against the plain regexes on 25,000 real request values plus random ones, and against CRS's own regression suite (unchanged at 4,775/4,812). A value with many possible start positions goes to the plain regex, so a crafted value can't make it much slower than before.
+- **Compressed request bodies are inspected**: a body sent with `Content-Encoding: gzip` or `deflate`, or gzip without saying so (some analytics beacons), is expanded (up to 1 MB) and checked like any other body. Before, rules saw only the compressed bytes, and CRS blocked the header itself.
+- **Fewer false alarms**: on the open-appsec comparison Sentinel wrongly blocks 2.2% of normal requests (0.17.0: 2.5%) and blocks the same 99.9% of attacks. As before, the fixes were found only on the half of the sites not counted.
+  - a form, multipart or `text/plain` JSON body over 64 KB is checked field by field instead of refused as one oversized value;
+  - Core Rule Set rules no longer fire on Akamai-style cookies (`hash~0~data`), unfilled ad-tag placeholders such as `${user_id}`, JSON documents without SQL nested in a string, JSON keys such as `profile_id`, or inert `javascript:void(0)`, `javascript:;`, SDK version strings and `data:image` URIs.
+
 ## 0.17.0 · 2026-11-19
 - **Fewer false alarms**: on the open-appsec comparison (normal traffic counted only on sites never used for tuning) Sentinel wrongly blocks 2.5% of normal requests, down from 4.4%, and blocks 99.9% of attacks (0.16.4: 95.4%; see the benchmarks page for how independent that number is). Fixed false alarms:
   - Core Rule Set rules no longer fire on URL-encoded newlines in the Cookie header, the IAB privacy string `1---`, plain GraphQL documents, bodies sent without a Content-Type (beacons), protocol names such as `http/1.1`, or a Content-Type header sent twice;

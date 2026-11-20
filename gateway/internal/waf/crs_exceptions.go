@@ -1,6 +1,7 @@
 package waf
 
 import (
+	"encoding/json"
 	"regexp"
 	"strings"
 )
@@ -33,6 +34,19 @@ func crsFalseAlarm(id int, variable, value string, gql bool) bool {
 		return usPrivacy.MatchString(value)
 	case 921130:
 		return protocolVersion.MatchString(value)
+	case 930120:
+		// "json.profile_id": CRS writes JSON paths with dots, so a key
+		// such as profile or passwd reads as a dotfile. A real path has
+		// a slash.
+		return strings.HasPrefix(variable, "ARGS_NAMES:json.") && !strings.ContainsAny(value, `/\`)
+	case 941170, 941210:
+		return harmlessScheme(value)
+	case 932270:
+		return !shellTilde.MatchString(value)
+	case 932130, 933135:
+		return onlyPlaceholders(value)
+	case 942550:
+		return plainJSON(value)
 	}
 	if gql && gqlVar.MatchString(variable) {
 		return true
@@ -113,3 +127,53 @@ func PlainGraphQL(v string) bool {
 	}
 	return depth == 0
 }
+
+// shellTilde is a tilde the shell would expand: at the start of a word.
+// Bot-manager and session cookies use it as a separator ("hash~0~data"),
+// always between letters or digits.
+var shellTilde = regexp.MustCompile(`(?:^|[^A-Za-z0-9])~`)
+
+// placeholder is a template slot that ad and analytics tags leave unfilled,
+// such as ${user_id} or ${random}. Shell evasion uses ${IFS}, ${PATH:0:1}
+// or $(...), which this doesn't match.
+var placeholder = regexp.MustCompile(`\$\{[a-z][a-z0-9_]{2,}\}`)
+
+// onlyPlaceholders reports whether every "${" in v opens a template slot
+// and v has no other shell substitution.
+func onlyPlaceholders(v string) bool {
+	if !strings.Contains(v, "${") {
+		return false
+	}
+	rest := placeholder.ReplaceAllString(v, "")
+	return !strings.Contains(rest, "${") && !strings.Contains(rest, "$(") && !strings.Contains(rest, "`")
+}
+
+// sqlWord is a keyword a JSON-based SQL injection needs.
+var sqlWord = regexp.MustCompile(`(?i)\b(?:select|union|insert|update|delete|drop|from|where|having|sleep|benchmark|waitfor|or|and|like|json_\w+)\b|--|/\*|;`)
+
+// plainJSON reports whether v is a JSON document with no SQL in it: rule
+// 942550 looks for JSON syntax that SQL engines accept, and fires on
+// every JSON value nested in a string.
+func plainJSON(v string) bool {
+	t := strings.TrimSpace(v)
+	if t == "" || (t[0] != '{' && t[0] != '[') || !json.Valid([]byte(t)) {
+		return false
+	}
+	return !sqlWord.MatchString(t)
+}
+
+// inertScheme is a javascript: or data: URI that runs nothing: an empty
+// link target, an SDK version string ("javascript:2.8.18") or an image.
+var inertScheme = regexp.MustCompile(`(?i)javascript:\s*(?:void\s*\(\s*0\s*\)\s*;?\s*|;\s*|[0-9]+(?:\.[0-9]+)+)?(?:$|["',}\]])|data:image/(?:png|jpe?g|gif|webp|avif);base64,`)
+
+// harmlessScheme reports whether every javascript: and data: in v is inert.
+func harmlessScheme(v string) bool {
+	if !anyScheme.MatchString(v) {
+		return false
+	}
+	rest := strings.ToLower(inertScheme.ReplaceAllString(v, " "))
+	return !strings.Contains(rest, "javascript:") && !strings.Contains(rest, "data:") &&
+		!strings.Contains(rest, "vbscript:") && !strings.Contains(rest, "<")
+}
+
+var anyScheme = regexp.MustCompile(`(?i)javascript:|data:`)

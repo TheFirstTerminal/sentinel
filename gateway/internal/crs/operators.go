@@ -26,6 +26,7 @@ type operator struct {
 	ranges [256]bool
 	nets   []*net.IPNet
 	pre    *prefilter.Prefilter // nil = always run the regex
+	fast   *starts              // nil = no faster way to run the regex
 }
 
 // parseOperator reads "@name param", "!@name param" or a bare regex.
@@ -46,6 +47,7 @@ func parseOperator(s, dir string) (*operator, error) {
 		op.bytes = highByte.MatchString(op.param)
 		if !op.bytes {
 			op.pre = prefilter.New(op.param)
+			op.fast = newStarts(op.param, re)
 		}
 		if err != nil {
 			return nil, fmt.Errorf("regex not supported by RE2")
@@ -128,7 +130,7 @@ func (op *operator) matchChecked(v, param string, groups bool) (bool, []string) 
 		if op.bytes {
 			v = bytesAsRunes(v)
 		}
-		return op.re.MatchString(v), nil
+		return op.matchString(v), nil
 	}
 	ok, groups2 := op.eval(v, param)
 	if op.negate {
@@ -153,7 +155,7 @@ func (op *operator) eval(v, param string) (bool, []string) {
 			}
 			return m != nil, m
 		}
-		if !op.re.MatchString(v) {
+		if !op.matchString(v) {
 			return false, nil
 		}
 		m := op.re.FindStringSubmatch(v)
@@ -273,4 +275,12 @@ func runesAsBytes(s string) string {
 		b = append(b, byte(r))
 	}
 	return string(b)
+}
+
+// matchString is op.re.MatchString, through op.fast when it has one.
+func (op *operator) matchString(v string) bool {
+	if op.fast != nil {
+		return op.fast.MatchString(v)
+	}
+	return op.re.MatchString(v)
 }
