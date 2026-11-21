@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.17.3 · 2026-11-21
+- **A time limit per request**: a request that keeps the Core Rule Set busy for more than 5 seconds is refused (rule BODY-004) instead of being checked to the end, so a few large, crafted requests can no longer stall the gateway (a 440 KB JSON body of many fields used to cost about 3 seconds of CPU each). Requests over the limit are blocked, not let through, because the rules that didn't run might have matched. Set it with `WAF_MAX_INSPECT_MS` (`0` = off). On the open-appsec comparison: 99.9% of attacks blocked, 2.2% of normal requests wrongly blocked (1,874; 0.17.2: 1,881); one large trace upload on a busy gateway hit the limit.
+
 ## 0.17.2 · 2026-11-21
 - **Fewer false alarms**: the Core Rule Set no longer fires on URL-encoded JSON cookies without SQL in them (Mixpanel's `mp_*_mixpanel`), or on ad-tag placeholders with dotted names or calls such as `${user.gdpr}` and `${uipid()}`. Shell expansions (`${IFS}`, `${jndi:...}`, `$(...)`) are still caught. On the open-appsec comparison: 99.9% of attacks blocked, 2.2% of normal requests wrongly blocked (5 fewer than 0.17.1).
 

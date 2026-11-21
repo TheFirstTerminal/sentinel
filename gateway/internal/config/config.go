@@ -129,6 +129,7 @@ type Config struct {
 	PromptCanary     string // secret marker in the AI's hidden prompt
 
 	MaxFieldBytes   int   // largest single value the WAF inspects (WAF_MAX_FIELD_BYTES, 0 = off)
+	MaxInspectMS    int   // Core Rule Set time per request before it is refused (WAF_MAX_INSPECT_MS, 0 = off)
 	LoginFailLimit  int64 // failed logins per account before it is paused (LOGIN_FAIL_LIMIT, 0 = off)
 	SecurityHeaders bool  // add nosniff, Referrer-Policy, X-Frame-Options, HSTS (SECURITY_HEADERS=off to disable)
 
@@ -273,6 +274,10 @@ func Load() (*Config, error) {
 	if err != nil || maxField < 0 {
 		return nil, fmt.Errorf("WAF_MAX_FIELD_BYTES must be 0 (off) or a positive number")
 	}
+	maxInspect, err := strconv.Atoi(env("WAF_MAX_INSPECT_MS", "5000"))
+	if err != nil || maxInspect < 0 {
+		return nil, fmt.Errorf("WAF_MAX_INSPECT_MS must be 0 (off) or a positive number")
+	}
 	mlMode := strings.ToLower(env("ML_MODE", "detect"))
 	if mlMode != "off" && mlMode != "detect" && mlMode != "block" {
 		return nil, fmt.Errorf("ML_MODE must be off, detect or block")
@@ -322,6 +327,7 @@ func Load() (*Config, error) {
 		CRSExclude:        splitList(env("CRS_EXCLUDE", "920220")),
 		LoginFailLimit:    loginLimit,
 		MaxFieldBytes:     maxField,
+		MaxInspectMS:      maxInspect,
 		SecurityHeaders:   !strings.EqualFold(os.Getenv("SECURITY_HEADERS"), "off"),
 		MLMode:            mlMode,
 		MLThreshold:       mlThreshold,

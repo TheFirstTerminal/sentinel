@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Match is one CRS detection rule that fired.
@@ -21,11 +22,22 @@ type Match struct {
 type Result struct {
 	Score   int // CRS inbound anomaly score at the blocking paranoia level
 	Matches []Match
+	// Incomplete: the request used up Budget and the rest of the rules
+	// were not run.
+	Incomplete bool
 }
+
+// Budget is the most CPU time one request may spend in the Core Rule Set
+// (0 = no limit). A large JSON body of many fields once cost seconds, so a
+// handful sent at once could stall the gateway.
+var Budget = 5 * time.Second
 
 // Evaluate runs the request rules. body must be the complete body.
 func (s *Set) Evaluate(r *http.Request, body []byte) Result {
 	tx := newTx(r, body)
+	if Budget > 0 {
+		tx.deadline = time.Now().Add(Budget)
+	}
 	pl := strconv.Itoa(s.Paranoia)
 	// What crs-setup.conf would set; CRS fills in every other default.
 	tx.tx["crs_setup_version"] = "480"
@@ -43,6 +55,9 @@ func (s *Set) Evaluate(r *http.Request, body []byte) Result {
 	for _, phase := range s.phases {
 		skipTo := ""
 		for _, r := range phase {
+			if tx.overBudget {
+				break
+			}
 			if skipTo != "" {
 				if r.marker == skipTo {
 					skipTo = ""
@@ -58,7 +73,7 @@ func (s *Set) Evaluate(r *http.Request, body []byte) Result {
 		}
 	}
 
-	res := Result{Matches: tx.matches}
+	res := Result{Matches: tx.matches, Incomplete: tx.overBudget}
 	for i := 1; i <= s.Paranoia; i++ {
 		res.Score += atoi(tx.tx["inbound_anomaly_score_pl"+strconv.Itoa(i)])
 	}
@@ -126,6 +141,10 @@ func (tx *Tx) evalLink(r *Rule, onMatch func()) bool {
 	var found []kv
 	var buf [8]string // candidates, without a new slice per value
 	for _, v := range vals {
+		if !tx.deadline.IsZero() && time.Now().After(tx.deadline) {
+			tx.overBudget = true
+			return false
+		}
 		candidates := append(buf[:0], v.value)
 		if r.multiMatch {
 			cur := v.value

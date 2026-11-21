@@ -17,6 +17,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type varSpec struct {
@@ -96,6 +97,9 @@ type Tx struct {
 	removedRanges  [][2]int
 	removedTags    []string
 	targetRemovals []targetRemoval
+
+	deadline   time.Time // zero: no limit
+	overBudget bool
 
 	matchedVar kv
 	ruleID     int

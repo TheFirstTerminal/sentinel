@@ -136,6 +136,7 @@ yourself still wins, and you can see exactly what a profile does in
 | `waf.crs_exclude` | `CRS_EXCLUDE` | `920220` | CRS rule IDs or ranges to switch off, e.g. `[920220, 942100-942199]` |
 | `exclusions_file` | `EXCLUSIONS_FILE` | `exclusions.yaml` in the data folder | YAML list of exclusions: a rule switched off for one path and/or field. The dashboard's "Allow…" button adds to it; see below |
 | `waf.max_field_bytes` | `WAF_MAX_FIELD_BYTES` | `65536` | A single field, header or raw body larger than this is refused (rule BODY-003); `0` = off |
+| `waf.max_inspect_ms` | `WAF_MAX_INSPECT_MS` | `5000` | A request that keeps the Core Rule Set busy longer than this is refused (rule BODY-004), so a few crafted requests can't stall the gateway; `0` = off |
 | `max_body_bytes` | `MAX_BODY_BYTES` | `1048576` | Larger bodies are refused with 413: they can't be inspected whole |
 | `app_profile` | `APP_PROFILE` | `off` | **Learn your app.** `learn`: Sentinel learns, from requests that passed every check, what each page's parameters normally look like (length, characters, numbers, fixed values). `detect` / `block`: flag or refuse requests that don't fit, which catches parameter tampering that has no attack syntax. Saved in the data folder. On the CSIC 2010 dataset it caught 96.6% of attacks with 0.01% false alarms ([ml-report](ml-report.md)) |
 | `app_profile_min_seen` | `APP_PROFILE_MIN_SEEN` | `20` | A page or field must have been seen this often before the profile judges it |

@@ -213,6 +213,12 @@ func (e *Engine) Inspect(r *http.Request, body []byte) Decision {
 	if e.crs != nil && !fired["BODY-003"] {
 		res := e.crs.Evaluate(r, body)
 		d.Score += res.Score
+		if res.Incomplete {
+			// Fail closed: the rules that didn't run might have matched.
+			d.Score += 5
+			d.Matches = append(d.Matches, Match{RuleID: "BODY-004", Name: fmt.Sprintf("inspection took longer than %v", crs.Budget),
+				Category: "protocol", Severity: 5, Target: TargetBody, Excerpt: fmt.Sprintf("%d inputs", len(inputs))})
+		}
 		gql := plainGraphQLQueries(inputs)
 		ct := r.Header.Get("Content-Type")
 		// The same type sent twice: CRS calls it malformed, the body is

@@ -22,6 +22,7 @@ import (
 	"sentinel/gateway/internal/blocklist"
 	"sentinel/gateway/internal/bot"
 	"sentinel/gateway/internal/config"
+	"sentinel/gateway/internal/crs"
 	"sentinel/gateway/internal/dashboard"
 	"sentinel/gateway/internal/events"
 	"sentinel/gateway/internal/exclude"
@@ -273,6 +274,7 @@ func newShared(cfg *config.Config, engine *waf.Engine, authSvc *auth.Service, re
 	}
 	sh.botKey = key[:]
 	waf.MaxFieldBytes = cfg.MaxFieldBytes
+	crs.Budget = time.Duration(cfg.MaxInspectMS) * time.Millisecond
 	if sh.admin, err = sh.adminPages(excl); err != nil {
 		return nil, err
 	}
