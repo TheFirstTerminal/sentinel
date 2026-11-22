@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.17.4 · 2026-11-22
+- **Fewer false alarms**: on the open-appsec comparison Sentinel wrongly blocks 1,816 normal requests (0.17.3: 1,874) and blocks exactly the same attacks (99.9%, checked one by one). As before, the fixes were found only on the half of the sites not counted.
+  - the directory traversal rule (LFI-001) no longer reads `...` before a JSON-escaped quote (`...\"`) as a Windows `..\`, which analytics payloads such as Shopify's send constantly; `..\..\windows` is still caught;
+  - JSON values holding Chrome's brand list (`"Not)A;Brand"`) no longer read as SQL to Core Rule Set rule 942550; JSON with SQL keywords, `--` or `/*` still does.
+
 ## 0.17.3 · 2026-11-21
 - **A time limit per request**: a request that keeps the Core Rule Set busy for more than 5 seconds is refused (rule BODY-004) instead of being checked to the end, so a few large, crafted requests can no longer stall the gateway (a 440 KB JSON body of many fields used to cost about 3 seconds of CPU each). Requests over the limit are blocked, not let through, because the rules that didn't run might have matched. Set it with `WAF_MAX_INSPECT_MS` (`0` = off). On the open-appsec comparison: 99.9% of attacks blocked, 2.2% of normal requests wrongly blocked (1,874; 0.17.2: 1,881); one large trace upload on a busy gateway hit the limit.
 

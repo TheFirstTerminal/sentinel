@@ -154,3 +154,36 @@ func TestCRSFalseAlarmsRound2b(t *testing.T) {
 		}
 	}
 }
+
+// "..." before a JSON-escaped quote is not a Windows path; Chrome's brand
+// list ("Not)A;Brand") is not SQL.
+func TestFalseAlarmsRound3(t *testing.T) {
+	rules, _ := LoadRules("")
+	e := NewEngine(rules, 5)
+	post := func(s string) Decision {
+		r := httptest.NewRequest("POST", "/collect", strings.NewReader(s))
+		r.Header.Set("Content-Type", "application/json")
+		return e.Inspect(r, []byte(s))
+	}
+	if d := post(`{"payload":"{\"signals/config/1654768898112506?...\":\"35dh,1bk\"}"}`); d.Attack {
+		t.Errorf("escaped quote after ... blocked: %v", d.Matches)
+	}
+	for _, bad := range []string{`{"f":"..\..\windows\win.ini"}`, `{"f":"..\\..\\boot.ini"}`, `{"f":"../../etc/passwd"}`} {
+		if d := post(bad); !d.Attack {
+			t.Errorf("traversal passed: %s", bad)
+		}
+	}
+	cases := []struct {
+		v    string
+		drop bool
+	}{
+		{`[[["Not)A;Brand","99"],["Google Chrome","127"]],0,"Windows"]`, true},
+		{`{"a":"1; drop table users"}`, false},
+		{`{"a":"x' or 1=1--"}`, false},
+	}
+	for _, c := range cases {
+		if got := plainJSON(c.v); got != c.drop {
+			t.Errorf("plainJSON(%q) = %v, want %v", c.v, got, c.drop)
+		}
+	}
+}

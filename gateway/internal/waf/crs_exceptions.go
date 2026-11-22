@@ -151,7 +151,7 @@ func onlyPlaceholders(v string) bool {
 }
 
 // sqlWord is a keyword a JSON-based SQL injection needs.
-var sqlWord = regexp.MustCompile(`(?i)\b(?:select|union|insert|update|delete|drop|from|where|having|sleep|benchmark|waitfor|or|and|like|json_\w+)\b|--|/\*|;`)
+var sqlWord = regexp.MustCompile(`(?i)\b(?:select|union|insert|update|delete|drop|from|where|having|sleep|benchmark|waitfor|or|and|like|json_\w+)\b|--|/\*`)
 
 // plainJSON reports whether v is a JSON document with no SQL in it: rule
 // 942550 looks for JSON syntax that SQL engines accept, and fires on

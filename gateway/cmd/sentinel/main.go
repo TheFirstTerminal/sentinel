@@ -49,7 +49,7 @@ import (
 
 // Version is shown on the dashboard. Release builds set it with
 // -ldflags "-X main.Version=0.4.0".
-var Version = "0.17.3"
+var Version = "0.17.4"
 
 func main() {
 	if len(os.Args) > 1 {
