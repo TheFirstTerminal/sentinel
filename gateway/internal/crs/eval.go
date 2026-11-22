@@ -16,6 +16,7 @@ type Match struct {
 	Paranoia int
 	Var      string // e.g. "ARGS:q"
 	Value    string // what matched (shortened)
+	Full     string // what matched, whole
 }
 
 // Result is the outcome of running CRS on a request.
@@ -110,7 +111,7 @@ func (tx *Tx) run(r *Rule) bool {
 	}
 	if r.Msg != "" && r.Paranoia > 0 {
 		m := Match{ID: r.ID, Msg: tx.expand(r.Msg), Severity: r.Severity, Paranoia: r.Paranoia,
-			Var: tx.matchedVar.key, Value: shorten(tx.matchedVar.value)}
+			Var: tx.matchedVar.key, Value: shorten(tx.matchedVar.value), Full: tx.matchedVar.value}
 		for _, t := range r.Tags {
 			if c, ok := strings.CutPrefix(t, "attack-"); ok {
 				m.Category = c

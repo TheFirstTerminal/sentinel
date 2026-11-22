@@ -187,3 +187,64 @@ func TestFalseAlarmsRound3(t *testing.T) {
 		}
 	}
 }
+
+func TestShellTilde(t *testing.T) {
+	for v, want := range map[string]bool{
+		"30980c5fc2d3~0~YAAQ+gnem==~-1~||-1||~-1": false,
+		"hash~0~data":         false,
+		"cat ~/.ssh/id_rsa":   true,
+		"x;cat ~root/.bashrc": true,
+		"a|~":                 true,
+		"=~-x":                true,
+	} {
+		if got := shellTildeIn(v); got != want {
+			t.Errorf("shellTildeIn(%q) = %v, want %v", v, got, want)
+		}
+	}
+}
+
+func TestRound3Exceptions(t *testing.T) {
+	for _, c := range []struct {
+		v    string
+		drop bool
+	}{
+		{"window.location.href", true},
+		{"json.event.context.window.location.hash", true},
+		{"document.cookie", true},
+		{"x=document.cookie", false},
+		{"document.location='//evil'", false},
+		{"alert(document.cookie)", false},
+	} {
+		if got := crsFalseAlarm(941180, "ARGS:k", c.v, false); got != c.drop {
+			t.Errorf("941180 %q: dropped=%v, want %v", c.v, got, c.drop)
+		}
+	}
+	rules, _ := LoadRules("")
+	e := NewEngine(rules, 5)
+	for q, attack := range map[string]bool{"oid=javascript:void(0);": false, "oid=javascript:;": false, "u=javascript:alert(1)": true} {
+		if d := e.Inspect(httptest.NewRequest("GET", "/?"+q, nil), nil); d.Attack != attack {
+			t.Errorf("%s: attack=%v, want %v (%v)", q, d.Attack, attack, d.Matches)
+		}
+	}
+}
+
+func TestRound3bExceptions(t *testing.T) {
+	for v, drop := range map[string]bool{
+		"${BUNDLE_ID}": true, "${AUCTION_PRICE}": true, "${BASE64_UID_ENC}": true,
+		"${IFS}": false, "${PATH}": false, "cat${IFS}/etc/passwd": false, "${USER_ID}$(id)": false,
+	} {
+		if got := onlyPlaceholders(v); got != drop {
+			t.Errorf("onlyPlaceholders(%q) = %v, want %v", v, got, drop)
+		}
+	}
+	for v, want := range map[string]bool{
+		`<iframe src="javascript:void(0)" title="">`: true,
+		`<a href="javascript:void(0);" id="x">`:      true,
+		`<a href="javascript:alert(1)">`:             false,
+		`<iframe src="javascript:void(0)&alert(1)">`: false,
+	} {
+		if got := inertSchemesOnly(v); got != want {
+			t.Errorf("inertSchemesOnly(%q) = %v, want %v", v, got, want)
+		}
+	}
+}

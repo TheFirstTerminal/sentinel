@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.17.5 · 2026-11-22
+- **Fewer false alarms**: on the open-appsec comparison Sentinel wrongly blocks 2.0% of normal requests (1,637; 0.17.4: 1,816) and blocks exactly the same attacks (99.9%, checked one by one). As before, the fixes were found only on the half of the sites not counted.
+  - Core Rule Set exceptions now look at the whole matched value. They used to see only its first 120 characters, so a long JSON cookie (Mixpanel) never read as JSON, and a few values were judged on their start alone;
+  - Akamai bot-manager cookies (`_abck`) use `~-1` as a separator: a tilde before a number no longer reads as a shell home directory (`~/path` and `~user` still do);
+  - unfilled upper-case ad-tag placeholders such as `${USER_ID}` and `${AUCTION_PRICE}` no longer read as shell variables (`${IFS}`, `${PATH}` still do);
+  - Sentinel's `javascript:` rule (XSS-003) ignores inert `javascript:void(0)` and `javascript:;`, also in session-replay recordings of whole pages;
+  - a value that is only a property name, such as `window.location.href` as a trace attribute key, no longer trips CRS 941180 (`alert(document.cookie)` still does).
+
 ## 0.17.4 · 2026-11-22
 - **Fewer false alarms**: on the open-appsec comparison Sentinel wrongly blocks 1,816 normal requests (0.17.3: 1,874) and blocks exactly the same attacks (99.9%, checked one by one). As before, the fixes were found only on the half of the sites not counted.
   - the directory traversal rule (LFI-001) no longer reads `...` before a JSON-escaped quote (`...\"`) as a Windows `..\`, which analytics payloads such as Shopify's send constantly; `..\..\windows` is still caught;

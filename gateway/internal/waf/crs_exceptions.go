@@ -42,8 +42,12 @@ func crsFalseAlarm(id int, variable, value string, gql bool) bool {
 		return strings.HasPrefix(variable, "ARGS_NAMES:json.") && !strings.ContainsAny(value, `/\`)
 	case 941170, 941210:
 		return harmlessScheme(value)
+	case 941180:
+		// A bare property name ("window.location.href" as an OpenTelemetry
+		// attribute key): without a quote, bracket or call it runs nothing.
+		return propertyName.MatchString(value)
 	case 932270:
-		return !shellTilde.MatchString(value)
+		return !shellTildeIn(value)
 	case 932130, 933135:
 		return onlyPlaceholders(value)
 	case 942550:
@@ -134,11 +138,28 @@ func PlainGraphQL(v string) bool {
 // always between letters or digits.
 var shellTilde = regexp.MustCompile(`(?:^|[^A-Za-z0-9])~`)
 
+// shellTildeIn reports whether v has a tilde the shell would expand to a
+// home directory. Akamai's _abck cookie also writes fields such as
+// "==~-1~||-1||~-1": a tilde before a number is its separator, while an
+// attack needs ~/path or ~user.
+func shellTildeIn(v string) bool {
+	for _, loc := range shellTilde.FindAllStringIndex(v, -1) {
+		rest := v[loc[1]:]
+		rest = strings.TrimPrefix(rest, "-")
+		if rest == "" || rest[0] < '0' || rest[0] > '9' {
+			return true
+		}
+	}
+	return false
+}
+
 // placeholder is a template slot that ad and analytics tags leave unfilled,
 // such as ${user_id}, ${user.gdpr} or ${uipid()}. Shell evasion uses
 // ${IFS}, ${PATH:0:1} or $(...), which this doesn't match; in a shell a
 // dot or () inside ${} is a syntax error.
-var placeholder = regexp.MustCompile(`\$\{[a-z][a-z0-9_]{2,}(?:\.[a-z][a-z0-9_]*)*(?:\(\))?\}`)
+// Upper case only with an underscore (${USER_ID}, ${AUCTION_PRICE}): shell
+// evasion uses single-word variables such as ${IFS}, ${PATH} or ${HOME}.
+var placeholder = regexp.MustCompile(`\$\{(?:[a-z][a-z0-9_]{2,}(?:\.[a-z][a-z0-9_]*)*(?:\(\))?|[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)\}`)
 
 // onlyPlaceholders reports whether every "${" in v opens a template slot
 // and v has no other shell substitution.
@@ -178,12 +199,22 @@ var inertScheme = regexp.MustCompile(`(?i)javascript:\s*(?:void\s*\(\s*0\s*\)\s*
 
 // harmlessScheme reports whether every javascript: and data: in v is inert.
 func harmlessScheme(v string) bool {
+	return inertSchemesOnly(v) && !strings.Contains(v, "<")
+}
+
+// inertSchemesOnly is harmlessScheme without the check for tags, for
+// Sentinel's own javascript: rule (XSS-003): session replay recordings hold
+// whole pages with <iframe src="javascript:void(0)">, and tags are the
+// other XSS rules' job.
+func inertSchemesOnly(v string) bool {
 	if !anyScheme.MatchString(v) {
 		return false
 	}
 	rest := strings.ToLower(inertScheme.ReplaceAllString(v, " "))
 	return !strings.Contains(rest, "javascript:") && !strings.Contains(rest, "data:") &&
-		!strings.Contains(rest, "vbscript:") && !strings.Contains(rest, "<")
+		!strings.Contains(rest, "vbscript:")
 }
+
+var propertyName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)+$`)
 
 var anyScheme = regexp.MustCompile(`(?i)javascript:|data:`)

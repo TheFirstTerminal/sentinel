@@ -187,7 +187,7 @@ func (e *Engine) Inspect(r *http.Request, body []byte) Decision {
 			if fired[rule.ID] || !rule.targets[in.Target] {
 				continue
 			}
-			if binary && rule.ID == "NULL-001" || gqlDoc && rule.ID == "NOSQL-001" {
+			if binary && rule.ID == "NULL-001" || gqlDoc && rule.ID == "NOSQL-001" || rule.ID == "XSS-003" && inertSchemesOnly(in.Value) {
 				continue
 			}
 			if rule.pre != nil && !rule.pre.MayMatch(lower) {
@@ -228,7 +228,7 @@ func (e *Engine) Inspect(r *http.Request, body []byte) Decision {
 			if m.Paranoia > e.crs.Paranoia {
 				continue // detection-only rule above the blocking level
 			}
-			if crsFalseAlarm(m.ID, m.Var, m.Value, gql) || enc && m.ID == 920450 && strings.HasSuffix(m.Var, "_content-encoding") || dupCT && (m.ID == 920420 || m.ID == 920470 || m.ID == 921421) {
+			if crsFalseAlarm(m.ID, m.Var, m.Full, gql) || enc && m.ID == 920450 && strings.HasSuffix(m.Var, "_content-encoding") || dupCT && (m.ID == 920420 || m.ID == 920470 || m.ID == 921421) {
 				d.Score -= crsSeverity(m.Severity)
 				continue
 			}

@@ -2,6 +2,7 @@ package waf
 
 import (
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -164,4 +165,32 @@ func mustDefaultRules(t *testing.T) []*Rule {
 		t.Fatal(err)
 	}
 	return rules
+}
+
+// The exceptions see the whole value, not the shortened one in the log: a
+// long JSON cookie cut at 120 characters is no longer valid JSON.
+func TestCRSFalseAlarmLongValue(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "REQUEST-942-T.conf"), []byte(`
+SecAction "id:900,phase:1,pass,nolog,setvar:'tx.critical_anomaly_score=5'"
+SecRule REQUEST_COOKIES "@rx \{\"" "id:942550,phase:2,block,t:urlDecodeUni,msg:'JSON SQLi',tag:'attack-sqli',tag:'paranoia-level/1',severity:'CRITICAL',setvar:'tx.inbound_anomaly_score_pl1=+%{tx.critical_anomaly_score}'"
+`), 0o644)
+	set, err := crs.Load(dir, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e := NewEngine(nil, 5)
+	e.UseCRS(set)
+	long := `{"distinct_id":"1926012925466d-037ce57e0287e4-16525637-13c680","bc_persist_updated":1728189200513,"event_count":4,"$initial_referrer":"$direct","$initial_referring_domain":"$direct"}`
+	cookie := func(v string) Decision {
+		r := httptest.NewRequest("GET", "/", nil)
+		r.Header.Set("Cookie", "mp_shop_mixpanel="+url.QueryEscape(v))
+		return e.Inspect(r, nil)
+	}
+	if d := cookie(long); d.Attack {
+		t.Fatalf("long plain JSON cookie blocked: %+v", d)
+	}
+	if d := cookie(long[:len(long)-1] + `,"x":"1 union select 1"}`); !d.Attack {
+		t.Fatalf("SQL in a long JSON cookie passed: %+v", d)
+	}
 }
