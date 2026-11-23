@@ -101,13 +101,24 @@ var (
 		"ifconfig": true, "ipconfig": true, "hostname": true, "phpinfo": true, "env": true, "set": true, "ver": true,
 		"systeminfo": true, "netstat": true, "ps": true, "sh": true, "bash": true, "cmd": true, "powershell": true,
 		"reboot": true, "shutdown": true, "halt": true, "passwd": true, "nc": true, "wget": true, "curl": true}
+	// A shop's price filter ("$150 and over"). The currency sign keeps
+	// "1 and 1", a blind injection into a number, scored.
+	priceRange = regexp.MustCompile(`(?i)^[$£€]\s?\d[\d,.]*\s+(?:and|or)\s+(?:over|above|up|more|under|below|less)$`)
+	// An empty function, as analytics tags report an object's id
+	// ("function kd(){}"): it runs nothing.
+	emptyFunction = regexp.MustCompile(`^function\s*[A-Za-z_$][\w$]*\s*\(\s*\)\s*\{\s*\}$`)
 )
 
 func inertValue(v string) bool {
+	if strings.Contains(v, "%") {
+		if d, err := url.QueryUnescape(v); err == nil && emptyFunction.MatchString(d) {
+			return true
+		}
+	}
 	switch {
 	case bareWord.MatchString(v):
 		return !shellCommands[strings.ToLower(v)]
-	case ipPort.MatchString(v), privacyString.MatchString(v):
+	case ipPort.MatchString(v), privacyString.MatchString(v), priceRange.MatchString(v), emptyFunction.MatchString(v):
 		return true
 	}
 	return waf.PlainGraphQL(v)

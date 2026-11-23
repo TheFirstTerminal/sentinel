@@ -278,3 +278,29 @@ func TestMissedAttacksRound1(t *testing.T) {
 		}
 	}
 }
+
+func TestRound4(t *testing.T) {
+	rules, _ := LoadRules("")
+	e := NewEngine(rules, 5)
+	for q, attack := range map[string]bool{
+		"pidt=1&oid=javascript:;&ot=a":            false,
+		"oid=javascript%3Avoid(0)%3B&ot=a":        false,
+		"oid=javascript:void(0)%26alert(1)&ot=a":  true,
+		"a=1&u=javascript:alert(document.domain)": true,
+	} {
+		if d := e.Inspect(httptest.NewRequest("GET", "/?"+q, nil), nil); d.Attack != attack {
+			t.Errorf("%s: attack=%v, want %v (%v)", q, d.Attack, attack, d.Matches)
+		}
+	}
+	r := httptest.NewRequest("GET", "/", nil)
+	r.Header.Set("Cookie", "cto_bundle=AAA"+url.QueryEscape("XgBvH19kd3VpMzFmbHZ6dmNhYm10eQ"))
+	for _, m := range e.Inspect(r, nil).Matches {
+		if m.RuleID == "NULL-001" {
+			t.Errorf("NULL-001 on decoded cookie: %+v", m)
+		}
+	}
+	r = httptest.NewRequest("GET", "/?x=a%00b", nil)
+	if !e.Inspect(r, nil).Attack {
+		t.Error("a real NUL byte passed")
+	}
+}

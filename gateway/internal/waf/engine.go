@@ -187,7 +187,10 @@ func (e *Engine) Inspect(r *http.Request, body []byte) Decision {
 			if fired[rule.ID] || !rule.targets[in.Target] {
 				continue
 			}
-			if binary && rule.ID == "NULL-001" || gqlDoc && rule.ID == "NOSQL-001" || rule.ID == "XSS-003" && inertSchemesOnly(in.Value) {
+			// Zero bytes in text decoded from base64 (Criteo's cto_bundle)
+			// are the decoder's doing, not the client's.
+			decoded := strings.HasSuffix(in.Field, " (base64)")
+			if (binary || decoded) && rule.ID == "NULL-001" || gqlDoc && rule.ID == "NOSQL-001" || rule.ID == "XSS-003" && inertSchemesOnly(querySplit(in)) {
 				continue
 			}
 			if rule.pre != nil && !rule.pre.MayMatch(lower) {
@@ -240,6 +243,21 @@ func (e *Engine) Inspect(r *http.Request, body []byte) Decision {
 	}
 	d.Attack = d.Score >= e.threshold
 	return d
+}
+
+// querySplit is the value with "&" ending each parameter when it is a whole
+// query string ("oid=javascript:;&ot=a"), so a scheme is judged by its own
+// parameter only.
+func querySplit(in Input) string {
+	if in.Field == "(raw)" && in.Target == TargetQuery {
+		// Split first, then decode: an encoded %26 stays part of its value.
+		v := strings.ReplaceAll(in.Value, "&", `"`)
+		if d, err := url.QueryUnescape(v); err == nil {
+			return d
+		}
+		return v
+	}
+	return in.Value
 }
 
 // plainGraphQLQueries is true when the request has "query" inputs and

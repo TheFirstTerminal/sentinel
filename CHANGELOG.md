@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.17.7 · 2026-11-23
+- **Fewer false alarms**: on the open-appsec comparison Sentinel wrongly blocks 1.9% of normal requests (1,580; 0.17.6: 1,636) and blocks exactly the same attacks (99.97%, checked one by one). Found only on the half of the sites not counted:
+  - the ML model skips shop price filters such as `$150 and over` (the currency sign keeps `1 and 1` scored) and empty functions that analytics tags send as ids (`function kd(){}`);
+  - XSS-003 judges a whole query string parameter by parameter, so `oid=javascript:;&ot=a` passes and `javascript:alert(...)` is still caught;
+  - NULL-001 no longer fires on zero bytes that come from decoding a base64 cookie (Criteo's `cto_bundle`); a real `%00` still does.
+
 ## 0.17.6 · 2026-11-23
 - **More attacks caught**: on the open-appsec comparison Sentinel blocks 11,051 of 11,054 attacks (99.97%; 0.17.5: 11,046) and wrongly blocks the same 2.0% of normal requests. New and widened rules, each checked against about 69,000 normal requests:
   - SQLI-012: always-true conditions without quotes (`AND 1=1`, `OR x=y#`);

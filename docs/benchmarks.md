@@ -55,7 +55,8 @@ never saw, for every WAF. Attacks: all 11,054.
 
 | WAF | Attacks blocked | Normal requests wrongly blocked | Balanced accuracy |
 |---|---|---|---|
-| **Sentinel 0.17.6** | **99.97%** | **2.0%** | **99.0%** |
+| **Sentinel 0.17.7** | **99.97%** | **1.9%** | **99.0%** |
+| Sentinel 0.17.6 | 99.97% | 2.0% | 99.0% |
 | Sentinel 0.17.5 | 99.9% | 2.0% | 99.0% |
 | Sentinel 0.17.1 | 99.9% | 2.2% | 98.8% |
 | Sentinel 0.17.0 | 99.9% | 2.5% | 98.7% |
@@ -79,7 +80,7 @@ the sites not counted here, then checked the result on this half. Its attack
 number is less independent: LFI-004 was widened using this dataset's missed
 traversal payloads (broken and `%u`-encoded separators), and that accounts
 for most of the jump to 99.9%. Expect a lower number on attacks you write
-yourself. 0.17.1 and 0.17.5 took false alarms from 2.5% to 2.0% the same way (tuned on
+yourself. 0.17.1 and 0.17.5 took false alarms from 2.5% to 1.9% the same way (tuned on
 the uncounted half only) and blocks the same attacks. The normal traffic here includes many unusual requests, so all
 numbers are worse than on a typical site; start in monitor mode and check the
 dashboard before blocking.
