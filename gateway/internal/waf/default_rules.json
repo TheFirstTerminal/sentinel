@@ -11,7 +11,7 @@
       "cookies",
       "headers"
     ],
-    "pattern": "\\bunion\\b(?:\\s+all)?\\s+select\\b"
+    "pattern": "\\bunion\\b(?:\\s|#[^\\n]*\\n)+(?:all(?:\\s|#[^\\n]*\\n)+)?select\\b"
   },
   {
     "id": "SQLI-002",
@@ -105,6 +105,19 @@
     "pattern": "\\b(?:char|chr|nchar)\\s*\\(\\s*\\d+\\s*(?:,\\s*\\d+\\s*){2,}\\)"
   },
   {
+    "id": "SQLI-012",
+    "name": "Always-true condition without quotes (AND 1=1, OR x=y#)",
+    "category": "sqli",
+    "severity": 5,
+    "targets": [
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "(?:^|[\\s)])(?:and|or)\\s+(?:\\d+\\s*=\\s*\\d+\\b|[a-z_]\\w*\\s*=\\s*[a-z_]\\w*\\s*(?:#|--))"
+  },
+  {
     "id": "SQLI-004",
     "name": "Stacked query with destructive statement",
     "category": "sqli",
@@ -141,7 +154,7 @@
       "cookies",
       "headers"
     ],
-    "pattern": "\\b(?:information_schema|sqlite_master|pg_catalog|mysql\\.user|xp_cmdshell)\\b"
+    "pattern": "\\b(?:information_schema|sqlite_master|pg_catalog|mysql\\.user|xp_cmdshell|sysibm|syscat)\\b"
   },
   {
     "id": "XSS-001",
@@ -456,6 +469,19 @@
       "headers"
     ],
     "pattern": "--(?:exec|upload-pack|receive-pack|output)=|-o\\s*proxycommand\\s*="
+  },
+  {
+    "id": "CMDI-006",
+    "name": "VBScript web shell (On Error Resume Next)",
+    "category": "cmdi",
+    "severity": 5,
+    "targets": [
+      "query",
+      "body",
+      "cookies",
+      "headers"
+    ],
+    "pattern": "\\bon\\s+error\\s+resume\\s+next\\b"
   },
   {
     "id": "SSTI-003",

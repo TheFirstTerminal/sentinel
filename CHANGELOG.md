@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.17.6 · 2026-11-23
+- **More attacks caught**: on the open-appsec comparison Sentinel blocks 11,051 of 11,054 attacks (99.97%; 0.17.5: 11,046) and wrongly blocks the same 2.0% of normal requests. New and widened rules, each checked against about 69,000 normal requests:
+  - SQLI-012: always-true conditions without quotes (`AND 1=1`, `OR x=y#`);
+  - SQLI-001 also finds `union select` split by `#` comments;
+  - SQLI-006 also finds DB2 system tables (`sysibm`, `syscat`);
+  - CMDI-006: VBScript web shells (`On Error Resume Next`).
+- The `WAF_MAX_INSPECT_MS` docs now say the limit counts elapsed time, so a heavily loaded server reaches it sooner.
+
 ## 0.17.5 · 2026-11-22
 - **Fewer false alarms**: on the open-appsec comparison Sentinel wrongly blocks 2.0% of normal requests (1,637; 0.17.4: 1,816) and blocks exactly the same attacks (99.9%, checked one by one). As before, the fixes were found only on the half of the sites not counted.
   - Core Rule Set exceptions now look at the whole matched value. They used to see only its first 120 characters, so a long JSON cookie (Mixpanel) never read as JSON, and a few values were judged on their start alone;

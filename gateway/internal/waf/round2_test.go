@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -245,6 +246,35 @@ func TestRound3bExceptions(t *testing.T) {
 	} {
 		if got := inertSchemesOnly(v); got != want {
 			t.Errorf("inertSchemesOnly(%q) = %v, want %v", v, got, want)
+		}
+	}
+}
+
+// Attacks the open-appsec comparison got past 0.17.5, and text that must
+// still pass.
+func TestMissedAttacksRound1(t *testing.T) {
+	rules, _ := LoadRules("")
+	e := NewEngine(rules, 5)
+	post := func(v string) Decision {
+		body := "p=" + url.QueryEscape(v)
+		r := httptest.NewRequest("POST", "/", strings.NewReader(body))
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		return e.Inspect(r, []byte(body))
+	}
+	for _, v := range []string{
+		" AND 1=1 AND '%'='",
+		"#?zen?\nunion all#zen\n#Zen\nselect",
+		"select xmlagg(xmlrow(table_schema)) from sysibm.tables",
+		" OR x=y#",
+		`Ev al ("Ex"&"e"&"cute(""Server.ScriptTimeout=3600:On Error Resume Next:Function bd(byVal s)")`,
+	} {
+		if d := post(v); !d.Attack {
+			t.Errorf("attack passed: %q", v)
+		}
+	}
+	for _, v := range []string{"rock and roll", "salt and pepper = tasty", "1 or 2 items", "size=10 and color=red", "error: resume upload next time"} {
+		if d := post(v); d.Attack {
+			t.Errorf("normal text blocked: %q %v", v, d.Matches)
 		}
 	}
 }

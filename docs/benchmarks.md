@@ -55,7 +55,8 @@ never saw, for every WAF. Attacks: all 11,054.
 
 | WAF | Attacks blocked | Normal requests wrongly blocked | Balanced accuracy |
 |---|---|---|---|
-| **Sentinel 0.17.5** | **99.9%** | **2.0%** | **99.0%** |
+| **Sentinel 0.17.6** | **99.97%** | **2.0%** | **99.0%** |
+| Sentinel 0.17.5 | 99.9% | 2.0% | 99.0% |
 | Sentinel 0.17.1 | 99.9% | 2.2% | 98.8% |
 | Sentinel 0.17.0 | 99.9% | 2.5% | 98.7% |
 | Sentinel 0.16.4 | 95.4% | 4.4% | 95.5% |
