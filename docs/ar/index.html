@@ -1,0 +1,134 @@
+---
+layout: null
+permalink: /ar/
+---
+<!doctype html>
+<html class="tft-base" lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>سنتينل: بوابة حماية للمواقع تشرح كل قرار</title>
+<meta name="description" content="سنتينل يقف قدّام موقعك أو واجهة API أو نقطة الذكاء الاصطناعي، يوقف الهجمات وإساءة الاستخدام، ويگلك بالضبط ليش وقف كل طلب. يشتغل على سيرفرك، والنسخة المجانية لأي عدد من السيرفرات.">
+<meta property="og:title" content="سنتينل">
+<meta property="og:description" content="بوابة حماية للمواقع تشرح كل قرار. تشتغل على سيرفرك.">
+<meta property="og:image" content="https://sentinel.tft.markets/social-preview.png">
+<link rel="alternate" hreflang="en" href="https://sentinel.tft.markets/">
+<link rel="alternate" hreflang="ar" href="https://sentinel.tft.markets/ar/">
+<link rel="icon" href="https://tft.markets/brand/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://tft.markets/brand/tft.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ '/assets/site.css' | relative_url }}">
+</head>
+<body>
+<header class="tft-mid hero">
+  <div class="wrap">
+    <div class="top">
+      <a class="tft-lockup" href="./"><img src="https://tft.markets/brand/logo.svg" alt=""><span><b>سنتينل</b><small>البوابة الأولى</small></span></a>
+      <nav><a href="../guide.html">الدليل <small>(English)</small></a><a href="../benchmarks.html">الاختبارات</a><a href="../pro.html">الأسعار</a><a href="https://github.com/TheFirstTerminal/sentinel">GitHub</a><a class="lang" href="../" hreflang="en" lang="en">English</a></nav>
+    </div>
+
+    <h1>يوقف الهجمات على موقعك، ويگلك ليش بالضبط.</h1>
+    <p class="lede">سنتينل يشتغل قدّام موقعك أو واجهة API أو نقطة الذكاء الاصطناعي. يفحص كل طلب حتى يلگي الهجمات وإساءة الاستخدام، وكل قرار يجي ويا القاعدة والحقل والنص اللي سبّبه. يشتغل على سيرفرك انت، والنسخة المجانية تغطي أي عدد من السيرفرات.</p>
+    <div class="term" role="img" aria-label="مخرجات سنتينل بالطرفية: طلب عادي مسموح، هجومين حقن SQL محجوبين ويا النص المطابق، وحقن أوامر لنموذج ذكاء اصطناعي محجوب">
+      <div class="line"><span class="t">14:02:09</span>  <span class="ok">✓ ALLOWED   </span>  GET    /products                    200</div>
+      <div class="line"><span class="t">14:02:11</span>  <span class="blk">✗ BLOCKED   </span>  GET    /                            403  <span class="rule">SQLI-001</span>  UNION-based SQL injection
+                        <span class="why">field: id  matched: 1' union select password from users</span></div>
+      <div class="line"><span class="t">14:02:14</span>  <span class="blk">✗ BLOCKED   </span>  POST   /api/search                  403  <span class="rule">SQLI-005</span>  Time-based blind SQL injection
+                        <span class="why">field: q  matched: 1 and pg_sleep(5)</span></div>
+      <div class="line"><span class="t">14:02:20</span>  <span class="det">✗ PROMPT INJ</span>  POST   /api/chat                    403  <span class="rule">PI-001</span>  Instruction override
+                        <span class="why">field: message  matched: ignore all previous instructions</span></div>
+    </div>
+    <p class="caption">هذا اللي يطبعه سنتينل بالطرفية. لوحة التحكم تعرض نفس الشي، ويا زر <em>اسمح</em> لأي طلب ما چان لازم ينوقف.</p>
+    <div class="actions">
+      <a class="tft-btn tft-btn-main" href="#install">نزّله بأمر واحد</a>
+      <a class="tft-btn tft-btn-ghost" href="../pro.html">قارن النسختين</a>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section>
+    <div class="prose">
+      <h2>شنو يصير للطلب</h2>
+      <p>الفحوصات الخفيفة تشتغل أول، فالعنوان المحظور ينرد قبل ما يتطابق أي نمط. تبدي بوضع المراقبة: كلشي ينفحص وينسجل وما ينحجب شي، لحد ما تشوف شنو راح يسوي على زياراتك.</p>
+    </div>
+    <ol class="flow">
+      <li class="tft-card"><h3>منو اللي يطلب</h3><p>عناوين IP محظورة، دول ما تخدمها، مسارات فخ بس الماسحات تزورها، وأدوات هجوم معروفة.</p></li>
+      <li class="tft-card"><h3>شگد يطلب</h3><p>حدود طلبات لكل مسار، كشف تجريب كلمات السر على حسابات هواية، وفحص اختياري للبوتات.</p></li>
+      <li class="tft-card"><h3>شنو بيه</h3><p>قواعد سنتينل بعد فك أساليب التمويه، ومجموعة قواعد OWASP، ونموذج تعلّم آلي للهجمات اللي ما توصفها قاعدة.</p></li>
+      <li class="tft-card"><h3>شنو يرجع</h3><p>أخطاء قاعدة البيانات وتفاصيل الأعطال والمفاتيح ما تطلع بالردود، وأرقام البطاقات تنخفى.</p></li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="prose">
+      <h2>مجرّب على زيارات حقيقية</h2>
+      <p>على مقارنة جدران الحماية العامة من open-appsec: زيارات تصفح حقيقية مسجلة من مئات المواقع، و11,054 هجوم منشور. كل جدار حماية اشتغل بإعداداته الافتراضية، بوضع الحجب، قدّام نفس التطبيق. نموذج سنتينل ما شاف المواقع المحسوبة بالجدول.</p>
+    </div>
+    <div class="tablewrap tft-card">
+    <table>
+      <tr><th>البوابة</th><th class="n">الهجمات المحجوبة</th><th class="n">طلبات عادية انحجبت بالغلط</th></tr>
+      <tr class="us"><td>سنتينل</td><td class="n">99.97%</td><td class="n">1.9%<span class="bar" style="width:10px"></span></td></tr>
+      <tr><td>ModSecurity ويا قواعد OWASP</td><td class="n">90.3%</td><td class="n">26.7%<span class="bar" style="width:120px"></span></td></tr>
+      <tr><td>BunkerWeb</td><td class="n">90.3%</td><td class="n">28.8%<span class="bar" style="width:130px"></span></td></tr>
+    </table>
+    </div>
+    <p class="note">هاي البيانات مليانة طلبات غريبة، فكل رقم أسوأ من موقع عادي. الطريقة وحدودها بصفحة <a href="../benchmarks.html">الاختبارات</a> (بالإنكليزي).</p>
+  </section>
+
+  <section id="install">
+    <div class="prose">
+      <h2>جرّبه على جهازك</h2>
+      <p>حط سنتينل قدّام تطبيق على المنفذ 3000:</p>
+    </div>
+<pre class="cmd">docker run --rm -it -p 8080:8080 -v sentinel-data:/var/lib/sentinel \
+  -e UPSTREAM_URL=http://host.docker.internal:3000 \
+  --add-host=host.docker.internal:host-gateway \
+  ghcr.io/thefirstterminal/sentinel</pre>
+    <div class="prose">
+      <p>افتح الرابط اللي يطبعه مرة وحدة حتى تسوي حساب المدير. على سيرفر لينكس، سطر واحد ينصّبه كخدمة، وأكو هم حزم Debian وRPM وHomebrew وHelm وملفات تشغيل جاهزة. <a href="https://github.com/TheFirstTerminal/sentinel#quickstart">كل طرق التنصيب</a>.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>النسخة المجانية ونسخة Pro</h2>
+    <div class="editions">
+      <div class="edition tft-card">
+        <h3>سنتينل المجاني</h3>
+        <div class="price">$0 <small>لأي عدد من السيرفرات، حتى بالإنتاج</small></div>
+        <ul>
+          <li>القواعد، وقواعد OWASP، ونموذج التعلم الآلي</li>
+          <li>حماية من حقن الأوامر لنقاط الذكاء الاصطناعي</li>
+          <li>حدود الطلبات، الحظر، الفخاخ، وفحص البوتات</li>
+          <li>أكثر من موقع، توزيع الحمل، وHTTPS تلقائي</li>
+          <li>لوحة تحكم بتحقق بخطوتين، تنبيهات، وsyslog وOpenTelemetry</li>
+        </ul>
+      </div>
+      <div class="edition tft-card">
+        <h3>سنتينل Pro</h3>
+        <div class="price">$29 <small>لكل سيرفر بالشهر، أو $290 بالسنة</small></div>
+        <ul>
+          <li>كل شي بالمجاني</li>
+          <li>دخول موحّد وتحقق بخطوتين لتطبيقاتك انت</li>
+          <li>قواعد وصول حسب الدور والقسم والملكية والوقت والشبكة</li>
+          <li>تحقق إضافي للدول والعناوين والأوقات الغريبة</li>
+          <li>شهادات العملاء، سجل تدقيق ما يتلاعب بيه، ودعم بالإيميل</li>
+        </ul>
+        <p class="note">أول 50 زبون يدفعون $19 بالشهر طول ما يجددون. راسلنا على <a href="mailto:support@tft.markets">support@tft.markets</a> ويا اسم شركتك وعدد السيرفرات.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="tft-mid">
+  <div class="wrap">
+    <a class="tft-by" href="https://tft.markets/"><img src="https://tft.markets/brand/logo.svg" alt=""> منتج من البوابة الأولى</a>
+    <span>© 2026 Saif Zahid. النسخة المجانية بترخيص PolyForm Shield 1.0.0.
+    <a href="https://github.com/TheFirstTerminal/sentinel/blob/main/SECURITY.md">بلّغ عن مشكلة أمنية</a> ·
+    <a href="mailto:support@tft.markets">support@tft.markets</a></span>
+  </div>
+</footer>
+</body>
+</html>
