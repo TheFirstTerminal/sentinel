@@ -15,6 +15,10 @@ type BotOptions struct {
 	Challenger    *bot.Challenger // nil = no challenge
 	Challenge     string          // "off", "suspicious" or "all"
 	Paths         []string        // where challenges apply (prefixes)
+	// StrictPaths need a pass from every client: a browser loading a page
+	// gets the check, anything else without a pass is refused. For login
+	// and signup forms, which real users always reach through a browser.
+	StrictPaths []string
 }
 
 // Bots blocks known attack tools and challenges clients that look
@@ -35,7 +39,9 @@ func Bots(o BotOptions, log *slog.Logger) func(http.Handler) http.Handler {
 					return
 				}
 			}
-			if o.Challenger == nil || o.Challenge == "off" || o.Challenge == "" || !hasPrefix(r.URL.Path, o.Paths) {
+			strict := o.Challenger != nil && hasPrefix(r.URL.Path, o.StrictPaths)
+			challenging := o.Challenger != nil && o.Challenge != "off" && o.Challenge != "" && hasPrefix(r.URL.Path, o.Paths)
+			if !strict && !challenging {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -50,9 +56,22 @@ func Bots(o BotOptions, log *slog.Logger) func(http.Handler) http.Handler {
 				next.ServeHTTP(w, r)
 				return
 			}
-			why := bot.Suspicious(r)
-			if o.Challenge == "all" && why == "" {
-				why = "every visitor is checked on this path"
+			why := ""
+			if challenging {
+				why = bot.Suspicious(r)
+				if o.Challenge == "all" && why == "" {
+					why = "every visitor is checked on this path"
+				}
+			}
+			if strict && why == "" {
+				why = "a browser check is required on this path"
+			}
+			if strict && !bot.WantsHTML(r) {
+				// Can't run the check and has no pass: a script, or a form
+				// posted without loading its page first.
+				info.SetOutcome(reqctx.Outcome{Kind: "blocked", Rule: "BOT-STRICT", Reason: "no browser check pass on a strict path"})
+				writeError(w, http.StatusForbidden, "Open this page in a browser first: it needs a browser check", info.ID)
+				return
 			}
 			// Only browsers loading a page can run the check; everything
 			// else goes on to the other checks.

@@ -484,6 +484,7 @@ func (sh *shared) sitePipeline(sc config.Site, s *site) error {
 		BlockScanners: cfg.BotBlockScanners,
 		Challenge:     cfg.BotChallenge,
 		Paths:         cfg.BotPaths,
+		StrictPaths:   cfg.BotStrictPaths,
 		Challenger:    &bot.Challenger{Key: sh.botKey, Difficulty: cfg.BotDifficulty, PassFor: 24 * time.Hour},
 	}, log))(p)
 	p = guard(middleware.Honeypot(sh.traps, sh.bans, sh.banFor, sh.rec, log))(p)

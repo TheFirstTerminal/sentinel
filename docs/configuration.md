@@ -196,6 +196,7 @@ exclusion with the finding's ID, e.g. `rule: LEAK-LISTING`, `path: /files/`,
 | `bot.block_scanners` | `BOT_BLOCK_SCANNERS` | on | Refuse requests whose User-Agent names an attack tool (sqlmap, nikto, nuclei, wpscan...) |
 | `bot.challenge` | `BOT_CHALLENGE` | `off` | A JavaScript check for browsers: `suspicious` (clients that look automated: no User-Agent, headless or automation tools, a "browser" without Accept-Language) or `all` (every visitor on the paths below). Only page loads are checked (a `GET` that asks for HTML), since only a browser loading a page can run the check: API calls, images and clients that don't ask for HTML go on to the other checks without it |
 | `bot.challenge_paths` | `BOT_CHALLENGE_PATHS` | `/` | Where the check applies, e.g. `[/login, /signup]` |
+| `bot.strict_paths` | `BOT_STRICT_PATHS` | none | Paths where every client needs a browser check pass, e.g. `[/login, /signup]`: a browser loading the page gets the check, anything else without a pass (scripts, curl, a form posted without loading its page) is refused (rule BOT-STRICT). Works with `bot.challenge` off. Only for pages people reach in a browser: mobile apps, webhooks and API clients can't get a pass |
 | `bot.difficulty` | `BOT_DIFFICULTY` | `15` | Proof-of-work size; a browser needs about 0.1–0.5 s at 15, and each step up doubles it |
 
 The check is a short proof of work: a browser solves it once and gets a

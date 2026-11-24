@@ -49,6 +49,7 @@ type Config struct {
 	BotBlockScanners bool     // refuse known attack tools by User-Agent
 	BotChallenge     string   // "off", "suspicious" or "all"
 	BotPaths         []string // where challenges apply
+	BotStrictPaths   []string // where every client needs a pass (BOT_STRICT_PATHS)
 	BotDifficulty    int      // proof-of-work bits
 
 	// Automatic HTTPS (Let's Encrypt): the domains Sentinel gets
@@ -309,6 +310,7 @@ func Load() (*Config, error) {
 		BotBlockScanners:  !strings.EqualFold(os.Getenv("BOT_BLOCK_SCANNERS"), "off") && !strings.EqualFold(os.Getenv("BOT_BLOCK_SCANNERS"), "false"),
 		BotChallenge:      botMode,
 		BotPaths:          splitList(env("BOT_CHALLENGE_PATHS", "/")),
+		BotStrictPaths:    splitList(os.Getenv("BOT_STRICT_PATHS")),
 		BotDifficulty:     botBits,
 		AlertWebhookURL:   os.Getenv("ALERT_WEBHOOK_URL"),
 		AlertTelegramChat: os.Getenv("ALERT_TELEGRAM_CHAT_ID"),

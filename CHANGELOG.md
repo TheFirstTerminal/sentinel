@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.17.9 · 2026-11-24
+- **Strict bot check for login and signup**: new `bot.strict_paths` (`BOT_STRICT_PATHS`). On those paths every client needs a browser check pass: a browser loading the page gets the check as before, and anything else without a pass, such as a script, `curl` or a form posted without loading its page, is refused (rule BOT-STRICT). The regular `bot.challenge` still checks page loads only, so API clients and webhooks on other paths are unaffected. It works with `bot.challenge` off.
+
 ## 0.17.8 · 2026-11-24
 - **REST APIs work in protect mode**: `PUT`, `PATCH` and `DELETE` were refused by Core Rule Set rule 911100 (its default list allows only GET, HEAD, POST and OPTIONS), so updates and deletes to an API behind Sentinel failed, and so did the dashboard's own "remove" buttons. They are allowed now; `TRACE`, `CONNECT` and made-up methods are still refused.
 - **OpenAPI specs in YAML**: `api_spec.file` accepted only JSON, and a YAML spec stopped startup with "invalid character". Both work now.
