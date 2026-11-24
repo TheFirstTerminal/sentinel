@@ -47,6 +47,11 @@ func (s *Set) Evaluate(r *http.Request, body []byte) Result {
 	// Inspect XML attribute values too (CRS 4.25 LTS leaves it off unless
 	// crs-setup.conf opts in): attacks must not hide in attributes.
 	tx.tx["crs_xml_attr_inspect"] = "1"
+	// REST APIs update and delete with PUT, PATCH and DELETE; CRS's default
+	// list (GET HEAD POST OPTIONS) made rule 911100 refuse them all, the
+	// dashboard's own "remove" buttons included. Other methods (TRACE,
+	// CONNECT, made-up ones) are still refused.
+	tx.tx["allowed_methods"] = "GET HEAD POST OPTIONS PUT PATCH DELETE"
 	// CRS's list plus what browsers send on their own: navigator.sendBeacon
 	// and analytics posts use text/plain, and CSP/Reporting API reports
 	// have their own types, and Oblivious HTTP (RFC 9458) carries

@@ -3,10 +3,12 @@
 # Stage 1: compile. Dependencies are vendored (vendor/), so this step
 # needs no internet access.
 FROM golang:1.26.11-alpine AS build
-ARG VERSION=dev
+# Release builds pass VERSION; a local build keeps the version in main.go,
+# so the lab can tell whether it runs the current code.
+ARG VERSION=
 WORKDIR /src
 COPY . .
-RUN CGO_ENABLED=0 go build -mod=vendor -trimpath -ldflags="-s -w -X main.Version=${VERSION}" -o /out/sentinel ./cmd/sentinel
+RUN CGO_ENABLED=0 go build -mod=vendor -trimpath -ldflags="-s -w${VERSION:+ -X main.Version=${VERSION}}" -o /out/sentinel ./cmd/sentinel
 
 # Stage 2: the OWASP Core Rule Set, pinned to an exact commit. A changed
 # tag on GitHub makes the build fail instead of shipping unknown rules.

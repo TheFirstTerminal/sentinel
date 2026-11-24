@@ -100,3 +100,29 @@ func TestBadSpecRejected(t *testing.T) {
 		t.Fatal("bad regex must be rejected")
 	}
 }
+
+func TestParseYAML(t *testing.T) {
+	v, err := Parse([]byte(`openapi: 3.0.0
+info: {title: t, version: "1"}
+paths:
+  /api/users:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name]
+              properties:
+                name: {type: string, maxLength: 5}
+      responses:
+        200: {description: ok}
+`), "/api/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v == nil || len(v.routes) != 1 {
+		t.Fatalf("routes not read from YAML: %+v", v)
+	}
+}

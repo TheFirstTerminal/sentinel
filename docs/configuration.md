@@ -194,7 +194,7 @@ exclusion with the finding's ID, e.g. `rule: LEAK-LISTING`, `path: /files/`,
 | File key | Variable | Default | Meaning |
 |---|---|---|---|
 | `bot.block_scanners` | `BOT_BLOCK_SCANNERS` | on | Refuse requests whose User-Agent names an attack tool (sqlmap, nikto, nuclei, wpscan...) |
-| `bot.challenge` | `BOT_CHALLENGE` | `off` | A JavaScript check for browsers: `suspicious` (clients that look automated: no User-Agent, headless or automation tools, a "browser" without Accept-Language) or `all` (every visitor on the paths below) |
+| `bot.challenge` | `BOT_CHALLENGE` | `off` | A JavaScript check for browsers: `suspicious` (clients that look automated: no User-Agent, headless or automation tools, a "browser" without Accept-Language) or `all` (every visitor on the paths below). Only page loads are checked (a `GET` that asks for HTML), since only a browser loading a page can run the check: API calls, images and clients that don't ask for HTML go on to the other checks without it |
 | `bot.challenge_paths` | `BOT_CHALLENGE_PATHS` | `/` | Where the check applies, e.g. `[/login, /signup]` |
 | `bot.difficulty` | `BOT_DIFFICULTY` | `15` | Proof-of-work size; a browser needs about 0.1–0.5 s at 15, and each step up doubles it |
 
@@ -260,7 +260,7 @@ plus uptime, memory and goroutines. A ready Grafana dashboard is in
 |---|---|---|---|
 | `secret` | `SENTINEL_SECRET` | made once and kept in the data folder | Master key for the dashboard's login tokens and encrypted 2FA secrets, at least 32 characters (`openssl rand -hex 32`) |
 | `database_url` | `DATABASE_URL` | none (accounts in the data folder) | PostgreSQL for the admin accounts and revoked tokens |
-| `api_spec.file` / `api_spec.prefix` | `API_SPEC_FILE` / `API_SPEC_PREFIX` | off | OpenAPI 3 spec; requests that don't match it are refused |
+| `api_spec.file` / `api_spec.prefix` | `API_SPEC_FILE` / `API_SPEC_PREFIX` | off | OpenAPI 3 spec, JSON or YAML; requests that don't match it are refused |
 | `tls.auto_domains` | `TLS_AUTO_DOMAINS` | none | **Automatic HTTPS**: certificates from Let's Encrypt for these domains, renewed automatically, e.g. `[shop.example.com]`. The entry `sites` stands for every exact host name of every site (`[sites]` covers them all). Ports 80 and 443 must be reachable from the internet; plain HTTP is redirected to HTTPS |
 | `tls.auto_email` | `TLS_AUTO_EMAIL` | none | Contact address for Let's Encrypt (expiry warnings) |
 | `tls.auto_cache` | `TLS_AUTO_CACHE` | `certs` in the data folder | Folder where certificates are kept (keep it on a volume, or Let's Encrypt's rate limits apply on every restart) |

@@ -42,11 +42,21 @@ command -v docker >/dev/null 2>&1 ||
 
 # 2. Docker running? If not, try to open Docker Desktop and wait for it.
 if ! docker info >/dev/null 2>&1; then
-  DD="/c/Program Files/Docker/Docker/Docker Desktop.exe"
-  if [ -f "$DD" ]; then
-    printf "  Docker Desktop is closed, opening it (up to 2 minutes)"
-    "$DD" >/dev/null 2>&1 &
-    wait_for 120 docker info ||
+  # Installed for all users, or for this user only (the installer's other
+  # choice, common on lab and university PCs).
+  DD=""
+  for c in "/c/Program Files/Docker/Docker/Docker Desktop.exe" \
+           "${LOCALAPPDATA:+$(cygpath -u "$LOCALAPPDATA" 2>/dev/null)/Programs/DockerDesktop/Docker Desktop.exe}" \
+           "/Applications/Docker.app"; do
+    [ -n "$c" ] && [ -e "$c" ] && { DD=$c; break; }
+  done
+  if [ -n "$DD" ]; then
+    printf "  Docker Desktop is closed, opening it (up to 3 minutes)"
+    case $DD in
+      *.app) open -a "$DD" ;;
+      *) "$DD" >/dev/null 2>&1 & ;;
+    esac
+    wait_for 180 docker info ||
       fail "Docker Desktop did not start." "Open it yourself, wait until it says \"Engine running\", then try again."
   else
     fail "Docker is not running." "Open Docker Desktop, wait until it says \"Engine running\", then try again."

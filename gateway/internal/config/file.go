@@ -130,7 +130,13 @@ func ParseFile(data []byte) (map[string]string, error) {
 			if !known[name] {
 				msg := fmt.Sprintf("unknown setting %q", fileKey(prefix, k))
 				if s := closest(name); s != "" {
-					msg += fmt.Sprintf(" (did you mean the one the variable %s sets?)", s)
+					// The suggestion in the file's own words: waf.threshold,
+					// not the variable WAF_THRESHOLD.
+					key := strings.ToLower(s)
+					if p := prefix + "_"; prefix != "" && strings.HasPrefix(s, p) {
+						key = fileKey(prefix, strings.ToLower(s[len(p):]))
+					}
+					msg += fmt.Sprintf(" (did you mean %q, the variable %s?)", key, s)
 				}
 				return fmt.Errorf("%s; docs/configuration.md lists every setting", msg)
 			}

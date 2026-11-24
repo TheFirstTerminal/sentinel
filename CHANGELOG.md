@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.17.8 · 2026-11-24
+- **REST APIs work in protect mode**: `PUT`, `PATCH` and `DELETE` were refused by Core Rule Set rule 911100 (its default list allows only GET, HEAD, POST and OPTIONS), so updates and deletes to an API behind Sentinel failed, and so did the dashboard's own "remove" buttons. They are allowed now; `TRACE`, `CONNECT` and made-up methods are still refused.
+- **OpenAPI specs in YAML**: `api_spec.file` accepted only JSON, and a YAML spec stopped startup with "invalid character". Both work now.
+- **More stack traces withheld**: the response check now recognises Java, Kotlin and Scala traces from any package (it only knew `java.*`, Spring and `sun.*` frames, and missed Java 9+ `java.base/` frames), `Exception in thread "main"` lines, and .NET traces (`at Shop.Cart.Add() in Cart.cs:line 42`).
+- **The demo lab starts reliably**:
+  - `Start Sentinel.bat` and `lab/start.sh` find Git and Docker Desktop installed for one user only (in `AppData\Local\Programs`), not only in Program Files, and open Docker Desktop on macOS too;
+  - a lab built from source now reports its real version instead of `dev`, so `lab/start.sh` no longer rebuilds Sentinel (and downloads the Core Rule Set again) on every start, which failed on slow or locked-down networks.
+- A mistyped setting now suggests the right one in the file's own words: `unknown setting "waf.treshold" (did you mean "waf.threshold", the variable WAF_THRESHOLD?)`.
+- Docs: the README's numbers are current (CRS regression suite 99.2%, about 1 normal request in 50 wrongly blocked), and the bot check's docs say it applies to page loads.
+
 ## 0.17.7 · 2026-11-23
 - **Fewer false alarms**: on the open-appsec comparison Sentinel wrongly blocks 1.9% of normal requests (1,580; 0.17.6: 1,636) and blocks exactly the same attacks (99.97%, checked one by one). Found only on the half of the sites not counted:
   - the ML model skips shop price filters such as `$150 and over` (the currency sign keeps `1 and 1` scored) and empty functions that analytics tags send as ids (`function kd(){}`);

@@ -68,7 +68,7 @@ never saw, for every WAF. Attacks: all 11,054.
 | BunkerWeb | 90.3% | 28.8% | 80.8% |
 
 Sentinel blocks more attacks than both and wrongly blocks about 1 normal
-request in 45, against more than 1 in 4 for the others. From 0.16.0 on, every
+request in 50, against more than 1 in 4 for the others. From 0.16.0 on, every
 false alarm was traced to the rule or model input behind it (tracking cookies,
 analytics beacons, GraphQL, binary bodies) and fixed. Those rule fixes were
 found on this dataset, so treat the gap as an upper bound; they are general

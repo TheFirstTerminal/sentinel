@@ -49,3 +49,21 @@ func TestNormalResponses(t *testing.T) {
 	}
 	_ = strings.TrimSpace
 }
+
+func TestStackTraces(t *testing.T) {
+	for _, body := range []string{
+		"Exception in thread \"main\" java.lang.NullPointerException\n\tat com.shop.Cart.add(Cart.java:42)",
+		"<pre>java.lang.IllegalStateException: bad\n\tat com.shop.Cart.add(Cart.java:42)\n\tat java.base/java.lang.Thread.run(Thread.java:833)</pre>",
+		"System.NullReferenceException: Object reference not set\n   at Shop.Cart.Add(Int32 id) in C:/src/Shop/Cart.cs:line 42",
+		"\tat com.example.Main.main(Main.kt:7)",
+	} {
+		if got := Check(body); len(got) == 0 || got[0].ID != "LEAK-TRACE" {
+			t.Errorf("stack trace missed: %q -> %+v", body, got)
+		}
+	}
+	for _, body := range []string{"Meet us at Cafe.java (Main St)", "We are at home in London: line 4 of the poem", "Look at Shop.Cart() in the menu"} {
+		if got := Check(body); len(got) != 0 {
+			t.Errorf("normal text flagged: %q -> %+v", body, got)
+		}
+	}
+}

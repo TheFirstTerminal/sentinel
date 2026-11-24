@@ -28,6 +28,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 // Schema is a JSON Schema object (OpenAPI flavour).
@@ -105,6 +107,14 @@ func Load(path, prefix string) (*Validator, error) {
 }
 
 func Parse(data []byte, prefix string) (*Validator, error) {
+	if t := bytes.TrimSpace(data); len(t) > 0 && t[0] != '{' {
+		// YAML, the format most specs are written in.
+		j, err := yamlToJSON(data)
+		if err != nil {
+			return nil, fmt.Errorf("parsing API spec: %w", err)
+		}
+		data = j
+	}
 	var s spec
 	if err := json.Unmarshal(data, &s); err != nil {
 		return nil, fmt.Errorf("parsing API spec: %w", err)
@@ -458,4 +468,36 @@ func split(p string) []string {
 		return nil
 	}
 	return strings.Split(p, "/")
+}
+
+// yamlToJSON converts a YAML document to JSON. Map keys become strings, as
+// in JSON: status codes such as 200 are written without quotes in YAML.
+func yamlToJSON(data []byte) ([]byte, error) {
+	var v any
+	if err := yaml.Unmarshal(data, &v); err != nil {
+		return nil, err
+	}
+	return json.Marshal(stringKeys(v))
+}
+
+func stringKeys(v any) any {
+	switch x := v.(type) {
+	case map[string]any:
+		for k, e := range x {
+			x[k] = stringKeys(e)
+		}
+		return x
+	case map[any]any:
+		m := make(map[string]any, len(x))
+		for k, e := range x {
+			m[fmt.Sprint(k)] = stringKeys(e)
+		}
+		return m
+	case []any:
+		for i, e := range x {
+			x[i] = stringKeys(e)
+		}
+		return x
+	}
+	return v
 }

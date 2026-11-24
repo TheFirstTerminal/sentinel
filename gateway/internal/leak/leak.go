@@ -23,7 +23,7 @@ type rule struct {
 
 var rules = []rule{
 	{"LEAK-SQL", "database error message", regexp.MustCompile(`(?i)you have an error in your sql syntax|warning: mysqli?_|unclosed quotation mark after the character string|quoted string not properly terminated|pg_query\(\): query failed|ERROR:\s+syntax error at or near|sqlite3?\.OperationalError|SQLITE_ERROR|\bORA-\d{5}\b|microsoft ole db provider for (?:sql server|odbc)|java\.sql\.SQLException|org\.hibernate\.exception|SequelizeDatabaseError|PDOException`)},
-	{"LEAK-TRACE", "stack trace", regexp.MustCompile(`Traceback \(most recent call last\):|(?m)^\s+at (?:java|javax|org\.springframework|sun)\.[\w.$]+\([\w.]+\.java:\d+\)|(?:Fatal error|Parse error|Warning)</b>:.+ on line <b>\d+</b>|PHP (?:Fatal|Parse) error:|Server Error in '/' Application|goroutine \d+ \[running\]:|(?m)^\s+at [\w.<>$]+ \(/[^)]+\.(?:js|ts):\d+:\d+\)`)},
+	{"LEAK-TRACE", "stack trace", regexp.MustCompile(`Traceback \(most recent call last\):|(?m)^\s+at [\w.$/]+\([\w$]+\.(?:java|kt|scala):\d+\)|Exception in thread "[^"]*" [\w.$]+(?:Exception|Error)|(?m)^\s+at [\w.<>$]+\([^)]*\) in [^\n]+:line \d+|(?:Fatal error|Parse error|Warning)</b>:.+ on line <b>\d+</b>|PHP (?:Fatal|Parse) error:|Server Error in '/' Application|goroutine \d+ \[running\]:|(?m)^\s+at [\w.<>$]+ \(/[^)]+\.(?:js|ts):\d+:\d+\)`)},
 	{"LEAK-KEY", "private key", regexp.MustCompile(`-----BEGIN (?:RSA |EC |DSA |OPENSSH |ENCRYPTED )?PRIVATE KEY-----`)},
 	{"LEAK-CLOUD", "cloud access key", regexp.MustCompile(`\b(?:AKIA|ASIA)[0-9A-Z]{16}\b|\bAIza[0-9A-Za-z_\-]{35}\b|\bsk_live_[0-9a-zA-Z]{24,}\b|\bgh[pousr]_[0-9A-Za-z]{36}\b|\bxox[baprs]-[0-9A-Za-z-]{10,}`)},
 	{"LEAK-LISTING", "directory listing", regexp.MustCompile(`<title>Index of /[^<]*</title>|<h1>Directory listing for /`)},

@@ -38,7 +38,7 @@ rate_limits: {/: 600/1m}
 
 func TestTyposAreRejected(t *testing.T) {
 	_, err := ParseFile([]byte("waf:\n  treshold: 5\n"))
-	if err == nil || !strings.Contains(err.Error(), "waf.treshold") || !strings.Contains(err.Error(), "WAF_THRESHOLD") {
+	if err == nil || !strings.Contains(err.Error(), "waf.treshold") || !strings.Contains(err.Error(), `"waf.threshold"`) {
 		t.Fatalf("want an error naming waf.treshold, got %v", err)
 	}
 }
