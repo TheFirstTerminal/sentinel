@@ -275,4 +275,4 @@ business, except to provide a product or service that competes with
 Sentinel. Third-party components keep their own licenses
 ([`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md)).
 
-Copyright 2026 Saif Zahid.
+Copyright 2026 The First Terminal.

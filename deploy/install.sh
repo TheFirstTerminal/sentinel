@@ -14,7 +14,7 @@
 # none, and starts the `sentinel` systemd service. Running it again updates
 # the binary and keeps your config and data.
 #
-# Copyright (c) 2026 Saif Zahid. Licensed under PolyForm Shield 1.0.0.
+# Copyright (c) 2026 The First Terminal. Licensed under PolyForm Shield 1.0.0.
 set -eu
 
 REPO=TheFirstTerminal/sentinel

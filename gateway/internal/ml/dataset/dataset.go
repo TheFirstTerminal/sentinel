@@ -382,7 +382,7 @@ var normals = map[string]func(g gen) string{
 			fmt.Sprintf("%x", g.r.Int63())+fmt.Sprintf("%x", g.r.Int63()), "s%3A"+fmt.Sprintf("%x", g.r.Int63())+".abcDEF123", "GA1.2."+fmt.Sprint(g.r.Int31())+"."+fmt.Sprint(g.r.Int31()))
 	},
 	"arabic": func(g gen) string {
-		return g.pick("عصير تفاح", "شكراً جزيلاً", "متى يوصل الطلب؟", "منتج ممتاز", "بغداد - الكرادة", "سيف علاء", "أريد إلغاء الطلب", "هل يوجد خصم؟")
+		return g.pick("عصير تفاح", "شكراً جزيلاً", "متى يوصل الطلب؟", "منتج ممتاز", "بغداد - الكرادة", "علي حسن", "أريد إلغاء الطلب", "هل يوجد خصم؟")
 	},
 }
 

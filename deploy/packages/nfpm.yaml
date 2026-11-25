@@ -3,7 +3,7 @@ name: sentinel
 arch: ${ARCH}
 platform: linux
 version: ${VERSION}
-maintainer: Saif Zahid
+maintainer: The First Terminal <support@tft.markets>
 description: Security gateway for web apps, APIs and AI endpoints that explains every decision.
 homepage: https://github.com/TheFirstTerminal/sentinel
 license: PolyForm-Shield-1.0.0
