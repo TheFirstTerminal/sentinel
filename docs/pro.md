@@ -40,8 +40,12 @@ key is checked offline.
 
 ## Getting Pro
 
-Email **[support@tft.markets](mailto:support@tft.markets)**
-with your company name and how many servers you need. You'll get an
-invoice, then a license key. Paste it on the
+Email **[support@tft.markets](mailto:support@tft.markets)**, or ask for
+our WhatsApp number, with your company name and how many servers you need.
+We'll tell you the amount; you pay by transfer to **Qi Card** or **Zain Cash**
+and send us the receipt. Once it arrives you get a license key. Paste it on the
 [download page](https://sentinel.tft.markets/download.html#pro) to download Pro
 for Windows, macOS, Linux or Docker.
+
+Nothing renews automatically. Refunds within 14 days of your first payment;
+see the [terms](terms.html) and [privacy](privacy.html).

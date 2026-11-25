@@ -85,6 +85,37 @@ the uncounted half only) and blocks the same attacks. The normal traffic here in
 numbers are worse than on a typical site; start in monitor mode and check the
 dashboard before blocking.
 
+### Sealed test: attacks Sentinel is never tuned on
+
+Some rule fixes above were found on the open-appsec dataset, so its attack
+number is not independent. This test is: 5,243 attack payloads from
+[SecLists](https://github.com/danielmiessler/SecLists) (`Fuzzing/`, commit
+db92535): cross-site scripting, SQL injection (including NoSQL), path
+traversal, command injection (commix), template injection and XXE, with any
+payload that is also in the open-appsec set removed. Each is sent twice, as a
+search parameter and as a form field, with browser headers: 10,486 requests.
+Rules and the model are **never** changed because of this set; when a
+release changes the numbers, it is because of work done elsewhere.
+
+Same setup as above (Docker, default settings, blocking mode), 26 November
+2026:
+
+| Attack family | Requests | Sentinel 0.18.0 | ModSecurity + CRS (PL1) |
+|---|---|---|---|
+| Cross-site scripting | 3,000 | 99.7% | 98.0% |
+| SQL injection | 1,390 | 88.6% | 78.0% |
+| Path traversal | 2,976 | 82.9% | 87.8% |
+| Command injection | 3,000 | 78.1% | 53.5% |
+| Template injection, XXE | 120 | 93.3% | 86.7% |
+| **All** | **10,486** | **87.2%** | **79.6%** |
+
+This is the number to expect on attacks nobody tuned for. Both lists also
+contain fragments that are only dangerous in some contexts (a bare file name,
+`;id`), which no WAF should block everywhere, so neither can reach 100%.
+Sentinel's weakest spot here is path traversal, where ModSecurity does better.
+To reproduce, run `scripts/sealed-bench/build.py` and `score.py` (the comments
+in them explain how).
+
 ### GoTestWAF
 
 [GoTestWAF](https://github.com/wallarm/gotestwaf), same setup:

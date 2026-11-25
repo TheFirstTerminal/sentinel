@@ -87,3 +87,8 @@ a.dl.extra { opacity: .8; }
 .keyrow textarea { flex: 1 1 320px; min-height: 48px; resize: vertical; direction: ltr; text-align: left; font: 13px/1.5 "JetBrains Mono", monospace; }
 #pro-msg { margin-top: 12px; min-height: 1.6em; }
 .note code, .prose code { overflow-wrap: anywhere; }
+
+/* privacy and terms */
+.legal { padding: 40px 0 64px; }
+.legal h2 { margin-top: 36px; font-size: 22px; }
+.legal p { line-height: 1.7; }
