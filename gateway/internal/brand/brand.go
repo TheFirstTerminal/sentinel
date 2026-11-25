@@ -4,7 +4,7 @@
 // without loading anything from the internet.
 //
 // The files are copied from TheFirstTerminal/tft-home public/brand/ (the
-// source of truth, https://tft.markets/brand/); refresh them from there when
+// source of truth; the style guide is docs/brand-guide.html there); refresh them when
 // the brand changes. The fonts are under the SIL Open Font License
 // (files/fonts/OFL-LICENSE.txt).
 package brand
