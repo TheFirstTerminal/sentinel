@@ -10,7 +10,8 @@ export MSYS_NO_PATHCONV=1
 export MSYS2_ARG_CONV_EXCL="*"
 cd "$(dirname "$0")/.." || exit 1
 
-GREEN=$'\e[1;32m'; RED=$'\e[1;31m'; CYAN=$'\e[1;36m'; DIM=$'\e[2m'; RESET=$'\e[0m'
+# The First Terminal brand colours (256-colour): palm green, soft red, saffron for titles.
+GREEN=$'\e[1;38;5;72m'; RED=$'\e[1;38;5;203m'; CYAN=$'\e[1;38;5;179m'; DIM=$'\e[2m'; RESET=$'\e[0m'
 step() { printf "\n%s\n" "${CYAN}▶ $1${RESET}"; }
 fail() {
   printf "\n%s\n" "${RED}✗ $1${RESET}"

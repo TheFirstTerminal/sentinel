@@ -1,67 +1,99 @@
 <!doctype html>
-<html lang="en">
+<html class="tft-base" lang="en" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
 <title>Sentinel setup</title>
+<link rel="icon" href="/__sentinel/brand/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/__sentinel/brand/tft.css">
 <style>
-  /* The same tokens as the dashboard, light and dark. */
-  :root { --bg:#f4f6f9; --panel:#ffffff; --ink:#18202c; --muted:#5d6b7e; --line:#dfe5ec; --field:#f4f6f9;
-          --ok:#1b8a5a; --bad:#c9372c; --accent:#2357d9; }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) { --bg:#0f141b; --panel:#171e27; --ink:#e6ebf2; --muted:#93a1b4; --line:#26303d; --field:#0f141b;
-                                      --ok:#3fbf86; --bad:#f0675c; --accent:#6d95ff; }
-  }
-  * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--ink); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; display:grid; place-items:center; min-height:100vh; padding:16px; }
-  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:26px 26px 22px; width:100%; max-width:400px; }
-  .brand { display:flex; align-items:center; gap:10px; margin-bottom:18px; font-weight:650; font-size:16px; }
-  .brand svg { width:24px; height:24px; }
-  h1 { font-size:18px; margin:0 0 6px; }
-  p { color:var(--muted); margin:0 0 14px; }
-  label { display:block; margin:12px 0 4px; font-size:12px; color:var(--muted); }
-  input { width:100%; padding:8px 10px; border-radius:7px; border:1px solid var(--line); background:var(--field); color:var(--ink); font:inherit; }
-  button { margin-top:18px; width:100%; padding:9px; border:1px solid var(--accent); border-radius:7px; background:var(--accent); color:#fff; font:inherit; font-weight:600; cursor:pointer; }
-  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-  .err { color:var(--bad); min-height:1.4em; margin-top:10px; font-size:13px; }
-  .ok { color:var(--ok); }
-  .hidden { display:none; }
-  a { color:var(--accent); }
+  /* The TFT brand kit (served by Sentinel itself), light and dark. */
+  body { min-height: 100vh; display: flex; flex-direction: column; }
+  header { padding: 14px max(4vw, 16px); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  header button { font: inherit; font-weight: 600; background: transparent; color: var(--tft-on-midnight); border: 1.5px solid rgba(244, 246, 245, .35); border-radius: var(--tft-r-small); min-height: 40px; padding: 0 14px; cursor: pointer; }
+  main { flex: 1; display: grid; place-items: center; padding: 24px 16px; }
+  .tft-card { width: 100%; max-width: 420px; padding: 26px; }
+  h1 { font-size: 20px; margin: 0 0 6px; }
+  p { color: var(--tft-mute); margin: 0 0 14px; }
+  label { display: block; margin: 12px 0 4px; font-size: 13px; font-weight: 600; color: var(--tft-mute); }
+  .tft-btn-main { width: 100%; margin-top: 18px; }
+  .err { color: var(--tft-bad); min-height: 1.4em; margin-top: 10px; font-size: 13px; }
+  .ok { color: var(--tft-ok); font-weight: 600; }
+  .hidden { display: none; }
+  a { color: var(--tft-primary); }
+  footer { padding: 18px max(4vw, 16px) 28px; text-align: center; }
+  footer .tft-by { color: var(--tft-mute); }
 </style>
 </head>
 <body>
-<div class="card">
-  <div class="brand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2l8 3v6c0 5-3.5 9.5-8 11-4.5-1.5-8-6-8-11V5l8-3z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>Sentinel</div>
-  <h1>Create the admin account</h1>
-  <p id="intro">This one-time page creates Sentinel's first account. After this, the link stops working.</p>
+<header class="tft-mid">
+  <span class="tft-lockup"><img src="/__sentinel/brand/logo.svg" alt=""><span><b data-t="product">Sentinel</b><small data-t="org">The First Terminal</small></span></span>
+  <button type="button" id="lang" lang="ar">عربي</button>
+</header>
+<main>
+<div class="tft-card">
+  <h1 data-t="title">Create the admin account</h1>
+  <p id="intro" data-t="intro">This one-time page creates Sentinel's first account. After this, the link stops working.</p>
   <form id="f">
-    <label for="u">Username</label><input id="u" autocomplete="username" required minlength="3" maxlength="32" value="admin">
-    <label for="p">Password (12 characters or more)</label><input id="p" type="password" autocomplete="new-password" required minlength="12">
-    <label for="p2">Password again</label><input id="p2" type="password" autocomplete="new-password" required minlength="12">
-    <button type="submit">Create account</button>
+    <label for="u" data-t="user">Username</label><input class="tft-input" id="u" autocomplete="username" required minlength="3" maxlength="32" value="admin" dir="ltr">
+    <label for="p" data-t="pass">Password (12 characters or more)</label><input class="tft-input" id="p" type="password" autocomplete="new-password" required minlength="12" dir="ltr">
+    <label for="p2" data-t="pass2">Password again</label><input class="tft-input" id="p2" type="password" autocomplete="new-password" required minlength="12" dir="ltr">
+    <button class="tft-btn tft-btn-main" type="submit" data-t="create">Create account</button>
   </form>
   <div id="done" class="hidden">
-    <p class="ok">Account created.</p>
-    <p>Next, log in on the dashboard. It will ask you to add Sentinel to an authenticator app (two-factor authentication), which the dashboard requires.</p>
-    <a href="/__sentinel/dashboard">Open the dashboard →</a>
+    <p class="ok" data-t="created">Account created.</p>
+    <p data-t="next">Next, log in on the dashboard. It will ask you to add Sentinel to an authenticator app (two-factor authentication), which the dashboard requires.</p>
+    <a class="tft-btn tft-btn-main" href="/__sentinel/dashboard" data-t="open">Open the dashboard</a>
   </div>
   <div class="err" id="err"></div>
 </div>
+</main>
+<footer><a class="tft-by" href="https://tft.markets/" target="_blank" rel="noopener"><img src="/__sentinel/brand/logo.svg" alt=""> <span data-t="by">A product of The First Terminal</span></a></footer>
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
+const T = {
+  en: { product: "Sentinel", org: "The First Terminal", title: "Create the admin account",
+    intro: "This one-time page creates Sentinel's first account. After this, the link stops working.",
+    user: "Username", pass: "Password (12 characters or more)", pass2: "Password again", create: "Create account",
+    created: "Account created.", next: "Next, log in on the dashboard. It will ask you to add Sentinel to an authenticator app (two-factor authentication), which the dashboard requires.",
+    open: "Open the dashboard", by: "A product of The First Terminal",
+    done: 'Setup is already done. <a href="/__sentinel/dashboard">Open the dashboard</a>.',
+    nolink: "Open the full link that Sentinel printed when it started (it ends with #...).", differ: "The two passwords are different." },
+  ar: { product: "سنتينل", org: "البوابة الأولى", title: "سوّي حساب المدير",
+    intro: "هاي الصفحة لمرة وحدة تسوي أول حساب بسنتينل. بعدها الرابط يبطل يشتغل.",
+    user: "اسم المستخدم", pass: "كلمة السر (12 حرف أو أكثر)", pass2: "كلمة السر مرة ثانية", create: "سوّي الحساب",
+    created: "انسوّى الحساب.", next: "هسه ادخل للوحة التحكم. راح تطلب منك تضيف سنتينل لتطبيق مصادقة (تحقق بخطوتين)، لأن لوحة التحكم تحتاجه.",
+    open: "افتح لوحة التحكم", by: "منتج من البوابة الأولى",
+    done: 'الإعداد خالص من قبل. <a href="/__sentinel/dashboard">افتح لوحة التحكم</a>.',
+    nolink: "افتح الرابط الكامل اللي طبعه سنتينل من اشتغل (ينتهي بـ #...).", differ: "كلمتين السر مو متشابهات." },
+};
+let L = "en";
+try { L = localStorage.getItem("sentinel_lang") || ((navigator.language || "").startsWith("ar") ? "ar" : "en"); } catch (e) {}
+if (!T[L]) L = "en";
+let errKey = "", setupDone = false;
+function apply() {
+  document.documentElement.lang = L; document.documentElement.dir = L === "ar" ? "rtl" : "ltr";
+  document.title = L === "ar" ? "إعداد سنتينل" : "Sentinel setup";
+  document.querySelectorAll("[data-t]").forEach(el => { el.textContent = T[L][el.dataset.t]; });
+  if (setupDone) $("intro").innerHTML = T[L].done;
+  if (errKey) $("err").textContent = T[L][errKey];
+  $("lang").textContent = L === "ar" ? "English" : "عربي"; $("lang").lang = L === "ar" ? "en" : "ar";
+}
+$("lang").onclick = () => { L = L === "ar" ? "en" : "ar"; try { localStorage.setItem("sentinel_lang", L); } catch (e) {} apply(); };
+apply();
 // The token is in the #fragment, which browsers never send to the server
 // or put in a Referer header. Remove it from the address bar right away.
 const token = location.hash.slice(1);
 history.replaceState(null, "", location.pathname);
 fetch("/__sentinel/setup/api").then(r => r.json()).then(s => {
-  if (!s.active) { $("f").classList.add("hidden"); $("intro").innerHTML = 'Setup is already done. <a href="/__sentinel/dashboard">Open the dashboard</a>.'; }
-  else if (!token) { $("err").textContent = "Open the full link that Sentinel printed when it started (it ends with #...)."; }
+  if (!s.active) { $("f").classList.add("hidden"); setupDone = true; apply(); }
+  else if (!token) { errKey = "nolink"; apply(); }
 }).catch(() => {});
 $("f").onsubmit = async (e) => {
-  e.preventDefault(); $("err").textContent = "";
-  if ($("p").value !== $("p2").value) { $("err").textContent = "The two passwords are different."; return; }
+  e.preventDefault(); $("err").textContent = ""; errKey = "";
+  if ($("p").value !== $("p2").value) { errKey = "differ"; apply(); return; }
   const res = await fetch("/__sentinel/setup/api", { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token, username: $("u").value.trim(), password: $("p").value }) });
   const out = await res.json().catch(() => ({}));

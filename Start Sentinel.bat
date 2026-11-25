@@ -12,4 +12,5 @@ if not exist "%MINTTY%" (
   exit /b 1
 )
 set CHERE_INVOKING=1
-start "" "%MINTTY%" --title "Sentinel" -s 110,40 /usr/bin/bash -lc "bash lab/start.sh"
+rem The window in The First Terminal's colours: midnight background, light text, saffron cursor.
+start "" "%MINTTY%" --title "Sentinel" -s 110,40 -o "Background=#0F1F2E" -o "Foreground=#F4F6F5" -o "CursorColour=#E8A33D" /usr/bin/bash -lc "bash lab/start.sh"

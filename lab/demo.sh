@@ -10,7 +10,8 @@ DASHBOARD=${DASHBOARD:-http://localhost:9000}
 export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL="*"
 cd "$(dirname "$0")/.." || exit 1
 
-RED=$'\e[1;31m'; GREEN=$'\e[1;32m'; YELLOW=$'\e[1;33m'; CYAN=$'\e[1;36m'; DIM=$'\e[2m'; RESET=$'\e[0m'
+# The First Terminal brand colours (256-colour): palm green, soft red, saffron for titles.
+RED=$'\e[1;38;5;203m'; GREEN=$'\e[1;38;5;72m'; YELLOW=$'\e[1;38;5;179m'; CYAN=$'\e[1;38;5;179m'; DIM=$'\e[2m'; RESET=$'\e[0m'
 code() { curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$@"; }
 
 # attack NAME WHAT -- curl args (path last, without host)

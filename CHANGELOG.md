@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.18.0 · 2026-11-25
+- **The dashboard in Arabic and in The First Terminal's look**:
+  - The dashboard, the first-run setup page and the browser-check page now look like every TFT product: a midnight header with the star field, the arch logo with "Sentinel", saffron for the main action, and the Readex Pro and Noto Kufi Arabic fonts. Light and dark follow the system.
+  - The dashboard and setup page have an Arabic version (right to left). Switch it with the button in the header; the choice is remembered, and browsers set to Arabic open in Arabic. The browser-check page shows both languages.
+  - Paths, addresses and the console stay left to right; messages that come from the server, and the console lines, stay in English.
+  - The brand kit (stylesheet, logo, fonts; about 280 KB) is built into Sentinel and served at `/__sentinel/brand/`, so nothing loads from the internet and air-gapped servers look the same.
+- **Brand colours in the terminal**: `sentinel watch` and the live log use palm green, saffron and a soft red (24-bit colour where the terminal says it supports it, the nearest standard colour otherwise), and so do the demo lab's scripts. `Start Sentinel.bat` opens its window in midnight.
+
 ## 0.17.9 · 2026-11-24
 - **Strict bot check for login and signup**: new `bot.strict_paths` (`BOT_STRICT_PATHS`). On those paths every client needs a browser check pass: a browser loading the page gets the check as before, and anything else without a pass, such as a script, `curl` or a form posted without loading its page, is refused (rule BOT-STRICT). The regular `bot.challenge` still checks page loads only, so API clients and webhooks on other paths are unaffected. It works with `bot.challenge` off.
 

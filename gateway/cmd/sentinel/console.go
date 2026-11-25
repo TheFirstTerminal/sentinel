@@ -77,7 +77,7 @@ func (c *consoleWriter) format(line []byte) string {
 		s += "  " + strings.Join(extra, " ")
 	}
 	if c.color && level != "INFO" {
-		s = "\x1b[33m" + s + "\x1b[0m"
+		s = "\x1b[38;5;179m" + s + "\x1b[0m" // saffron, the brand's warning colour
 	}
 	return s
 }

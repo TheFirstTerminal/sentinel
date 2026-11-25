@@ -8,7 +8,8 @@ export MSYS_NO_PATHCONV=1
 export MSYS2_ARG_CONV_EXCL="*"
 cd "$(dirname "$0")/.." || exit 1
 
-GREEN=$'\e[1;32m'; RED=$'\e[1;31m'; RESET=$'\e[0m'
+# The First Terminal brand colours (256-colour): palm green, soft red.
+GREEN=$'\e[1;38;5;72m'; RED=$'\e[1;38;5;203m'; RESET=$'\e[0m'
 
 echo "Getting the latest version from GitHub..."
 if ! git pull --ff-only; then

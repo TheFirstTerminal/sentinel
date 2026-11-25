@@ -21,6 +21,7 @@ import (
 	"sentinel/gateway/internal/auth"
 	"sentinel/gateway/internal/blocklist"
 	"sentinel/gateway/internal/bot"
+	"sentinel/gateway/internal/brand"
 	"sentinel/gateway/internal/config"
 	"sentinel/gateway/internal/crs"
 	"sentinel/gateway/internal/dashboard"
@@ -591,6 +592,8 @@ func (a *adminPages) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	switch {
+	case strings.HasPrefix(path, brand.Path): // the brand kit the dashboard and setup pages use
+		brandFiles.ServeHTTP(w, r)
 	case strings.HasPrefix(path, auth.Prefix):
 		a.authAPI.ServeHTTP(w, r)
 	case strings.HasPrefix(path, dashboard.SetupPath):
@@ -701,3 +704,6 @@ func siteStatus(sites []*site, defaultMode string) []dashboard.SiteStatus {
 	}
 	return out
 }
+
+// brandFiles serves the TFT brand kit to the dashboard and setup pages.
+var brandFiles = brand.Handler()

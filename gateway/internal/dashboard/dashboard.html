@@ -1,68 +1,85 @@
 <!doctype html>
-<html lang="en">
+<html class="tft-base" lang="en" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sentinel Dashboard</title>
+<link rel="icon" href="/__sentinel/brand/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/__sentinel/brand/tft.css">
 <style>
+/* The TFT brand kit (tft.css, served by Sentinel itself) gives the colours, fonts and parts;
+   these names map the dashboard onto it. Light and dark follow the system. */
 :root {
-  --bg: #f4f6f9; --panel: #ffffff; --ink: #18202c; --muted: #5d6b7e; --line: #dfe5ec;
-  --ok: #1b8a5a; --ok-bg: #e5f5ed; --bad: #c9372c; --bad-bg: #fcebea; --warn: #b26b00; --warn-bg: #fff4e0;
-  --accent: #2357d9; --chip: #eef2f7;
+  --bg: var(--tft-bg); --panel: var(--tft-card); --ink: var(--tft-ink); --muted: var(--tft-mute); --line: var(--tft-line);
+  --ok: var(--tft-ok); --bad: var(--tft-bad); --warn: var(--tft-wait); --accent: var(--tft-primary);
+  --ok-bg: light-dark(#E2F0EB, #12291F); --bad-bg: light-dark(#FBE8E5, #2E1715); --warn-bg: light-dark(#FBEED8, #2D2111);
+  --chip: light-dark(#EAEFED, #1A2A3A); --field: light-dark(#F4F6F5, #0A141E);
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0f141b; --panel: #171e27; --ink: #e6ebf2; --muted: #93a1b4; --line: #26303d;
-    --ok: #3fbf86; --ok-bg: #12291f; --bad: #f0675c; --bad-bg: #2e1715; --warn: #f0a640; --warn-bg: #2d2111;
-    --accent: #6d95ff; --chip: #1f2833;
-  }
-}
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-header { display: flex; align-items: center; gap: 12px; padding: 14px 20px; background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 2; }
-header h1 { font-size: 17px; margin: 0; letter-spacing: .2px; }
-header .shield { width: 26px; height: 26px; }
+body { font-size: 14px; line-height: 1.6; }
+a { color: var(--accent); }
+
+/* Header: midnight with the star field, the arch and the product name. */
+header { display: flex; align-items: center; gap: 10px; padding: 12px max(2vw, 16px); position: sticky; top: 0; z-index: 2; flex-wrap: wrap; }
+header .tft-lockup b { font-size: 17px; }
 header .sp { flex: 1; }
-.pill { font-size: 12px; padding: 3px 9px; border-radius: 99px; background: var(--chip); color: var(--muted); white-space: nowrap; }
+header .pill { background: rgba(244, 246, 245, .1); color: var(--tft-on-midnight-mute); }
+header .pill.live { background: rgba(70, 190, 140, .18); color: #8FE0BC; }
+header .pill.off { background: rgba(255, 154, 139, .16); color: #FF9A8B; }
+header .pill.warn { color: #F3C27A; } header .pill.bad { color: #FF9A8B; }
+header button, header select { background: transparent; color: var(--tft-on-midnight); border: 1.5px solid rgba(244, 246, 245, .35); }
+header button:hover { border-color: var(--tft-saffron); }
+header select option { color: var(--tft-ink); background: var(--tft-card); }
+header #site-pick span { color: var(--tft-on-midnight-mute); }
+#lang { min-height: 36px; font-weight: 600; }
+.pill { font-size: 12px; padding: 3px 10px; border-radius: var(--tft-r-chip); background: var(--chip); color: var(--muted); white-space: nowrap; }
 .pill.live { background: var(--ok-bg); color: var(--ok); }
 .pill.off { background: var(--bad-bg); color: var(--bad); }
-button { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 7px; padding: 5px 11px; cursor: pointer; }
+a.pill { text-decoration: none; }
+
+button { font: inherit; border: 1.5px solid var(--line); background: var(--panel); color: var(--ink); border-radius: var(--tft-r-small); padding: 6px 14px; cursor: pointer; min-height: 36px; }
 button:hover { border-color: var(--accent); }
-button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-button.small { padding: 2px 8px; font-size: 12px; }
-main { padding: 18px 20px 40px; max-width: 1400px; margin: 0 auto; }
-.grid { display: grid; gap: 14px; }
+button.primary { background: var(--tft-saffron); border-color: var(--tft-saffron); color: var(--tft-midnight); font-weight: 600; border-radius: var(--tft-r-btn); min-height: 44px; padding: 0 20px; }
+button.primary:hover { filter: brightness(1.06); }
+button.small { padding: 2px 10px; font-size: 12.5px; min-height: 30px; }
+
+main { padding: 20px max(2vw, 16px) 40px; max-width: 1400px; margin: 0 auto; }
+.grid { display: grid; gap: 16px; }
 .kpis { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
 .two { grid-template-columns: 2fr 1fr; }
 .three { grid-template-columns: repeat(3, 1fr); }
 @media (max-width: 900px) { .two, .three { grid-template-columns: 1fr; } }
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; min-width: 0; }
-.card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
-.kpi .v { font-size: 28px; font-weight: 650; font-variant-numeric: tabular-nums; }
-.kpi .s { color: var(--muted); font-size: 12px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--tft-r-card); padding: 18px 20px; min-width: 0; }
+.card h2 { font: 700 16px/1.5 var(--tft-font-display); color: var(--ink); margin: 0 0 10px; }
+.card h2 .muted { font: 400 13px var(--tft-font); }
+.kpi h2 { font-size: 14px; color: var(--muted); }
+.kpi .v { font: 700 30px/1.35 var(--tft-font-display); font-variant-numeric: tabular-nums; }
+.kpi .s { color: var(--muted); font-size: 12.5px; }
 .kpi.bad .v { color: var(--bad); } .kpi.ok .v { color: var(--ok); }
 table { width: 100%; border-collapse: collapse; }
-td, th { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
-th { font-size: 12px; color: var(--muted); font-weight: 600; }
-td.n { text-align: right; font-variant-numeric: tabular-nums; }
+td, th { text-align: start; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+td.n, th.n { text-align: end; font-variant-numeric: tabular-nums; }
 .feed { max-height: 460px; overflow: auto; }
 .feed table { font-size: 13px; }
 .feed td { white-space: nowrap; }
 .feed td.why { white-space: normal; color: var(--muted); }
-.tag { display: inline-block; font-size: 11px; font-weight: 650; padding: 1px 7px; border-radius: 5px; letter-spacing: .3px; }
+.tag { display: inline-block; font-size: 11.5px; font-weight: 600; padding: 1px 9px; border-radius: var(--tft-r-chip); }
 .tag.ok { background: var(--ok-bg); color: var(--ok); }
 .tag.bad { background: var(--bad-bg); color: var(--bad); }
 .tag.warn { background: var(--warn-bg); color: var(--warn); }
-.mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12px; }
+/* Addresses, paths and codes read left to right, also on the Arabic page. */
+.mono { font-family: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12.5px; unicode-bidi: plaintext; }
+input.mono, textarea.mono { direction: ltr; text-align: left; }
 .muted { color: var(--muted); }
 .bars { width: 100%; height: 150px; display: block; }
-.legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin-top: 6px; }
-.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.legend { display: flex; gap: 14px; font-size: 12.5px; color: var(--muted); margin-top: 6px; flex-wrap: wrap; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-inline-end: 5px; vertical-align: -1px; }
 .hbar { height: 6px; background: var(--chip); border-radius: 3px; margin-top: 3px; }
 .hbar > span { display: block; height: 100%; border-radius: 3px; background: var(--bad); }
-#login { max-width: 360px; margin: 10vh auto; }
-#login label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
-#login input { width: 100%; font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--ink); }
+#login { max-width: 400px; margin: 8vh auto; width: calc(100% - 32px); }
+#login h2 { font-size: 20px; }
+#login label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 4px; font-weight: 600; }
+#login input { width: 100%; }
 #login .err { color: var(--bad); min-height: 20px; margin-top: 10px; font-size: 13px; }
 .audit-ok { color: var(--ok); font-weight: 650; } .audit-bad { color: var(--bad); font-weight: 650; }
 body:not(.f-risk) .risk-col, body:not(.f-audit) .audit-col { display: none; }
@@ -72,265 +89,458 @@ body.role-viewer #ban-btn, body.role-viewer #ban-ip, body.role-viewer #reload-bt
 body:not(.role-admin) #add-site-btn, body:not(.role-admin) [data-edit], body:not(.role-admin) [data-remove-site],
 body:not(.role-admin) #alerts-card, body:not(.role-admin) #accounts-card { display: none !important; }
 body:not(.role-admin) .seg button { pointer-events: none; }
-#ac-form input, #ac-form select { font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); }
-header .pill.warn { color: var(--warn); border-color: var(--warn); }
-header .pill.bad { color: var(--bad); border-color: var(--bad); }
-a.pill { text-decoration: none; }
+/* Every text box and list looks like the kit's field. */
+input:not([type=checkbox]), select, textarea { font: inherit; padding: 7px 12px; border: 1.5px solid var(--line); border-radius: var(--tft-r-small); background: var(--field); color: var(--ink); min-height: 38px; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
 .hidden { display: none !important; }
 .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.row input { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); width: 150px; }
-.row input[type=checkbox] { width: auto; padding: 0; margin: 0 6px 0 0; vertical-align: -2px; }
-select, textarea { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); }
-.sites { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
-.site { border: 1px solid var(--line); border-radius: 9px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
-.site .top { display: flex; align-items: center; gap: 8px; }
-.site .name { font-weight: 650; }
+.row input:not([type=checkbox]) { width: 160px; }
+input[type=checkbox] { width: auto; margin: 0; margin-inline-end: 6px; vertical-align: -2px; accent-color: var(--tft-palm); }
+.sites { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.site { border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.site .top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.site .name { font-weight: 700; font-family: var(--tft-font-display); }
 .site .hosts { color: var(--muted); font-size: 12.5px; overflow-wrap: anywhere; }
-.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
-.seg button { border: 0; border-radius: 0; padding: 4px 10px; font-size: 12.5px; background: transparent; }
+.seg { display: inline-flex; border: 1.5px solid var(--line); border-radius: var(--tft-r-chip); overflow: hidden; }
+.seg button { border: 0; border-radius: 0; padding: 3px 12px; font-size: 12.5px; background: transparent; min-height: 30px; }
 .seg button.on.protect { background: var(--ok-bg); color: var(--ok); font-weight: 650; }
 .seg button.on.monitor { background: var(--warn-bg); color: var(--warn); font-weight: 650; }
-.seg button + button { border-left: 1px solid var(--line); }
-.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+.seg button + button { border-inline-start: 1.5px solid var(--line); }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-inline-end: 6px; vertical-align: 1px; }
 .dot.up { background: var(--ok); } .dot.down { background: var(--bad); }
 .servers { font-size: 12.5px; display: grid; gap: 2px; }
-.note { font-size: 12px; color: var(--muted); }
+.note { font-size: 12.5px; color: var(--muted); }
 .hist-form { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); align-items: end; margin-bottom: 10px; }
-.hist-form label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-.hist-form input { width: 100%; font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); }
-#excl-form label, #se-form label, #al-form label, #as-form label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
-#excl-form input, #se-form select, #se-form textarea, #se-form input, #al-form input, #as-form input, #as-form textarea { width: 100%; font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); }
-.hist-form input[type=checkbox] { width: auto; }
+.hist-form label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 4px; }
+.hist-form input { width: 100%; }
+#excl-form label, #se-form label, #al-form label, #as-form label { display: block; font-size: 12.5px; color: var(--muted); margin: 10px 0 4px; }
+#excl-form input, #se-form select, #se-form textarea, #se-form input, #al-form input, #as-form input, #as-form textarea { width: 100%; }
 .empty { color: var(--muted); padding: 10px 6px; }
+.err { color: var(--bad); }
 body:not(.multi) .site-col { display: none; }
+footer { padding: 20px max(2vw, 16px) 32px; }
+footer .tft-by { color: var(--muted); }
 @media (max-width: 640px) {
-  header { padding: 10px 14px; gap: 8px; flex-wrap: wrap; }
-  header h1 { font-size: 16px; }
+  header { padding: 10px 14px; gap: 8px; }
   #who, #version { display: none; }
   #site-pick { order: 10; width: 100%; }
-  #site-pick select { width: calc(100% - 40px); }
+  #site-pick select { width: calc(100% - 50px); }
   main { padding: 12px 12px 32px; }
   .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
   .kpi .v { font-size: 22px; }
-  .kpi h2 { font-size: 11px; letter-spacing: .3px; }
-  .card { padding: 12px; }
+  .kpi h2 { font-size: 12px; }
+  .card { padding: 14px; }
   .sites { grid-template-columns: 1fr; }
 }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-  /* Console: the live log, like a terminal */
-  .console-card { background:#0B1220; border-color:#1E2A3B; color:#D6E2EE; }
-  .console-card h2 { color:#9FB3C8; }
-  .console-card.full { position:fixed; inset:12px; z-index:50; margin:0 !important; display:flex; flex-direction:column; }
-  .console-card.full .term { height:auto; flex:1; }
-  .term { height:360px; overflow:auto; background:#060B14; border:1px solid #1E2A3B; border-radius:8px; padding:10px 12px;
-          font:12.5px/1.55 "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space:pre; }
-  .term .l { display:block; }
-  .term .d { color:#6B7F95; display:block; padding-left:9.5em; }
-  .term .t { color:#6B7F95; }
-  .term .ok { color:#55C28A; } .term .bad { color:#F2725A; } .term .warn { color:#E8B04B; } .term .info { color:#6CC3E0; } .term .dim { color:#6B7F95; }
-  .term .sys { color:#8C9DB0; font-style:italic; }
-  .console-bar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:8px 0; }
-  .console-bar input[type=search] { flex:1; min-width:160px; background:#0F1828; color:#D6E2EE; border:1px solid #1E2A3B; }
-  .console-bar button, .console-bar select { background:#15223A; color:#D6E2EE; border:1px solid #24344D; }
-  .console-bar label { color:#9FB3C8; }
+/* Console: the live log, a terminal on the midnight surface. Always left to right. */
+.console-card { background: var(--tft-midnight); border-color: rgba(232, 163, 61, .22); color: var(--tft-on-midnight); }
+.console-card h2 { color: var(--tft-on-midnight); }
+.console-card .muted { color: var(--tft-on-midnight-mute) !important; }
+.console-card.full { position: fixed; inset: 12px; z-index: 50; margin: 0 !important; display: flex; flex-direction: column; }
+.console-card.full .term { height: auto; flex: 1; }
+.term { direction: ltr; text-align: left; height: 360px; overflow: auto; background: var(--tft-midnight-2); border: 1px solid rgba(244, 246, 245, .1); border-radius: 14px; padding: 12px 14px;
+        font: 12.5px/1.55 "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; }
+.term .l { display: block; }
+.term .d { color: #7F93A6; display: block; padding-left: 9.5em; }
+.term .t { color: #7F93A6; }
+.term .ok { color: #8FE0BC; } .term .bad { color: #FF9A8B; } .term .warn { color: #F3C27A; } .term .info { color: #E8A33D; } .term .dim { color: #7F93A6; }
+.term .sys { color: var(--tft-on-midnight-mute); font-style: italic; }
+.console-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 10px 0; }
+.console-bar input[type=search] { flex: 1; min-width: 160px; background: var(--tft-midnight-2); color: var(--tft-on-midnight); border-color: rgba(244, 246, 245, .18); }
+.console-bar button, .console-bar select { background: transparent; color: var(--tft-on-midnight); border-color: rgba(244, 246, 245, .3); }
+.console-bar select option { color: var(--tft-ink); background: var(--tft-card); }
 </style>
 </head>
 <body>
-<header>
-  <svg class="shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 3v6c0 5-3.5 9.5-8 11-4.5-1.5-8-6-8-11V5l8-3z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>
-  <h1>Sentinel</h1>
+<header class="tft-mid">
+  <a class="tft-lockup" href="/__sentinel/dashboard"><img src="/__sentinel/brand/logo.svg" alt=""><span><b data-i18n="product">Sentinel</b><small data-i18n="org">The First Terminal</small></span></a>
   <span class="pill" id="version">dashboard</span>
   <a class="pill hidden" id="edition" target="_blank" rel="noopener"></a>
   <span class="sp"></span>
-  <label class="hidden" id="site-pick"><span class="muted" style="font-size:12px;margin-right:6px">Site</span><select id="site-sel" aria-label="Show one site"><option value="*">All sites</option></select></label>
+  <label class="hidden" id="site-pick"><span style="font-size:12px;margin-inline-end:6px" data-i18n="site">Site</span><select id="site-sel" aria-label="Show one site"><option value="*">All sites</option></select></label>
   <span class="pill off hidden" id="live">● live</span>
   <span class="pill hidden" id="who"></span>
-  <button class="hidden" id="logout">Log out</button>
+  <button type="button" id="lang" lang="ar">عربي</button>
+  <button class="hidden" id="logout" data-i18n="logout">Log out</button>
 </header>
 
 <section id="login" class="card">
-  <h2>Admin login</h2>
-  <p class="muted" style="margin-top:0">The dashboard is for admins, operators and viewers with two-factor authentication.</p>
-  <p id="no-admin" class="hidden" style="margin-top:0;padding:10px 12px;border:1px solid var(--warn);border-radius:8px">
+  <h2 data-i18n="login.title">Admin login</h2>
+  <p class="muted" style="margin-top:0" data-i18n="login.intro">The dashboard is for admins, operators and viewers with two-factor authentication.</p>
+  <p id="no-admin" class="hidden" style="margin-top:0;padding:10px 12px;border:1.5px solid var(--warn);border-radius:14px" data-i18n-html="login.noadmin">
     <b>No account exists yet.</b> Create the first admin with the one-time <b>setup link</b> Sentinel printed when it
     started (a line starting with <span class="mono">FIRST RUN</span>; in the lab menu, press <b>L</b>). Then log in here.</p>
   <form id="f1">
-    <label for="u">Username</label><input id="u" autocomplete="username" required>
-    <label for="p">Password</label><input id="p" type="password" autocomplete="current-password" required>
-    <div style="margin-top:14px"><button class="primary" type="submit">Continue</button></div>
+    <label for="u" data-i18n="login.user">Username</label><input id="u" autocomplete="username" required dir="ltr">
+    <label for="p" data-i18n="login.pass">Password</label><input id="p" type="password" autocomplete="current-password" required dir="ltr">
+    <div style="margin-top:16px"><button class="primary" type="submit" data-i18n="login.continue">Continue</button></div>
   </form>
   <form id="f3" class="hidden">
-    <p style="margin-top:0">The dashboard needs two-factor authentication. Scan this code with an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password, Aegis...).</p>
-    <img id="qr" alt="QR code for your authenticator app" style="display:block;margin:8px auto;border-radius:8px;background:#fff;padding:6px" width="220" height="220">
-    <p class="muted" style="font-size:13px">Can't scan? Enter this key by hand: <code id="secret" style="word-break:break-all"></code></p>
-    <label for="c3">Then type the 6-digit code it shows</label><input id="c3" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required>
-    <div style="margin-top:14px"><button class="primary" type="submit">Turn on 2FA</button></div>
+    <p style="margin-top:0" data-i18n="login.enrol">The dashboard needs two-factor authentication. Scan this code with an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password, Aegis...).</p>
+    <img id="qr" alt="QR code for your authenticator app" style="display:block;margin:8px auto;border-radius:14px;background:#fff;padding:6px" width="220" height="220">
+    <p class="muted" style="font-size:13px"><span data-i18n="login.cantscan">Can't scan? Enter this key by hand:</span> <code id="secret" class="mono" style="word-break:break-all"></code></p>
+    <label for="c3" data-i18n="login.thencode">Then type the 6-digit code it shows</label><input id="c3" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required dir="ltr">
+    <div style="margin-top:16px"><button class="primary" type="submit" data-i18n="login.turnon">Turn on 2FA</button></div>
   </form>
   <form id="f2" class="hidden">
-    <label for="c">6-digit code from your authenticator app</label><input id="c" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required>
-    <div style="margin-top:14px"><button class="primary" type="submit">Verify</button></div>
+    <label for="c" data-i18n="login.code">6-digit code from your authenticator app</label><input id="c" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required dir="ltr">
+    <div style="margin-top:16px"><button class="primary" type="submit" data-i18n="login.verify">Verify</button></div>
   </form>
   <div class="err" id="err"></div>
 </section>
 
 <main id="app" class="hidden">
   <div class="grid kpis">
-    <div class="card kpi"><h2>Requests</h2><div class="v" id="k-total">0</div><div class="s">last 60 minutes</div></div>
-    <div class="card kpi bad"><h2>Stopped</h2><div class="v" id="k-stopped">0</div><div class="s" id="k-rate">0% of requests</div></div>
-    <div class="card kpi"><h2>Banned IPs</h2><div class="v" id="k-bans">0</div><div class="s">right now</div></div>
-    <div class="card kpi audit-col"><h2>Audit log</h2><div class="v" id="k-audit">–</div><div class="s" id="k-audit-s">checking…</div></div>
+    <div class="card kpi"><h2 data-i18n="k.requests">Requests</h2><div class="v" id="k-total">0</div><div class="s" data-i18n="k.last60">last 60 minutes</div></div>
+    <div class="card kpi bad"><h2 data-i18n="k.stopped">Stopped</h2><div class="v" id="k-stopped">0</div><div class="s" id="k-rate">0% of requests</div></div>
+    <div class="card kpi"><h2 data-i18n="k.bans">Banned IPs</h2><div class="v" id="k-bans">0</div><div class="s" data-i18n="k.now">right now</div></div>
+    <div class="card kpi audit-col"><h2 data-i18n="k.audit">Audit log</h2><div class="v" id="k-audit">–</div><div class="s" id="k-audit-s">checking…</div></div>
   </div>
 
-  <div class="card" style="margin-top:14px" id="sites-card">
-    <div class="row" style="justify-content:space-between"><h2 style="margin:0">Sites <span class="muted" style="font-weight:400;font-size:13px;text-transform:none;letter-spacing:0">monitor logs only · protect blocks</span></h2>
-      <button type="button" class="small" id="add-site-btn">Add site</button></div>
+  <div class="card" style="margin-top:16px" id="sites-card">
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0"><span data-i18n="sites.title">Sites</span> <span class="muted" data-i18n="sites.sub">monitor logs only · protect blocks</span></h2>
+      <button type="button" class="small" id="add-site-btn" data-i18n="sites.add">Add site</button></div>
     <form id="as-form" class="hidden" style="margin:12px 0">
-      <h2 style="margin-bottom:6px">Add a site</h2>
-      <p class="muted" style="margin:0 0 8px">It starts in monitor mode: attacks are logged, nothing is blocked, until you switch it to protect.</p>
+      <h2 style="margin-bottom:6px" data-i18n="as.title">Add a site</h2>
+      <p class="muted" style="margin:0 0 8px" data-i18n="as.intro">It starts in monitor mode: attacks are logged, nothing is blocked, until you switch it to protect.</p>
       <div class="grid three">
-        <div><label for="as-name">Name (lowercase letters, digits and -)</label><input id="as-name" class="mono" required placeholder="blog"></div>
-        <div><label for="as-hosts">Host names (comma separated)</label><input id="as-hosts" class="mono" required placeholder="blog.example.com, www.blog.example.com"></div>
-        <div><label for="as-health">Health check path (optional)</label><input id="as-health" class="mono" placeholder="/healthz"></div>
+        <div><label for="as-name" data-i18n="as.name">Name (lowercase letters, digits and -)</label><input id="as-name" class="mono" required placeholder="blog"></div>
+        <div><label for="as-hosts" data-i18n="hosts">Host names (comma separated)</label><input id="as-hosts" class="mono" required placeholder="blog.example.com, www.blog.example.com"></div>
+        <div><label for="as-health" data-i18n="as.health">Health check path (optional)</label><input id="as-health" class="mono" placeholder="/healthz"></div>
       </div>
-      <label for="as-servers">Servers (one per line, shared in turn)</label>
+      <label for="as-servers" data-i18n="as.servers">Servers (one per line, shared in turn)</label>
       <textarea id="as-servers" class="mono" rows="2" required placeholder="http://10.0.0.5:3000"></textarea>
-      <div class="row" style="margin-top:10px"><button class="primary" type="submit">Add site</button><button type="button" id="as-cancel">Cancel</button><span class="err" id="as-err"></span></div>
+      <div class="row" style="margin-top:10px"><button class="primary" type="submit" data-i18n="sites.add">Add site</button><button type="button" id="as-cancel" data-i18n="cancel">Cancel</button><span class="err" id="as-err"></span></div>
     </form>
     <div class="sites" id="sites" style="margin-top:10px"></div>
     <form id="se-form" class="hidden" style="margin-top:14px">
       <h2 id="se-title" style="margin-bottom:6px">Edit site</h2>
-      <p class="muted" style="margin:0 0 8px">Changes apply right away and are kept in the data folder; they win over the config file. Empty = as in the config file.</p>
+      <p class="muted" style="margin:0 0 8px" data-i18n="se.intro">Changes apply right away and are kept in the data folder; they win over the config file. Empty = as in the config file.</p>
       <div class="grid three">
-        <div><label for="se-waf">WAF</label><select id="se-waf"><option value="">as configured</option><option value="block">block</option><option value="detect">detect (log only)</option></select></div>
-        <div><label for="se-ml">ML model</label><select id="se-ml"><option value="">as configured</option><option value="off">off</option><option value="detect">detect (log only)</option><option value="block">block</option></select></div>
-        <div><label for="se-mode">Mode</label><select id="se-mode"><option value="">as configured</option><option value="protect">protect</option><option value="monitor">monitor</option></select></div>
+        <div><label for="se-waf">WAF</label><select id="se-waf"><option value="" data-i18n="asconf">as configured</option><option value="block" data-i18n="o.block">block</option><option value="detect" data-i18n="o.detect">detect (log only)</option></select></div>
+        <div><label for="se-ml" data-i18n="se.ml">ML model</label><select id="se-ml"><option value="" data-i18n="asconf">as configured</option><option value="off" data-i18n="o.off">off</option><option value="detect" data-i18n="o.detect">detect (log only)</option><option value="block" data-i18n="o.block">block</option></select></div>
+        <div><label for="se-mode" data-i18n="se.mode">Mode</label><select id="se-mode"><option value="" data-i18n="asconf">as configured</option><option value="protect" data-i18n="o.protect">protect</option><option value="monitor" data-i18n="o.monitor">monitor</option></select></div>
       </div>
       <div id="se-where">
         <div class="grid three">
-          <div><label for="se-hosts">Host names (comma separated)</label><input id="se-hosts" class="mono"></div>
-          <div><label for="se-servers">Servers for / (one per line, shared in turn)</label><textarea id="se-servers" class="mono" rows="2"></textarea></div>
-          <div><label for="se-health">Health check path</label><input id="se-health" class="mono"></div>
+          <div><label for="se-hosts" data-i18n="hosts">Host names (comma separated)</label><input id="se-hosts" class="mono"></div>
+          <div><label for="se-servers" data-i18n="se.servers">Servers for / (one per line, shared in turn)</label><textarea id="se-servers" class="mono" rows="2"></textarea></div>
+          <div><label for="se-health" data-i18n="se.health">Health check path</label><input id="se-health" class="mono"></div>
         </div>
       </div>
-      <label for="se-limits">Rate limits, one per line: path requests/window (e.g. <span class="mono">/login 10/1m</span>). Empty = as configured.</label>
+      <label for="se-limits" data-i18n-html="se.limits">Rate limits, one per line: path requests/window (e.g. <span class="mono">/login 10/1m</span>). Empty = as configured.</label>
       <textarea id="se-limits" class="mono" rows="4" style="width:100%"></textarea>
-      <div class="row" style="margin-top:10px"><button class="primary" type="submit">Save</button><button type="button" id="se-reset">Back to the config file</button><button type="button" id="se-cancel">Cancel</button><span class="err" id="se-err"></span></div>
+      <div class="row" style="margin-top:10px"><button class="primary" type="submit" data-i18n="save">Save</button><button type="button" id="se-reset" data-i18n="se.reset">Back to the config file</button><button type="button" id="se-cancel" data-i18n="cancel">Cancel</button><span class="err" id="se-err"></span></div>
     </form>
   </div>
 
-  <div class="card" style="margin-top:14px" id="accounts-card">
-    <h2>Accounts <span class="muted" style="font-weight:400;font-size:13px;text-transform:none;letter-spacing:0">admin: everything · operator: bans, false alarms, reloads · viewer: looks only</span></h2>
+  <div class="card" style="margin-top:16px" id="accounts-card">
+    <h2><span data-i18n="ac.title">Accounts</span> <span class="muted" data-i18n="ac.sub">admin: everything · operator: bans, false alarms, reloads · viewer: looks only</span></h2>
     <table id="t-accounts"></table>
     <form id="ac-form" class="row" style="margin-top:10px">
       <input id="ac-name" class="mono" placeholder="user name" required aria-label="User name">
-      <select id="ac-role" aria-label="Role"><option value="viewer">viewer</option><option value="operator">operator</option><option value="admin">admin</option></select>
-      <button class="primary" type="submit">Add account</button><span class="err" id="ac-err"></span>
+      <select id="ac-role" aria-label="Role"><option value="viewer" data-i18n="r.viewer">viewer</option><option value="operator" data-i18n="r.operator">operator</option><option value="admin" data-i18n="r.admin">admin</option></select>
+      <button class="primary" type="submit" data-i18n="ac.add">Add account</button><span class="err" id="ac-err"></span>
     </form>
     <p class="muted hidden" id="ac-pw" style="margin:10px 0 0"></p>
   </div>
 
-  <div class="card" style="margin-top:14px" id="alerts-card">
-    <h2>Alerts <span class="muted" style="font-weight:400;font-size:13px;text-transform:none;letter-spacing:0" id="al-state"></span></h2>
+  <div class="card" style="margin-top:16px" id="alerts-card">
+    <h2><span data-i18n="al.title">Alerts</span> <span class="muted" id="al-state"></span></h2>
     <form id="al-form">
       <div class="grid three">
-        <div><label for="al-url">Webhook URL (Slack, Discord, Telegram or any)</label><input id="al-url" class="mono" placeholder="https://hooks.slack.com/..."></div>
-        <div><label for="al-chat">Telegram chat ID</label><input id="al-chat" class="mono" placeholder="only for Telegram"></div>
-        <div><label for="al-burst">Alert after this many stops from one IP in a minute</label><input id="al-burst" type="number" min="1" max="100000"></div>
+        <div><label for="al-url" data-i18n="al.url">Webhook URL (Slack, Discord, Telegram or any)</label><input id="al-url" class="mono" placeholder="https://hooks.slack.com/..."></div>
+        <div><label for="al-chat" data-i18n="al.chat">Telegram chat ID</label><input id="al-chat" class="mono" placeholder="only for Telegram"></div>
+        <div><label for="al-burst" data-i18n="al.burst">Alert after this many stops from one IP in a minute</label><input id="al-burst" type="number" min="1" max="100000" dir="ltr"></div>
       </div>
-      <div class="row" style="margin-top:10px"><button class="primary" type="submit">Save</button><button type="button" id="al-off">Turn alerts off</button><span class="err" id="al-err"></span></div>
+      <div class="row" style="margin-top:10px"><button class="primary" type="submit" data-i18n="save">Save</button><button type="button" id="al-off" data-i18n="al.off">Turn alerts off</button><span class="err" id="al-err"></span></div>
     </form>
   </div>
 
-  <div class="grid two" style="margin-top:14px">
+  <div class="grid two" style="margin-top:16px">
     <div class="card">
-      <h2>Requests per minute</h2>
+      <h2 data-i18n="ch.title">Requests per minute</h2>
       <svg class="bars" id="chart" preserveAspectRatio="none"></svg>
-      <div class="legend"><span><i style="background:var(--ok)"></i>let through</span><span><i style="background:var(--bad)"></i>stopped</span><span id="chart-range"></span></div>
+      <div class="legend"><span><i style="background:var(--ok)"></i><span data-i18n="ch.through">let through</span></span><span><i style="background:var(--bad)"></i><span data-i18n="ch.stopped">stopped</span></span><span id="chart-range"></span></div>
     </div>
     <div class="card">
-      <h2>Why requests were stopped or flagged</h2>
+      <h2 data-i18n="why.title">Why requests were stopped or flagged</h2>
       <table id="t-rules"></table>
     </div>
   </div>
 
-  <div class="grid three" style="margin-top:14px">
-    <div class="card"><h2>Top attacking IPs</h2><table id="t-ips"></table></div>
-    <div class="card"><h2>Countries</h2><table id="t-countries"></table></div>
+  <div class="grid three" style="margin-top:16px">
+    <div class="card"><h2 data-i18n="ips.title">Top attacking IPs</h2><table id="t-ips"></table></div>
+    <div class="card"><h2 data-i18n="co.title">Countries</h2><table id="t-countries"></table></div>
     <div class="card">
-      <h2>Bans</h2>
+      <h2 data-i18n="bans.title">Bans</h2>
       <table id="t-bans"></table>
-      <div class="row" style="margin-top:10px"><input id="ban-ip" placeholder="IP address"><button id="ban-btn">Ban 60 min</button></div>
+      <div class="row" style="margin-top:10px"><input id="ban-ip" class="mono" placeholder="IP address"><button id="ban-btn" data-i18n="bans.btn">Ban 60 min</button></div>
     </div>
   </div>
 
-  <div class="card" style="margin-top:14px">
-    <div class="row" style="justify-content:space-between"><h2 style="margin:0">Live decisions</h2>
-      <label class="muted"><input type="checkbox" id="only-stopped"> only stopped</label></div>
-    <div class="feed" style="margin-top:8px"><table><thead><tr><th>Time</th><th class="site-col">Site</th><th>Decision</th><th>Method</th><th>Path</th><th>Who</th><th class="risk-col">Risk</th><th>Why</th><th></th></tr></thead><tbody id="feed"></tbody></table></div>
+  <div class="card" style="margin-top:16px">
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0" data-i18n="live.title">Live decisions</h2>
+      <label class="muted"><input type="checkbox" id="only-stopped"><span data-i18n="live.only">only stopped</span></label></div>
+    <div class="feed" style="margin-top:8px"><table><thead><tr><th data-i18n="c.time">Time</th><th class="site-col" data-i18n="site">Site</th><th data-i18n="c.decision">Decision</th><th data-i18n="c.method">Method</th><th data-i18n="c.path">Path</th><th data-i18n="c.who">Who</th><th class="risk-col" data-i18n="c.risk">Risk</th><th data-i18n="c.why">Why</th><th></th></tr></thead><tbody id="feed"></tbody></table></div>
   </div>
 
-
-  <div class="card" style="margin-top:14px" id="hist-card">
-    <h2>History <span class="muted" style="font-weight:400;font-size:13px;text-transform:none;letter-spacing:0">every stopped or flagged request, kept on disk</span></h2>
+  <div class="card" style="margin-top:16px" id="hist-card">
+    <h2><span data-i18n="h.title">History</span> <span class="muted" data-i18n="h.sub">every stopped or flagged request, kept on disk</span></h2>
     <form class="hist-form" id="hist-form">
-      <div><label for="h-from">From</label><input type="datetime-local" id="h-from"></div>
-      <div><label for="h-to">To <span class="muted">(empty = now)</span></label><input type="datetime-local" id="h-to"></div>
-      <div><label for="h-q">Contains</label><input type="search" id="h-q" placeholder="IP, path, rule…"></div>
-      <div class="row"><button class="primary" type="submit">Search</button><span class="muted" id="h-count" style="font-size:12px"></span></div>
+      <div><label for="h-from" data-i18n="h.from">From</label><input type="datetime-local" id="h-from"></div>
+      <div><label for="h-to" data-i18n-html="h.to">To <span class="muted">(empty = now)</span></label><input type="datetime-local" id="h-to"></div>
+      <div><label for="h-q" data-i18n="h.contains">Contains</label><input type="search" id="h-q" placeholder="IP, path, rule…"></div>
+      <div class="row"><button class="primary" type="submit" data-i18n="h.search">Search</button><span class="muted" id="h-count" style="font-size:12px"></span></div>
     </form>
-    <div class="feed"><table><thead><tr><th>Time</th><th class="site-col">Site</th><th>Decision</th><th>Method</th><th>Path</th><th>Who</th><th>Why</th></tr></thead><tbody id="hist"></tbody></table></div>
+    <div class="feed"><table><thead><tr><th data-i18n="c.time">Time</th><th class="site-col" data-i18n="site">Site</th><th data-i18n="c.decision">Decision</th><th data-i18n="c.method">Method</th><th data-i18n="c.path">Path</th><th data-i18n="c.who">Who</th><th data-i18n="c.why">Why</th></tr></thead><tbody id="hist"></tbody></table></div>
   </div>
 
-  <div class="card console-card" style="margin-top:14px" id="console-card">
-    <div class="row" style="justify-content:space-between"><h2 style="margin:0">Console <span class="muted" style="font-weight:400;font-size:13px;color:#6B7F95">every decision, live</span></h2>
-      <span class="muted" id="con-count" style="font-size:12px;color:#6B7F95"></span></div>
+  <div class="card console-card" style="margin-top:16px" id="console-card">
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0"><span data-i18n="con.title">Console</span> <span class="muted" data-i18n="con.sub">every decision, live</span></h2>
+      <span class="muted" id="con-count" style="font-size:12px"></span></div>
     <div class="console-bar">
-      <select id="con-filter" title="Which lines to show"><option value="all">All requests</option><option value="stopped">Stopped only</option><option value="noisy">All, with static files</option></select>
+      <select id="con-filter" title="Which lines to show"><option value="all" data-i18n="con.all">All requests</option><option value="stopped" data-i18n="con.stopped">Stopped only</option><option value="noisy" data-i18n="con.noisy">All, with static files</option></select>
       <input type="search" id="con-search" placeholder="Filter: IP, path, rule, user…">
-      <button id="con-pause" title="Stop scrolling new lines in (they are kept)">Pause</button>
-      <button id="con-clear">Clear</button>
-      <button id="con-copy" title="Copy the lines shown">Copy</button>
-      <button id="con-full" title="Full screen (Esc to leave)">Full screen</button>
+      <button id="con-pause" data-i18n="con.pause">Pause</button>
+      <button id="con-clear" data-i18n="con.clear">Clear</button>
+      <button id="con-copy" data-i18n="con.copy">Copy</button>
+      <button id="con-full" data-i18n="con.full">Full screen</button>
     </div>
     <div class="term" id="term" aria-live="polite"></div>
   </div>
 
-  <div class="card" style="margin-top:14px" id="excl-card">
-    <h2>Exclusions <span class="muted" style="font-weight:400;font-size:13px">rules switched off for one path or field (false alarms)</span></h2>
+  <div class="card" style="margin-top:16px" id="excl-card">
+    <h2><span data-i18n="x.title">Exclusions</span> <span class="muted" data-i18n="x.sub">rules switched off for one path or field (false alarms)</span></h2>
     <form id="excl-form" class="hidden" style="margin:6px 0 14px">
-      <p class="muted" style="margin:0 0 8px">Let requests like this one through these rules. Narrower is safer: keep the path and the field if you can.</p>
+      <p class="muted" style="margin:0 0 8px" data-i18n="x.intro">Let requests like this one through these rules. Narrower is safer: keep the path and the field if you can.</p>
       <div class="grid three">
-        <div><label for="x-rule">Rules (comma separated)</label><input id="x-rule" class="mono" required></div>
-        <div><label for="x-path">Path starts with</label><input id="x-path" class="mono" placeholder="any path"></div>
-        <div><label for="x-field">Field</label><input id="x-field" class="mono" placeholder="any field"></div>
-        <div class="site-col"><label for="x-site">Site</label><input id="x-site" class="mono" placeholder="every site"></div>
+        <div><label for="x-rule" data-i18n="x.rules">Rules (comma separated)</label><input id="x-rule" class="mono" required></div>
+        <div><label for="x-path" data-i18n="x.path">Path starts with</label><input id="x-path" class="mono" placeholder="any path"></div>
+        <div><label for="x-field" data-i18n="x.field">Field</label><input id="x-field" class="mono" placeholder="any field"></div>
+        <div class="site-col"><label for="x-site" data-i18n="site">Site</label><input id="x-site" class="mono" placeholder="every site"></div>
       </div>
-      <label for="x-note">Why (for whoever reads this later)</label><input id="x-note" placeholder="e.g. reviews can mention SQL words">
-      <div class="row" style="margin-top:10px"><button class="primary" type="submit">Save exclusion</button><button type="button" id="x-cancel">Cancel</button><span class="err" id="x-err"></span></div>
+      <label for="x-note" data-i18n="x.note">Why (for whoever reads this later)</label><input id="x-note" placeholder="e.g. reviews can mention SQL words">
+      <div class="row" style="margin-top:10px"><button class="primary" type="submit" data-i18n="x.save">Save exclusion</button><button type="button" id="x-cancel" data-i18n="cancel">Cancel</button><span class="err" id="x-err"></span></div>
     </form>
     <table id="t-excl"></table>
     <p class="muted" id="excl-file" style="font-size:13px;margin-bottom:0"></p>
   </div>
 
-  <div class="card" style="margin-top:14px">
-    <div class="row" style="justify-content:space-between"><h2 style="margin:0">Configuration</h2>
-      <span><span class="muted" id="reload-msg" style="font-size:13px"></span> <button class="small" id="reload-btn" title="Read the rule and exclusion files again">Reload rules</button></span></div>
-    <table id="t-info" class="mono"></table>
+  <div class="card" style="margin-top:16px">
+    <div class="row" style="justify-content:space-between"><h2 style="margin:0" data-i18n="cfg.title">Configuration</h2>
+      <span><span class="muted" id="reload-msg" style="font-size:13px"></span> <button class="small" id="reload-btn" data-i18n="cfg.reload">Reload rules</button></span></div>
+    <table id="t-info"></table>
   </div>
 </main>
+<footer><a class="tft-by" href="https://tft.markets/" target="_blank" rel="noopener"><img src="/__sentinel/brand/logo.svg" alt=""> <span data-i18n="by">A product of The First Terminal</span></a></footer>
 
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
 let token = null;
 try { token = sessionStorage.getItem("sentinel_token"); } catch (e) {}
+// ---- Languages: English and Arabic -----------------------------------------
+// Sentinel's own words. Messages from the server and the console lines stay in English.
+const I18N = {
+  en: {
+    product: "Sentinel", org: "The First Terminal", site: "Site", logout: "Log out", by: "A product of The First Terminal",
+    "login.title": "Admin login", "login.intro": "The dashboard is for admins, operators and viewers with two-factor authentication.",
+    "login.noadmin": '<b>No account exists yet.</b> Create the first admin with the one-time <b>setup link</b> Sentinel printed when it started (a line starting with <span class="mono">FIRST RUN</span>; in the lab menu, press <b>L</b>). Then log in here.',
+    "login.user": "Username", "login.pass": "Password", "login.continue": "Continue",
+    "login.enrol": "The dashboard needs two-factor authentication. Scan this code with an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password, Aegis...).",
+    "login.cantscan": "Can't scan? Enter this key by hand:", "login.thencode": "Then type the 6-digit code it shows", "login.turnon": "Turn on 2FA",
+    "login.code": "6-digit code from your authenticator app", "login.verify": "Verify",
+    "k.requests": "Requests", "k.last60": "last 60 minutes", "k.stopped": "Stopped", "k.bans": "Banned IPs", "k.now": "right now", "k.audit": "Audit log",
+    "sites.title": "Sites", "sites.sub": "monitor logs only · protect blocks", "sites.add": "Add site",
+    "as.title": "Add a site", "as.intro": "It starts in monitor mode: attacks are logged, nothing is blocked, until you switch it to protect.",
+    "as.name": "Name (lowercase letters, digits and -)", hosts: "Host names (comma separated)", "as.health": "Health check path (optional)",
+    "as.servers": "Servers (one per line, shared in turn)", cancel: "Cancel", save: "Save",
+    "se.intro": "Changes apply right away and are kept in the data folder; they win over the config file. Empty = as in the config file.",
+    asconf: "as configured", "o.block": "block", "o.detect": "detect (log only)", "o.off": "off", "o.protect": "protect", "o.monitor": "monitor",
+    "se.ml": "ML model", "se.mode": "Mode", "se.servers": "Servers for / (one per line, shared in turn)", "se.health": "Health check path",
+    "se.limits": 'Rate limits, one per line: path requests/window (e.g. <span class="mono">/login 10/1m</span>). Empty = as configured.',
+    "se.reset": "Back to the config file",
+    "ac.title": "Accounts", "ac.sub": "admin: everything · operator: bans, false alarms, reloads · viewer: looks only", "ac.add": "Add account",
+    "r.admin": "admin", "r.operator": "operator", "r.viewer": "viewer",
+    "al.title": "Alerts", "al.url": "Webhook URL (Slack, Discord, Telegram or any)", "al.chat": "Telegram chat ID",
+    "al.burst": "Alert after this many stops from one IP in a minute", "al.off": "Turn alerts off",
+    "ch.title": "Requests per minute", "ch.through": "let through", "ch.stopped": "stopped",
+    "why.title": "Why requests were stopped or flagged", "ips.title": "Top attacking IPs", "co.title": "Countries",
+    "bans.title": "Bans", "bans.btn": "Ban 60 min", "live.title": "Live decisions", "live.only": "only stopped",
+    "c.time": "Time", "c.decision": "Decision", "c.method": "Method", "c.path": "Path", "c.who": "Who", "c.risk": "Risk", "c.why": "Why",
+    "h.title": "History", "h.sub": "every stopped or flagged request, kept on disk", "h.from": "From",
+    "h.to": 'To <span class="muted">(empty = now)</span>', "h.contains": "Contains", "h.search": "Search",
+    "con.title": "Console", "con.sub": "every decision, live", "con.all": "All requests", "con.stopped": "Stopped only", "con.noisy": "All, with static files",
+    "con.pause": "Pause", "con.resume": "Resume", "con.clear": "Clear", "con.copy": "Copy", "con.copied": "Copied", "con.copyfail": "Copy failed",
+    "con.full": "Full screen", "con.exitfull": "Exit full screen",
+    "con.wait": "Waiting for requests… Send some traffic through Sentinel and every decision appears here.",
+    "con.lines": (n) => n + " lines", "con.paused": (n) => " · paused, " + n + " new",
+    "x.title": "Exclusions", "x.sub": "rules switched off for one path or field (false alarms)",
+    "x.intro": "Let requests like this one through these rules. Narrower is safer: keep the path and the field if you can.",
+    "x.rules": "Rules (comma separated)", "x.path": "Path starts with", "x.field": "Field", "x.note": "Why (for whoever reads this later)", "x.save": "Save exclusion",
+    "cfg.title": "Configuration", "cfg.reload": "Reload rules",
+    // placeholders and tooltips
+    "ph.ip": "IP address", "ph.username": "user name", "ph.hq": "IP, path, rule…", "ph.consearch": "Filter: IP, path, rule, user…",
+    "ph.anypath": "any path", "ph.anyfield": "any field", "ph.everysite": "every site", "ph.note": "e.g. reviews can mention SQL words", "ph.telegram": "only for Telegram",
+    "tt.confilter": "Which lines to show", "tt.pause": "Stop scrolling new lines in (they are kept)", "tt.copy": "Copy the lines shown",
+    "tt.full": "Full screen (Esc to leave)", "tt.reload": "Read the rule and exclusion files again", "tt.sitesel": "Show one site",
+    // messages
+    "m.session": "Your session ended. Log in again.", "m.nosetup": "No account exists yet: create the admin with the setup link first.",
+    "m.norole": "This account has no dashboard role (admin, operator or viewer).",
+    "m.2fanext": "2FA is on. Enter the next code your app shows (each code works once).", "m.2faagain": "2FA is on. Log in again with your password and a code.",
+    "acc.account": "Account", "acc.role": "Role", "acc.on": "on", "acc.first": "at first login", "acc.reset": "Reset", "acc.remove": "Remove", "acc.roleof": "Role of",
+    "acc.created": "Account created:", "acc.wasreset": "Reset:", "acc.pw": "One-time password (shown once, send it privately):", "acc.2fa": "They set up 2FA at their first login.",
+    "q.reset": (n) => "Reset " + n + "? They get a new one-time password and set up 2FA again.",
+    "q.remove": (n) => "Remove the account " + n + "? It loses access at once.",
+    "q.rmsite": (n) => "Remove the site " + n + "? Its host names will get no answer (421).",
+    "q.monitor": (n) => "Switch " + n + " to monitor? Attacks will be logged but no longer blocked.", "q.alertsoff": "Turn alerts off?",
+    "k.rate": (p) => p + "% of requests", "k.flagged": (n) => " · " + n + " more flagged in monitor mode",
+    "t.rule": "Rule / check", "t.ip": "IP", "t.country": "Country", "t.count": "Count", "t.ban": "Ban", "t.nothing": "Nothing yet",
+    "b.until": "Until", "b.unban": "Unban", "b.none": "No active bans",
+    "au.off": "off", "au.notset": "AUDIT_LOG_FILE not set", "au.intact": "intact", "au.tampered": "TAMPERED",
+    "au.ok": (n, anchor) => n + " entries, chain verified" + (anchor ? " + anchor" : ""),
+    "ch.tip": (t, a, s) => t + ": " + a + " let through, " + s + " stopped", "ch.now": " – now",
+    "allow": "Allow…", "allow.tt": "This was a false alarm: let requests like it through this rule",
+    "rl.doing": "reloading…", "rl.done": (t) => "reloaded " + t,
+    "x.by": "By", "x.every": "every", "x.any": "any", "x.none": 'None. Use "Allow…" on a stopped request that was a false alarm.',
+    "x.file": (f) => "Saved in " + f + " (you can edit it by hand).", "x.nofile": "Not saved to a file: set exclusions_file to keep them after a restart.",
+    "s.all": "All sites", "s.none": "No sites.", "s.up": "up", "s.down": "down", "s.for": "for", "s.allhosts": "all hosts", "s.anyhost": "any host",
+    "s.changed": "Changed on the dashboard", "s.cfgsays": (m) => "; the config file says " + m, "s.monitor": "Monitor", "s.protect": "Protect",
+    "s.edit": "Edit", "s.remove": "Remove", "s.modeof": "Mode of",
+    "s.servers": (u, a) => u + " of " + a + " server" + (a === 1 ? "" : "s") + " up",
+    "se.title": (n) => "Edit " + n, "se.routes": "routes from the config file", "se.none": "none", "se.badlimit": "Write each limit as: /path 10/1m",
+    "al.on": (u) => "on, sending to " + u, "al.isoff": "off", "al.keep": " (leave empty to keep)",
+    "h.searching": "searching…", "h.nothing": "Nothing in this range.", "h.more": "+ (newest 500; narrow the range)", "h.found": " found",
+    "ed.soon": " · license ends soon", "ed.expired": " · license expired", "ed.free": "Free · what Pro adds →",
+    "ed.freett": "Single sign-on, access rules, risk-based 2FA, mTLS, a tamper-evident audit log",
+    "i.mode": "Mode", "i.monitor": "MONITOR: logging only, nothing is blocked", "i.protect": "protect", "i.rules": (n) => n + " rules",
+    "i.limits": "Rate limits", "i.persite": "per site, shown on each site above", "i.store": "Shared store", "i.geo": "Geo",
+    "i.pg": "AI prompt guard", "i.ml": "ML classifier", "i.started": "Started", "i.off": "off",
+    "live": "● live", "reconnecting": "● reconnecting",
+  },
+  ar: {
+    product: "سنتينل", org: "البوابة الأولى", site: "الموقع", logout: "اطلع", by: "منتج من البوابة الأولى",
+    "login.title": "دخول المدير", "login.intro": "لوحة التحكم للمدراء والمشغّلين والمشاهدين اللي مفعّلين التحقق بخطوتين.",
+    "login.noadmin": '<b>ماكو حساب لحد هسه.</b> سوّي أول حساب مدير من <b>رابط الإعداد</b> اللي طبعه سنتينل من اشتغل (سطر يبدي بـ <span class="mono">FIRST RUN</span>، وبقائمة المختبر دوس <b>L</b>). بعدين ادخل من هنا.',
+    "login.user": "اسم المستخدم", "login.pass": "كلمة السر", "login.continue": "كمّل",
+    "login.enrol": "لوحة التحكم تحتاج تحقق بخطوتين. امسح هذا الرمز بتطبيق مصادقة (Google Authenticator أو Microsoft Authenticator أو 1Password أو Aegis...).",
+    "login.cantscan": "ما تگدر تمسحه؟ اكتب هذا المفتاح بإيدك:", "login.thencode": "بعدين اكتب الرمز اللي بيه 6 أرقام", "login.turnon": "فعّل التحقق بخطوتين",
+    "login.code": "الرمز (6 أرقام) من تطبيق المصادقة", "login.verify": "تحقق",
+    "k.requests": "الطلبات", "k.last60": "آخر 60 دقيقة", "k.stopped": "المحجوبة", "k.bans": "العناوين المحظورة", "k.now": "هسه", "k.audit": "سجل التدقيق",
+    "sites.title": "المواقع", "sites.sub": "المراقبة تسجّل بس · الحماية تحجب", "sites.add": "أضف موقع",
+    "as.title": "أضف موقع", "as.intro": "يبدي بوضع المراقبة: الهجمات تنسجل وما ينحجب شي، لحد ما تحوّله للحماية.",
+    "as.name": "الاسم (حروف إنكليزية صغيرة وأرقام و -)", hosts: "أسماء النطاقات (افصل بينها بفارزة)", "as.health": "مسار فحص الصحة (اختياري)",
+    "as.servers": "السيرفرات (كل واحد بسطر، يتناوبون)", cancel: "إلغاء", save: "احفظ",
+    "se.intro": "التغييرات تشتغل فوراً وتنحفظ بمجلد البيانات، وتغلب ملف الإعدادات. الفارغ = مثل ملف الإعدادات.",
+    asconf: "مثل الإعدادات", "o.block": "حجب", "o.detect": "كشف (تسجيل بس)", "o.off": "مطفي", "o.protect": "حماية", "o.monitor": "مراقبة",
+    "se.ml": "نموذج التعلم الآلي", "se.mode": "الوضع", "se.servers": "سيرفرات / (كل واحد بسطر، يتناوبون)", "se.health": "مسار فحص الصحة",
+    "se.limits": 'حدود الطلبات، كل حد بسطر: المسار الطلبات/المدة (مثلاً <span class="mono">/login 10/1m</span>). الفارغ = مثل الإعدادات.',
+    "se.reset": "رجّعه لملف الإعدادات",
+    "ac.title": "الحسابات", "ac.sub": "المدير: كلشي · المشغّل: الحظر والإنذارات الكاذبة وإعادة التحميل · المشاهد: يشوف بس", "ac.add": "أضف حساب",
+    "r.admin": "مدير", "r.operator": "مشغّل", "r.viewer": "مشاهد",
+    "al.title": "التنبيهات", "al.url": "رابط Webhook (Slack أو Discord أو Telegram أو غيرها)", "al.chat": "معرّف محادثة Telegram",
+    "al.burst": "نبّه بعد هذا العدد من الحجب لعنوان واحد بالدقيقة", "al.off": "طفّي التنبيهات",
+    "ch.title": "الطلبات بالدقيقة", "ch.through": "عبرت", "ch.stopped": "انحجبت",
+    "why.title": "ليش انحجبت أو تأشرت الطلبات", "ips.title": "أكثر العناوين هجوماً", "co.title": "الدول",
+    "bans.title": "الحظر", "bans.btn": "احظر 60 دقيقة", "live.title": "القرارات المباشرة", "live.only": "المحجوبة بس",
+    "c.time": "الوقت", "c.decision": "القرار", "c.method": "الطريقة", "c.path": "المسار", "c.who": "منو", "c.risk": "الخطورة", "c.why": "ليش",
+    "h.title": "السجل", "h.sub": "كل طلب انحجب أو تأشر، محفوظ على القرص", "h.from": "من",
+    "h.to": 'إلى <span class="muted">(الفارغ = هسه)</span>', "h.contains": "يحتوي", "h.search": "ابحث",
+    "con.title": "الطرفية", "con.sub": "كل قرار، مباشر", "con.all": "كل الطلبات", "con.stopped": "المحجوبة بس", "con.noisy": "الكل، ويا الملفات الثابتة",
+    "con.pause": "وقّف", "con.resume": "كمّل", "con.clear": "امسح", "con.copy": "انسخ", "con.copied": "انتسخ", "con.copyfail": "ما انتسخ",
+    "con.full": "ملء الشاشة", "con.exitfull": "اطلع من ملء الشاشة",
+    "con.wait": "ننتظر طلبات… دز شوية زيارات من خلال سنتينل وكل قرار يطلع هنا.",
+    "con.lines": (n) => n + " سطر", "con.paused": (n) => " · موقوف، " + n + " جديد",
+    "x.title": "الاستثناءات", "x.sub": "قواعد مطفية لمسار أو حقل واحد (إنذارات كاذبة)",
+    "x.intro": "خلّي الطلبات المشابهة لهذا تعبر هاي القواعد. الأضيق أأمن: خلّي المسار والحقل إذا تگدر.",
+    "x.rules": "القواعد (افصل بينها بفارزة)", "x.path": "المسار يبدي بـ", "x.field": "الحقل", "x.note": "ليش (للي يقرا بعدين)", "x.save": "احفظ الاستثناء",
+    "cfg.title": "الإعدادات", "cfg.reload": "أعد تحميل القواعد",
+    "ph.ip": "عنوان IP", "ph.username": "اسم المستخدم", "ph.hq": "IP، مسار، قاعدة…", "ph.consearch": "فلتر: IP، مسار، قاعدة، مستخدم…",
+    "ph.anypath": "أي مسار", "ph.anyfield": "أي حقل", "ph.everysite": "كل المواقع", "ph.note": "مثلاً: التقييمات ممكن تذكر كلمات SQL", "ph.telegram": "Telegram فقط",
+    "tt.confilter": "شنو الأسطر اللي تنعرض", "tt.pause": "وقّف دخول الأسطر الجديدة (تبقى محفوظة)", "tt.copy": "انسخ الأسطر المعروضة",
+    "tt.full": "ملء الشاشة (Esc للخروج)", "tt.reload": "اقرا ملفات القواعد والاستثناءات من جديد", "tt.sitesel": "اعرض موقع واحد",
+    "m.session": "انتهت جلستك. ادخل مرة ثانية.", "m.nosetup": "ماكو حساب لحد هسه: سوّي حساب المدير من رابط الإعداد أول.",
+    "m.norole": "هذا الحساب ما عنده دور بلوحة التحكم (مدير أو مشغّل أو مشاهد).",
+    "m.2fanext": "التحقق بخطوتين صار مفعّل. اكتب الرمز الجاي اللي يطلع بالتطبيق (كل رمز يشتغل مرة وحدة).", "m.2faagain": "التحقق بخطوتين صار مفعّل. ادخل مرة ثانية بكلمة السر ورمز.",
+    "acc.account": "الحساب", "acc.role": "الدور", "acc.on": "مفعّل", "acc.first": "بأول دخول", "acc.reset": "صفّر", "acc.remove": "احذف", "acc.roleof": "دور",
+    "acc.created": "انسوّى الحساب:", "acc.wasreset": "انصفّر:", "acc.pw": "كلمة سر لمرة وحدة (تطلع مرة وحدة، دزها بشكل خاص):", "acc.2fa": "يفعّل التحقق بخطوتين بأول دخول.",
+    "q.reset": (n) => "تصفّر " + n + "؟ ياخذ كلمة سر جديدة لمرة وحدة ويفعّل التحقق بخطوتين من جديد.",
+    "q.remove": (n) => "تحذف الحساب " + n + "؟ يفقد الوصول فوراً.",
+    "q.rmsite": (n) => "تحذف الموقع " + n + "؟ أسماء نطاقاته ما راح تاخذ جواب (421).",
+    "q.monitor": (n) => "تحوّل " + n + " للمراقبة؟ الهجمات تنسجل بس ما تنحجب بعد.", "q.alertsoff": "تطفّي التنبيهات؟",
+    "k.rate": (p) => p + "% من الطلبات", "k.flagged": (n) => " · " + n + " تأشرت بوضع المراقبة",
+    "t.rule": "القاعدة / الفحص", "t.ip": "IP", "t.country": "الدولة", "t.count": "العدد", "t.ban": "احظر", "t.nothing": "ماكو شي لحد هسه",
+    "b.until": "لحد", "b.unban": "شيل الحظر", "b.none": "ماكو حظر فعّال",
+    "au.off": "مطفي", "au.notset": "AUDIT_LOG_FILE مو محدد", "au.intact": "سليم", "au.tampered": "متلاعب بيه",
+    "au.ok": (n, anchor) => n + " سجل، السلسلة متحققة" + (anchor ? " + المرساة" : ""),
+    "ch.tip": (t, a, s) => t + ": " + a + " عبرت، " + s + " انحجبت", "ch.now": " – هسه",
+    "allow": "اسمح…", "allow.tt": "هذا إنذار كاذب: خلّي الطلبات المشابهة تعبر هاي القاعدة",
+    "rl.doing": "ديعيد التحميل…", "rl.done": (t) => "انعاد التحميل " + t,
+    "x.by": "منو", "x.every": "الكل", "x.any": "أي", "x.none": "ماكو. استخدم «اسمح…» على طلب محجوب طلع إنذار كاذب.",
+    "x.file": (f) => "محفوظة بـ " + f + " (تگدر تعدلها بإيدك).", "x.nofile": "مو محفوظة بملف: حدد exclusions_file حتى تبقى بعد إعادة التشغيل.",
+    "s.all": "كل المواقع", "s.none": "ماكو مواقع.", "s.up": "شغّال", "s.down": "واگف", "s.for": "لـ", "s.allhosts": "كل النطاقات", "s.anyhost": "أي نطاق",
+    "s.changed": "متغيّر من لوحة التحكم", "s.cfgsays": (m) => "، ملف الإعدادات يگول " + m, "s.monitor": "مراقبة", "s.protect": "حماية",
+    "s.edit": "عدّل", "s.remove": "احذف", "s.modeof": "وضع",
+    "s.servers": (u, a) => u + " من " + a + " سيرفر شغّال",
+    "se.title": (n) => "تعديل " + n, "se.routes": "المسارات من ملف الإعدادات", "se.none": "ماكو", "se.badlimit": "اكتب كل حد هيچ: /path 10/1m",
+    "al.on": (u) => "مفعّلة، ترسل إلى " + u, "al.isoff": "مطفية", "al.keep": " (خليه فارغ حتى يبقى)",
+    "h.searching": "ديدوّر…", "h.nothing": "ماكو شي بهاي الفترة.", "h.more": "+ (أحدث 500، ضيّق الفترة)", "h.found": " لگينا",
+    "ed.soon": " · الترخيص قرّب يخلص", "ed.expired": " · الترخيص خلص", "ed.free": "مجاني · شنو يضيف Pro ←",
+    "ed.freett": "دخول موحّد، قواعد وصول، تحقق إضافي حسب الخطورة، mTLS، وسجل تدقيق ما يتلاعب بيه",
+    "i.mode": "الوضع", "i.monitor": "مراقبة: تسجيل بس، ما ينحجب شي", "i.protect": "حماية", "i.rules": (n) => n + " قاعدة",
+    "i.limits": "حدود الطلبات", "i.persite": "لكل موقع، معروضة على كل موقع فوگ", "i.store": "المخزن المشترك", "i.geo": "الموقع الجغرافي",
+    "i.pg": "حماية أوامر الذكاء الاصطناعي", "i.ml": "مصنّف التعلم الآلي", "i.started": "اشتغل", "i.off": "مطفي",
+    "live": "● مباشر", "reconnecting": "● يعيد الاتصال",
+  },
+};
+// The decision labels in the tables (the console keeps the English codes, like a log).
+const LABELS_AR = {
+  allowed: "مسموح", login: "دخول", mfa_ok: "تحقق تمام", mfa_required: "ينتظر التحقق", detected: "مكتشف", blocked: "محجوب", honeypot: "فخ",
+  banned: "محظور", unauthenticated: "بدون دخول", denied: "مرفوض", invalid: "غير صالح", login_failed: "دخول فاشل", mfa_failed: "تحقق فاشل",
+  rate_limited: "طلبات هواية", geo_blocked: "حجب جغرافي", step_up: "يحتاج تحقق", risk_blocked: "خطورة", mtls_required: "بدون شهادة",
+  prompt_injection: "حقن أوامر", leak_blocked: "تسريب", ml_blocked: "تعلم آلي", monitored: "راح ينحجب", challenged: "فحص متصفح",
+};
+let LANG = "en";
+try { LANG = localStorage.getItem("sentinel_lang") || ((navigator.language || "").startsWith("ar") ? "ar" : "en"); } catch (e) {}
+if (!I18N[LANG]) LANG = "en";
+function t(key, ...args) {
+  const v = I18N[LANG][key] ?? I18N.en[key];
+  return typeof v === "function" ? v(...args) : (v ?? key);
+}
+const PLACEHOLDERS = { "ban-ip": "ph.ip", "ac-name": "ph.username", "h-q": "ph.hq", "con-search": "ph.consearch", "x-path": "ph.anypath",
+  "x-field": "ph.anyfield", "x-site": "ph.everysite", "x-note": "ph.note", "al-chat": "ph.telegram" };
+const TITLES = { "con-filter": "tt.confilter", "con-pause": "tt.pause", "con-copy": "tt.copy", "con-full": "tt.full", "reload-btn": "tt.reload" };
+function applyLang() {
+  const html = document.documentElement;
+  html.lang = LANG; html.dir = LANG === "ar" ? "rtl" : "ltr";
+  document.title = LANG === "ar" ? "لوحة تحكم سنتينل" : "Sentinel Dashboard";
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll("[data-i18n-html]").forEach(el => { el.innerHTML = t(el.dataset.i18nHtml); });
+  for (const [id, k] of Object.entries(PLACEHOLDERS)) $(id).placeholder = t(k);
+  for (const [id, k] of Object.entries(TITLES)) $(id).title = t(k);
+  $("site-sel").setAttribute("aria-label", t("tt.sitesel"));
+  const lb = $("lang");
+  lb.textContent = LANG === "ar" ? "English" : "عربي"; lb.lang = LANG === "ar" ? "en" : "ar";
+  lb.setAttribute("aria-label", LANG === "ar" ? "Switch to English" : "التحويل للعربي");
+}
+$("lang").onclick = () => {
+  LANG = LANG === "ar" ? "en" : "ar";
+  try { localStorage.setItem("sentinel_lang", LANG); } catch (e) {}
+  applyLang();
+  if (CON.paused) $("con-pause").textContent = t("con.resume");
+  $("live").textContent = t($("live").classList.contains("live") ? "live" : "reconnecting");
+  if (token) { refresh(); loadSites(); loadEvents(); loadInfo(); loadExclusions(); loadAlerts(); loadMe(); }
+};
+applyLang();
+
 let mfaToken = null, streamAbort = null;
 let SITE = "*", SITES = [];
 try { SITE = localStorage.getItem("sentinel_site") || "*"; } catch (e) {}
 const siteOf = (e) => e.site || "";
 const inSite = (e) => SITE === "*" || siteOf(e) === SITE;
-const siteName = (n) => n === "" ? "all hosts" : n;
+const siteName = (n) => n === "" ? t("s.allhosts") : n;
 
 const LABELS = {
   allowed: ["ALLOWED", "ok"], login: ["LOGIN", "ok"], mfa_ok: ["2FA OK", "ok"], mfa_required: ["2FA WAIT", "warn"],
@@ -342,11 +552,12 @@ const LABELS = {
   monitored: ["WOULD BLOCK", "warn"], challenged: ["CHALLENGE", "warn"]
 };
 
+function tagLabel(o, en) { return LANG === "ar" && LABELS_AR[o] ? LABELS_AR[o] : en; }
 function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 
 async function api(path, opts = {}) {
   const res = await fetch("/__sentinel/api/" + path, { ...opts, headers: { ...(opts.headers || {}), Authorization: "Bearer " + token } });
-  if (res.status === 401) { logout("Your session ended. Log in again."); throw new Error("401"); }
+  if (res.status === 401) { logout(t("m.session")); throw new Error("401"); }
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.status);
   return res.json();
 }
@@ -371,19 +582,19 @@ checkSetup();
 
 $("f1").onsubmit = async (e) => {
   e.preventDefault(); $("err").textContent = "";
-  if (await checkSetup()) { $("err").textContent = "No account exists yet: create the admin with the setup link first."; return; }
+  if (await checkSetup()) { $("err").textContent = t("m.nosetup"); return; }
   try {
     const out = await post("login", { username: $("u").value, password: $("p").value });
     if (out.mfa_required) { mfaToken = out.mfa_token; $("f1").classList.add("hidden"); $("f2").classList.remove("hidden"); $("c").focus(); }
     else if (["admin", "operator", "viewer"].includes(out.role)) { enrol(out.token); }
-    else { $("err").textContent = "This account has no dashboard role (admin, operator or viewer)."; }
+    else { $("err").textContent = t("m.norole"); }
   } catch (x) { $("err").textContent = x.message; }
 };
 $("f2").onsubmit = async (e) => {
   e.preventDefault(); $("err").textContent = "";
   try {
     const out = await post("verify-2fa", { mfa_token: mfaToken, code: $("c").value.trim() });
-    if (!["admin", "operator", "viewer"].includes(out.role)) { $("err").textContent = "This account has no dashboard role (admin, operator or viewer)."; return; }
+    if (!["admin", "operator", "viewer"].includes(out.role)) { $("err").textContent = t("m.norole"); return; }
     token = out.token; try { sessionStorage.setItem("sentinel_token", token); } catch (x) {}
     start();
   } catch (x) { $("err").textContent = x.message; }
@@ -417,12 +628,12 @@ $("f3").onsubmit = async (e) => {
     $("p").value = "";
     if (again.mfa_required) {
       mfaToken = again.mfa_token; $("f2").classList.remove("hidden"); $("c").value = ""; $("c").focus();
-      $("err").innerHTML = '<span style="color:var(--ok)">2FA is on. Enter the next code your app shows (each code works once).</span>';
+      $("err").innerHTML = '<span style="color:var(--ok)">' + esc(t("m.2fanext")) + '</span>';
       return;
     }
   } catch (x) {}
   $("f1").classList.remove("hidden"); $("p").value = "";
-  $("err").innerHTML = '<span style="color:var(--ok)">2FA is on. Log in again with your password and a code.</span>';
+  $("err").innerHTML = '<span style="color:var(--ok)">' + esc(t("m.2faagain")) + '</span>';
 };
 $("logout").onclick = async () => {
   try { await fetch("/__sentinel/auth/logout", { method: "POST", headers: { Authorization: "Bearer " + token } }); } catch (e) {}
@@ -443,29 +654,29 @@ async function loadMe() {
     const me = await api("me");
     document.body.classList.remove("role-admin", "role-operator", "role-viewer");
     document.body.classList.add("role-" + me.role);
-    $("who").textContent = me.username + " · " + me.role + " · 2FA";
+    $("who").textContent = me.username + " · " + t("r." + me.role) + " · 2FA";
     if (me.role === "admin") loadAccounts();
   } catch (e) {}
 }
 async function loadAccounts() {
   let list; try { list = await api("accounts"); } catch (e) { return; }
   const roles = ["admin", "operator", "viewer"];
-  $("t-accounts").innerHTML = "<tr><th>Account</th><th>Role</th><th>2FA</th><th></th></tr>" + list.map(a =>
-    "<tr><td class='mono'>" + esc(a.username) + "</td><td><select data-acc-role='" + esc(a.username) + "' aria-label='Role of " + esc(a.username) + "'>" +
-    roles.concat(roles.includes(a.role) ? [] : [a.role]).map(r => "<option" + (r === a.role ? " selected" : "") + ">" + esc(r) + "</option>").join("") +
-    "</select></td><td>" + (a.two_factor ? "on" : "<span class='muted'>at first login</span>") + "</td><td>" +
-    "<button class='small' data-acc-reset='" + esc(a.username) + "'>Reset</button> <button class='small' data-acc-del='" + esc(a.username) + "'>Remove</button></td></tr>").join("");
+  $("t-accounts").innerHTML = "<tr><th>" + t("acc.account") + "</th><th>" + t("acc.role") + "</th><th>2FA</th><th></th></tr>" + list.map(a =>
+    "<tr><td class='mono'>" + esc(a.username) + "</td><td><select data-acc-role='" + esc(a.username) + "' aria-label='" + t("acc.roleof") + " " + esc(a.username) + "'>" +
+    roles.concat(roles.includes(a.role) ? [] : [a.role]).map(r => "<option value='" + esc(r) + "'" + (r === a.role ? " selected" : "") + ">" + esc(I18N.en["r." + r] ? t("r." + r) : r) + "</option>").join("") +
+    "</select></td><td>" + (a.two_factor ? t("acc.on") : "<span class='muted'>" + t("acc.first") + "</span>") + "</td><td>" +
+    "<button class='small' data-acc-reset='" + esc(a.username) + "'>" + t("acc.reset") + "</button> <button class='small' data-acc-del='" + esc(a.username) + "'>" + t("acc.remove") + "</button></td></tr>").join("");
 }
 function showPassword(name, pw, what) {
   $("ac-pw").classList.remove("hidden");
-  $("ac-pw").innerHTML = what + " <b>" + esc(name) + "</b>. One-time password (shown once, send it privately): <span class='mono'>" + esc(pw) +
-    "</span>. They set up 2FA at their first login.";
+  $("ac-pw").innerHTML = esc(what) + " <b>" + esc(name) + "</b>. " + esc(t("acc.pw")) + " <span class='mono'>" + esc(pw) +
+    "</span>. " + esc(t("acc.2fa"));
 }
 $("ac-form").onsubmit = async (ev) => {
   ev.preventDefault(); $("ac-err").textContent = "";
   try {
     const r = await api("accounts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: $("ac-name").value.trim(), role: $("ac-role").value }) });
-    showPassword(r.username, r.password, "Account created:"); $("ac-name").value = ""; loadAccounts();
+    showPassword(r.username, r.password, t("acc.created")); $("ac-name").value = ""; loadAccounts();
   } catch (x) { $("ac-err").textContent = x.message; }
 };
 document.addEventListener("change", async (e) => {
@@ -477,11 +688,11 @@ document.addEventListener("change", async (e) => {
 document.addEventListener("click", async (e) => {
   const b = e.target.closest("button"); if (!b) return;
   try {
-    if (b.dataset.accReset && confirm("Reset " + b.dataset.accReset + "? They get a new one-time password and set up 2FA again.")) {
+    if (b.dataset.accReset && confirm(t("q.reset", b.dataset.accReset))) {
       const r = await api("accounts/" + encodeURIComponent(b.dataset.accReset) + "/reset", { method: "POST" });
-      showPassword(r.username, r.password, "Reset:"); loadAccounts();
+      showPassword(r.username, r.password, t("acc.wasreset")); loadAccounts();
     }
-    if (b.dataset.accDel && confirm("Remove the account " + b.dataset.accDel + "? It loses access at once.")) {
+    if (b.dataset.accDel && confirm(t("q.remove", b.dataset.accDel))) {
       await api("accounts/" + encodeURIComponent(b.dataset.accDel), { method: "DELETE" }); loadAccounts();
     }
   } catch (x) { $("ac-err").textContent = x.message; }
@@ -502,13 +713,13 @@ async function refresh() {
     const [s, bans, audit] = await Promise.all([api("stats?minutes=60" + site), api("bans"),
       document.body.classList.contains("f-audit") ? api("audit").catch(() => null) : null]);
     $("k-total").textContent = s.total; $("k-stopped").textContent = s.stopped;
-    $("k-rate").textContent = (s.total ? Math.round(100 * s.stopped / s.total) : 0) + "% of requests" +
-      (s.flagged ? " · " + s.flagged + " more flagged in monitor mode" : "");
+    $("k-rate").textContent = t("k.rate", s.total ? Math.round(100 * s.stopped / s.total) : 0) +
+      (s.flagged ? t("k.flagged", s.flagged) : "");
     $("k-bans").textContent = (bans || []).length;
     drawChart(s.per_minute);
-    table("t-rules", s.top_rules, "Rule / check", true);
-    table("t-ips", s.top_ips, "IP", true, true);
-    table("t-countries", s.top_countries, "Country", false);
+    table("t-rules", s.top_rules, t("t.rule"), true);
+    table("t-ips", s.top_ips, t("t.ip"), true, true);
+    table("t-countries", s.top_countries, t("t.country"), false);
     drawBans(bans || []);
     if (audit) drawAudit(audit);
   } catch (e) {}
@@ -516,23 +727,23 @@ async function refresh() {
 
 function table(id, rows, head, bar, banBtn) {
   const max = Math.max(1, ...(rows || []).map(r => r.count));
-  $(id).innerHTML = "<tr><th>" + head + "</th><th class='n'>Count</th>" + (banBtn ? "<th></th>" : "") + "</tr>" +
+  $(id).innerHTML = "<tr><th>" + head + "</th><th class='n'>" + t("t.count") + "</th>" + (banBtn ? "<th></th>" : "") + "</tr>" +
     ((rows || []).length ? rows.map(r => "<tr><td><span class='mono'>" + esc(r.name) + "</span>" +
       (bar ? "<div class='hbar'><span style='width:" + (100 * r.count / max) + "%'></span></div>" : "") +
-      "</td><td class='n'>" + r.count + "</td>" + (banBtn ? "<td><button class='small' data-ban='" + esc(r.name) + "'>Ban</button></td>" : "") + "</tr>").join("")
-      : "<tr><td colspan='3' class='muted'>Nothing yet</td></tr>");
+      "</td><td class='n'>" + r.count + "</td>" + (banBtn ? "<td><button class='small' data-ban='" + esc(r.name) + "'>" + t("t.ban") + "</button></td>" : "") + "</tr>").join("")
+      : "<tr><td colspan='3' class='muted'>" + t("t.nothing") + "</td></tr>");
 }
 
 function drawBans(bans) {
-  $("t-bans").innerHTML = "<tr><th>IP</th><th>Until</th><th></th></tr>" + (bans.length ? bans.map(b =>
-    "<tr><td class='mono'>" + esc(b.ip) + "</td><td>" + new Date(b.until).toLocaleTimeString() + "</td><td><button class='small' data-unban='" + esc(b.ip) + "'>Unban</button></td></tr>").join("")
-    : "<tr><td colspan='3' class='muted'>No active bans</td></tr>");
+  $("t-bans").innerHTML = "<tr><th>IP</th><th>" + t("b.until") + "</th><th></th></tr>" + (bans.length ? bans.map(b =>
+    "<tr><td class='mono'>" + esc(b.ip) + "</td><td>" + new Date(b.until).toLocaleTimeString() + "</td><td><button class='small' data-unban='" + esc(b.ip) + "'>" + t("b.unban") + "</button></td></tr>").join("")
+    : "<tr><td colspan='3' class='muted'>" + t("b.none") + "</td></tr>");
 }
 
 function drawAudit(a) {
-  if (!a.enabled) { $("k-audit").textContent = "off"; $("k-audit-s").textContent = "AUDIT_LOG_FILE not set"; return; }
-  $("k-audit").innerHTML = a.ok ? "<span class='audit-ok'>intact</span>" : "<span class='audit-bad'>TAMPERED</span>";
-  $("k-audit-s").textContent = a.ok ? a.entries + " entries, chain verified" + (a.anchor ? " + anchor" : "") : a.problem;
+  if (!a.enabled) { $("k-audit").textContent = t("au.off"); $("k-audit-s").textContent = t("au.notset"); return; }
+  $("k-audit").innerHTML = a.ok ? "<span class='audit-ok'>" + t("au.intact") + "</span>" : "<span class='audit-bad'>" + t("au.tampered") + "</span>";
+  $("k-audit-s").textContent = a.ok ? t("au.ok", a.entries, a.anchor) : a.problem;
 }
 
 document.addEventListener("click", async (e) => {
@@ -543,12 +754,12 @@ document.addEventListener("click", async (e) => {
     if (b.dataset.allow && EVENTS.has(b.dataset.allow)) openAllow(EVENTS.get(b.dataset.allow));
     if (b.dataset.unexcl) { await api("exclusions/" + encodeURIComponent(b.dataset.unexcl), { method: "DELETE" }); loadExclusions(); }
     if (b.dataset.edit !== undefined) openSiteEdit(b.dataset.edit);
-    if (b.dataset.removeSite && confirm("Remove the site " + b.dataset.removeSite + "? Its host names will get no answer (421).")) {
+    if (b.dataset.removeSite && confirm(t("q.rmsite", b.dataset.removeSite))) {
       await api("sites/" + encodeURIComponent(b.dataset.removeSite), { method: "DELETE" }); loadSites();
     }
     if (b.dataset.mode) {
       const name = b.dataset.site;
-      if (b.dataset.mode === "protect" || confirm("Switch " + siteName(name) + " to monitor? Attacks will be logged but no longer blocked.")) {
+      if (b.dataset.mode === "protect" || confirm(t("q.monitor", siteName(name)))) {
         await api("sites/" + encodeURIComponent(name === "" ? "_" : name) + "/mode", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: b.dataset.mode }) });
         loadSites(); loadInfo();
       }
@@ -560,7 +771,7 @@ $("ban-btn").onclick = async () => {
   try { await api("bans", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ip, minutes: 60 }) }); $("ban-ip").value = ""; refresh(); }
   catch (x) { alertBox(x.message); }
 };
-function alertBox(m) { $("ban-ip").placeholder = m; setTimeout(() => $("ban-ip").placeholder = "IP address", 4000); }
+function alertBox(m) { $("ban-ip").placeholder = m; setTimeout(() => $("ban-ip").placeholder = t("ph.ip"), 4000); }
 
 function drawChart(mins) {
   const svg = $("chart"), W = 600, H = 150, n = mins.length, bw = W / n;
@@ -568,14 +779,14 @@ function drawChart(mins) {
   let out = "";
   mins.forEach((m, i) => {
     const ha = H * m.allowed / max, hs = H * m.stopped / max, x = i * bw + 0.5, w = Math.max(1, bw - 1);
-    const t = new Date(m.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    out += "<g><title>" + t + ": " + m.allowed + " let through, " + m.stopped + " stopped</title>" +
+    const tm = new Date(m.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    out += "<g><title>" + esc(t("ch.tip", tm, m.allowed, m.stopped)) + "</title>" +
       "<rect x='" + x + "' y='" + (H - ha - hs) + "' width='" + w + "' height='" + hs + "' fill='var(--bad)'/>" +
       "<rect x='" + x + "' y='" + (H - ha) + "' width='" + w + "' height='" + ha + "' fill='var(--ok)' opacity='.75'/></g>";
   });
   svg.setAttribute("viewBox", "0 0 " + W + " " + H);
   svg.innerHTML = out;
-  if (n) $("chart-range").textContent = new Date(mins[0].time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " – now";
+  if (n) $("chart-range").textContent = new Date(mins[0].time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + t("ch.now");
 }
 
 // Decisions made by a content check (WAF, CRS, ML, prompt guard) can be
@@ -586,7 +797,7 @@ function allowBtn(e) {
   if (!ALLOWABLE.has(e.outcome) || !e.rule || e.rule.startsWith("BODY-") || ["honeypot", "dashboard", "setup"].includes(e.rule)) return "";
   EVENTS.set(e.request_id, e);
   if (EVENTS.size > 3000) EVENTS.delete(EVENTS.keys().next().value);
-  return "<button class='small' data-allow='" + esc(e.request_id) + "' title='This was a false alarm: let requests like it through this rule'>Allow…</button>";
+  return "<button class='small' data-allow='" + esc(e.request_id) + "' title='" + esc(t("allow.tt")) + "'>" + t("allow") + "</button>";
 }
 function openAllow(e) {
   $("x-rule").value = [e.rule, ...(e.related || [])].join(", ");
@@ -594,8 +805,8 @@ function openAllow(e) {
   $("excl-form").classList.remove("hidden"); $("excl-card").scrollIntoView({ behavior: "smooth" }); $("x-note").focus();
 }
 $("reload-btn").onclick = async () => {
-  $("reload-msg").textContent = "reloading…";
-  try { await api("reload", { method: "POST" }); $("reload-msg").textContent = "reloaded " + new Date().toLocaleTimeString(); loadInfo(); loadExclusions(); }
+  $("reload-msg").textContent = t("rl.doing");
+  try { await api("reload", { method: "POST" }); $("reload-msg").textContent = t("rl.done", new Date().toLocaleTimeString()); loadInfo(); loadExclusions(); }
   catch (x) { $("reload-msg").textContent = x.message; }
 };
 $("x-cancel").onclick = () => $("excl-form").classList.add("hidden");
@@ -614,11 +825,11 @@ async function loadExclusions() {
   let out;
   try { out = await api("exclusions"); } catch (x) { $("excl-card").classList.add("hidden"); return; }
   const list = out.exclusions || [];
-  $("t-excl").innerHTML = "<tr><th>Rule</th><th class='site-col'>Site</th><th>Path</th><th>Field</th><th>Why</th><th>By</th><th></th></tr>" + (list.length ? list.map(x =>
-    "<tr><td class='mono'>" + esc(x.rule) + "</td><td class='site-col'>" + esc(x.site || "every") + "</td><td class='mono'>" + esc(x.path || "any") + "</td><td class='mono'>" + esc(x.field || "any") +
-    "</td><td>" + esc(x.note) + "</td><td>" + esc(x.by) + "</td><td><button class='small' data-unexcl='" + esc(x.id) + "'>Remove</button></td></tr>").join("")
-    : "<tr><td colspan='7' class='muted'>None. Use \"Allow…\" on a stopped request that was a false alarm.</td></tr>");
-  $("excl-file").textContent = out.file ? "Saved in " + out.file + " (you can edit it by hand)." : "Not saved to a file: set exclusions_file to keep them after a restart.";
+  $("t-excl").innerHTML = "<tr><th>" + t("t.rule") + "</th><th class='site-col'>" + t("site") + "</th><th>" + t("c.path") + "</th><th>" + t("x.field") + "</th><th>" + t("c.why") + "</th><th>" + t("x.by") + "</th><th></th></tr>" + (list.length ? list.map(x =>
+    "<tr><td class='mono'>" + esc(x.rule) + "</td><td class='site-col'>" + esc(x.site || t("x.every")) + "</td><td class='mono'>" + esc(x.path || t("x.any")) + "</td><td class='mono'>" + esc(x.field || t("x.any")) +
+    "</td><td>" + esc(x.note) + "</td><td>" + esc(x.by) + "</td><td><button class='small' data-unexcl='" + esc(x.id) + "'>" + t("acc.remove") + "</button></td></tr>").join("")
+    : "<tr><td colspan='7' class='muted'>" + esc(t("x.none")) + "</td></tr>");
+  $("excl-file").textContent = out.file ? t("x.file", out.file) : t("x.nofile");
 }
 
 function row(e) {
@@ -628,7 +839,7 @@ function row(e) {
   tr.dataset.site = siteOf(e);
   const who = e.user ? esc(e.user) + (e.role ? " <span class='muted'>(" + esc(e.role) + ")</span>" : "") : "<span class='mono'>" + esc(e.client_ip) + "</span>";
   const why = [e.rule, e.reason].filter(Boolean).map(esc).join(" · ") + (e.country && e.country !== "LAN" ? " <span class='pill'>" + esc(e.country) + "</span>" : "");
-  tr.innerHTML = "<td class='mono'>" + new Date(e.time).toLocaleTimeString() + "</td><td class='site-col'>" + esc(siteOf(e) || "–") + "</td><td><span class='tag " + cls + "'>" + label + "</span></td><td class='mono'>" + esc(e.method) +
+  tr.innerHTML = "<td class='mono'>" + new Date(e.time).toLocaleTimeString() + "</td><td class='site-col'>" + esc(siteOf(e) || "–") + "</td><td><span class='tag " + cls + "'>" + esc(tagLabel(e.outcome, label)) + "</span></td><td class='mono'>" + esc(e.method) +
     "</td><td class='mono' title='" + esc(e.path) + "'>" + esc(e.path.length > 48 ? e.path.slice(0, 45) + "…" : e.path) + "</td><td>" + who + "</td><td class='n risk-col'>" + (e.risk >= 0 ? e.risk : "") + "</td><td class='why'>" + why + "</td><td>" + allowBtn(e) + "</td>";
   if (!feedVisible(tr)) tr.classList.add("hidden");
   return tr;
@@ -674,12 +885,12 @@ const STOPPED = new Set(["blocked", "denied", "rate_limited", "banned", "honeypo
 function conRender() {
   const term = $("term"), shown = CON.lines.filter(conVisible);
   term.innerHTML = shown.length ? shown.map(x => x.html).join("") :
-    "<span class='sys'>Waiting for requests… Send some traffic through Sentinel and every decision appears here.</span>";
+    "<span class='sys'>" + esc(t("con.wait")) + "</span>";
   term.scrollTop = term.scrollHeight;
   conCount();
 }
 function conCount() {
-  $("con-count").textContent = CON.lines.length + " lines" + (CON.paused ? " · paused, " + CON.held.length + " new" : "");
+  $("con-count").textContent = t("con.lines", CON.lines.length) + (CON.paused ? t("con.paused", CON.held.length) : "");
 }
 function conAdd(e) {
   const x = conLine(e);
@@ -701,19 +912,19 @@ $("con-filter").onchange = conRender;
 $("con-search").oninput = conRender;
 $("con-pause").onclick = () => {
   CON.paused = !CON.paused;
-  $("con-pause").textContent = CON.paused ? "Resume" : "Pause";
+  $("con-pause").textContent = CON.paused ? t("con.resume") : t("con.pause");
   if (!CON.paused) { CON.held.forEach(conPush); CON.held = []; }
   conCount();
 };
 $("con-clear").onclick = () => { CON.lines = []; CON.held = []; conRender(); };
 $("con-copy").onclick = async () => {
   const text = $("term").innerText;
-  try { await navigator.clipboard.writeText(text); $("con-copy").textContent = "Copied"; } catch (x) { $("con-copy").textContent = "Copy failed"; }
-  setTimeout(() => $("con-copy").textContent = "Copy", 1500);
+  try { await navigator.clipboard.writeText(text); $("con-copy").textContent = t("con.copied"); } catch (x) { $("con-copy").textContent = t("con.copyfail"); }
+  setTimeout(() => $("con-copy").textContent = t("con.copy"), 1500);
 };
 function conFull(on) {
   $("console-card").classList.toggle("full", on);
-  $("con-full").textContent = on ? "Exit full screen" : "Full screen";
+  $("con-full").textContent = on ? t("con.exitfull") : t("con.full");
   $("term").scrollTop = $("term").scrollHeight;
 }
 $("con-full").onclick = () => conFull(!$("console-card").classList.contains("full"));
@@ -746,28 +957,28 @@ async function loadSites() {
   document.body.classList.toggle("multi", named.length > 0);
   $("site-pick").classList.toggle("hidden", named.length === 0);
   const sel = $("site-sel"), want = SITE;
-  sel.innerHTML = "<option value='*'>All sites</option>" + named.map(s => "<option value='" + esc(s.name) + "'>" + esc(s.name) + "</option>").join("");
+  sel.innerHTML = "<option value='*'>" + t("s.all") + "</option>" + named.map(s => "<option value='" + esc(s.name) + "'>" + esc(s.name) + "</option>").join("");
   sel.value = named.some(s => s.name === want) ? want : "*";
   if (sel.value !== SITE) { SITE = sel.value; refilter(); }
-  $("sites").innerHTML = SITES.map(siteCard).join("") || "<div class='empty'>No sites.</div>";
+  $("sites").innerHTML = SITES.map(siteCard).join("") || "<div class='empty'>" + t("s.none") + "</div>";
 }
 function siteCard(s) {
   const up = (s.servers || []).filter(x => x.up).length, all = (s.servers || []).length;
-  const servers = (s.servers || []).map(x => "<div><span class='dot " + (x.up ? "up" : "down") + "' title='" + (x.up ? "up" : "down") + "'></span><span class='mono'>" + esc(x.url) + "</span>" +
-    (x.prefix !== "/" ? " <span class='muted'>for " + esc(x.prefix) + "</span>" : "") + "</div>").join("");
+  const servers = (s.servers || []).map(x => "<div><span class='dot " + (x.up ? "up" : "down") + "' title='" + (x.up ? t("s.up") : t("s.down")) + "'></span><span class='mono'>" + esc(x.url) + "</span>" +
+    (x.prefix !== "/" ? " <span class='muted'>" + t("s.for") + " " + esc(x.prefix) + "</span>" : "") + "</div>").join("");
   const btn = (m, label) => "<button type='button' class='" + m + (s.mode === m ? " on" : "") + "' data-site='" + esc(s.name) + "' data-mode='" + m + "'" +
     (s.mode === m ? " aria-pressed='true' disabled" : " aria-pressed='false'") + ">" + label + "</button>";
   const ed = s.edited || {};
   const changed = (ed.mode || ed.waf_mode || ed.ml_mode || (ed.rate_limits && Object.keys(ed.rate_limits).length))
-    ? "<div class='note'>Changed on the dashboard" + (s.mode !== s.config_mode ? "; the config file says " + esc(s.config_mode) : "") + ".</div>" : "";
+    ? "<div class='note'>" + t("s.changed") + (s.mode !== s.config_mode ? esc(t("s.cfgsays", t("o." + s.config_mode))) : "") + ".</div>" : "";
   const limits = (s.rate_limits || []).length ? "<div class='note mono'>" + (s.rate_limits || []).map(esc).join(" · ") + "</div>" : "";
   return "<div class='site'><div class='top'><span class='name'>" + esc(siteName(s.name)) + "</span><span class='sp' style='flex:1'></span>" +
-    "<span class='seg' role='group' aria-label='Mode of " + esc(siteName(s.name)) + "'>" + btn("monitor", "Monitor") + btn("protect", "Protect") + "</span>" +
-    "<button type='button' class='small' data-edit='" + esc(s.name) + "'>Edit</button>" +
-    (s.added ? "<button type='button' class='small' data-remove-site='" + esc(s.name) + "'>Remove</button>" : "") + "</div>" +
-    "<div class='hosts'>" + (s.hosts || []).map(h => h === "*" ? "any host" : esc(h)).join(", ") + "</div>" +
+    "<span class='seg' role='group' aria-label='" + t("s.modeof") + " " + esc(siteName(s.name)) + "'>" + btn("monitor", t("s.monitor")) + btn("protect", t("s.protect")) + "</span>" +
+    "<button type='button' class='small' data-edit='" + esc(s.name) + "'>" + t("s.edit") + "</button>" +
+    (s.added ? "<button type='button' class='small' data-remove-site='" + esc(s.name) + "'>" + t("s.remove") + "</button>" : "") + "</div>" +
+    "<div class='hosts'>" + (s.hosts || []).map(h => h === "*" ? t("s.anyhost") : esc(h)).join(", ") + "</div>" +
     "<div class='servers'>" + servers + "</div>" +
-    "<div class='note'>" + up + " of " + all + " server" + (all === 1 ? "" : "s") + " up · WAF " + esc(s.waf_mode) + " · ML " + esc(s.ml_mode) + "</div>" + limits + changed + "</div>";
+    "<div class='note'>" + t("s.servers", up, all) + " · WAF " + esc(t("o." + s.waf_mode)) + " · ML " + esc(t("o." + s.ml_mode)) + "</div>" + limits + changed + "</div>";
 }
 $("site-sel").onchange = () => {
   SITE = $("site-sel").value; try { localStorage.setItem("sentinel_site", SITE); } catch (e) {}
@@ -780,14 +991,14 @@ function openSiteEdit(name) {
   const s = SITES.find(x => x.name === name); if (!s) return;
   EDITING = name;
   const ed = s.edited || {};
-  $("se-title").textContent = "Edit " + siteName(name);
+  $("se-title").textContent = t("se.title", siteName(name));
   $("se-waf").value = ed.waf_mode || ""; $("se-ml").value = ed.ml_mode || ""; $("se-mode").value = ed.mode || "";
   $("se-limits").value = Object.entries(ed.rate_limits || {}).map(([p, v]) => p + " " + v).join("\n");
   const cf = s.config || {};
   $("se-where").classList.toggle("hidden", !s.editable);
   $("se-hosts").value = (ed.hosts || []).join(", "); $("se-hosts").placeholder = (cf.hosts || []).join(", ");
-  $("se-servers").value = (ed.upstreams || []).join("\n"); $("se-servers").placeholder = (cf.upstreams || []).join("\n") || "routes from the config file";
-  $("se-health").value = ed.health_check || ""; $("se-health").placeholder = cf.health_check || "none";
+  $("se-servers").value = (ed.upstreams || []).join("\n"); $("se-servers").placeholder = (cf.upstreams || []).join("\n") || t("se.routes");
+  $("se-health").value = ed.health_check || ""; $("se-health").placeholder = cf.health_check || t("se.none");
   $("se-limits").placeholder = Object.entries(s.config_rate_limits || {}).map(([p, v]) => p + " " + v).join("\n") || (s.rate_limits || []).join("\n");
   $("se-err").textContent = "";
   $("se-form").classList.remove("hidden"); $("se-waf").focus();
@@ -804,13 +1015,13 @@ $("se-form").onsubmit = (ev) => {
   for (const line of $("se-limits").value.split("\n")) {
     const t = line.trim(); if (!t) continue;
     const [p, v] = t.split(/\s+|=/);
-    if (!p || !v) { $("se-err").textContent = "Write each limit as: /path 10/1m"; return; }
+    if (!p || !v) { $("se-err").textContent = t("se.badlimit"); return; }
     rate_limits[p] = v;
   }
   const list = (v, sep) => v.split(sep).map(x => x.trim()).filter(Boolean);
   const body = { waf_mode: $("se-waf").value, ml_mode: $("se-ml").value, mode: $("se-mode").value, rate_limits,
     hosts: list($("se-hosts").value, ","), upstreams: list($("se-servers").value, "\n"), health_check: $("se-health").value.trim() };
-  if (body.mode === "monitor" && !confirm("Switch " + siteName(EDITING) + " to monitor? Attacks will be logged but no longer blocked.")) return;
+  if (body.mode === "monitor" && !confirm(t("q.monitor", siteName(EDITING)))) return;
   saveSite(body);
 };
 $("se-reset").onclick = () => saveSite({});
@@ -832,8 +1043,8 @@ $("as-form").onsubmit = async (ev) => {
 // ---- Alerts --------------------------------------------------------------
 async function loadAlerts() {
   let a; try { a = await api("alerts"); } catch (e) { $("alerts-card").classList.add("hidden"); return; }
-  $("al-state").textContent = a.on ? "on, sending to " + a.webhook_url : "off";
-  $("al-url").value = ""; $("al-url").placeholder = a.on ? a.webhook_url + " (leave empty to keep)" : "https://hooks.slack.com/...";
+  $("al-state").textContent = a.on ? t("al.on", a.webhook_url) : t("al.isoff");
+  $("al-url").value = ""; $("al-url").placeholder = a.on ? a.webhook_url + t("al.keep") : "https://hooks.slack.com/...";
   $("al-chat").value = a.telegram_chat_id || ""; $("al-burst").value = a.burst || 20;
 }
 $("al-form").onsubmit = async (ev) => {
@@ -842,7 +1053,7 @@ $("al-form").onsubmit = async (ev) => {
   catch (x) { $("al-err").textContent = x.message; }
 };
 $("al-off").onclick = async () => {
-  if (!confirm("Turn alerts off?")) return;
+  if (!confirm(t("q.alertsoff"))) return;
   try { await api("alerts", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ off: true }) }); loadAlerts(); }
   catch (x) { $("al-err").textContent = x.message; }
 };
@@ -859,16 +1070,16 @@ $("hist-form").onsubmit = async (ev) => {
   if ($("h-to").value) q.set("to", new Date(new Date($("h-to").value).getTime() + 59999).toISOString().replace(/\.\d+Z$/, "Z")); // to the end of that minute
   if ($("h-q").value.trim()) q.set("q", $("h-q").value.trim());
   if (SITE !== "*") q.set("site", SITE);
-  $("h-count").textContent = "searching…";
+  $("h-count").textContent = t("h.searching");
   try {
     const list = await api("history?" + q);
     $("hist").innerHTML = list.length ? list.map(e => {
       const [label, cls] = LABELS[e.outcome] || [e.outcome.toUpperCase(), "warn"];
-      return "<tr><td class='mono'>" + new Date(e.time).toLocaleString() + "</td><td class='site-col'>" + esc(siteOf(e) || "–") + "</td><td><span class='tag " + cls + "'>" + label +
+      return "<tr><td class='mono'>" + new Date(e.time).toLocaleString() + "</td><td class='site-col'>" + esc(siteOf(e) || "–") + "</td><td><span class='tag " + cls + "'>" + esc(tagLabel(e.outcome, label)) +
         "</span></td><td class='mono'>" + esc(e.method) + "</td><td class='mono' title='" + esc(e.path) + "'>" + esc(e.path.length > 48 ? e.path.slice(0, 45) + "…" : e.path) +
         "</td><td class='mono'>" + esc(e.user || e.client_ip) + "</td><td class='why'>" + [e.rule, e.reason].filter(Boolean).map(esc).join(" · ") + "</td></tr>";
-    }).join("") : "<tr><td colspan='7' class='empty'>Nothing in this range.</td></tr>";
-    $("h-count").textContent = list.length + (list.length === 500 ? "+ (newest 500; narrow the range)" : "") + " found";
+    }).join("") : "<tr><td colspan='7' class='empty'>" + t("h.nothing") + "</td></tr>";
+    $("h-count").textContent = list.length + (list.length === 500 ? t("h.more") : "") + t("h.found");
   } catch (x) {
     $("h-count").textContent = "";
     $("hist").innerHTML = "<tr><td colspan='7' class='empty'>" + esc(x.message) + "</td></tr>";
@@ -881,18 +1092,18 @@ async function loadInfo() {
     $("version").textContent = "v" + i.version;
     const ed = $("edition");
     if (i.edition === "pro") {
-      ed.textContent = "Pro" + (i.license_state === "expiring" ? " · license ends soon" : i.license_state === "expired" ? " · license expired" : "");
+      ed.textContent = "Pro" + (i.license_state === "expiring" ? t("ed.soon") : i.license_state === "expired" ? t("ed.expired") : "");
       ed.title = i.license || "";
       ed.className = "pill" + (i.license_state === "expiring" ? " warn" : i.license_state === "expired" ? " bad" : "");
       ed.removeAttribute("href");
     } else {
-      ed.textContent = "Free · what Pro adds →";
-      ed.title = "Single sign-on, access rules, risk-based 2FA, mTLS, a tamper-evident audit log";
+      ed.textContent = t("ed.free");
+      ed.title = t("ed.freett");
       ed.href = "https://sentinel.tft.markets/pro.html";
       ed.className = "pill";
     }
-    const rows = [["Mode", i.mode === "monitor" ? "MONITOR: logging only, nothing is blocked" : "protect"], ["WAF", i.waf_mode + ", " + i.waf_rules + " rules"], ["Rate limits", (i.rate_limits || []).join("  ") || "per site, shown on each site above"], ["Shared store", i.store],
-      ["Geo", i.geo], ["AI prompt guard", (i.prompt_guard_paths || []).join(", ") || "off"], ["ML classifier", i.ml], ...(i.extra || []), ["Started", new Date(i.started).toLocaleString()]];
+    const rows = [[t("i.mode"), i.mode === "monitor" ? t("i.monitor") : t("i.protect")], ["WAF", t("o." + i.waf_mode) + ", " + t("i.rules", i.waf_rules)], [t("i.limits"), (i.rate_limits || []).join("  ") || t("i.persite")], [t("i.store"), i.store],
+      [t("i.geo"), i.geo], [t("i.pg"), (i.prompt_guard_paths || []).join(", ") || t("i.off")], [t("i.ml"), i.ml], ...(i.extra || []), [t("i.started"), new Date(i.started).toLocaleString()]];
     for (const f of i.features || []) document.body.classList.add("f-" + f);
     $("t-info").innerHTML = rows.map(r => "<tr><td class='muted' style='width:160px'>" + r[0] + "</td><td>" + esc(r[1]) + "</td></tr>").join("");
   } catch (e) {}
@@ -904,9 +1115,9 @@ async function stream() {
   const live = $("live");
   try {
     const res = await fetch("/__sentinel/api/stream", { headers: { Authorization: "Bearer " + token }, signal: streamAbort.signal });
-    if (res.status === 401) { logout("Your session ended. Log in again."); return; } // e.g. Sentinel restarted
+    if (res.status === 401) { logout(t("m.session")); return; } // e.g. Sentinel restarted
     if (!res.ok) throw new Error(res.status);
-    live.className = "pill live"; live.textContent = "● live";
+    live.className = "pill live"; live.textContent = t("live");
     const reader = res.body.getReader(), dec = new TextDecoder();
     let buf = "";
     for (;;) {
@@ -920,7 +1131,7 @@ async function stream() {
       }
     }
   } catch (e) { if (e.name === "AbortError") return; }
-  live.className = "pill off"; live.textContent = "● reconnecting";
+  live.className = "pill off"; live.textContent = t("reconnecting");
   if (token) setTimeout(stream, 3000);
 }
 

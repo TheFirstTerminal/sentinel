@@ -17,16 +17,30 @@ import (
 	"time"
 )
 
+// The colours of The First Terminal's brand: palm green for let through,
+// saffron for warnings and the title, a soft red for stopped. Terminals that
+// say they show 24-bit colour (COLORTERM) get the exact shades, the rest the
+// nearest of the 256 standard ones.
 const (
-	reset   = "\x1b[0m"
-	bold    = "\x1b[1m"
-	dim     = "\x1b[2m"
-	red     = "\x1b[1;31m"
-	green   = "\x1b[1;32m"
-	yellow  = "\x1b[1;33m"
-	magenta = "\x1b[1;35m"
-	cyan    = "\x1b[1;36m"
+	reset = "[0m"
+	bold  = "[1m"
+	dim   = "[2m"
 )
+
+var (
+	green   = tone(79, 191, 143, 72)  // palm, lightened to read on a dark terminal
+	yellow  = tone(232, 163, 61, 179) // saffron #E8A33D
+	red     = tone(240, 112, 94, 203)
+	magenta = tone(232, 106, 154, 168)
+	cyan    = tone(143, 184, 216, 110) // midnight's light blue, for people
+)
+
+func tone(r, g, b, c256 int) string {
+	if ct := os.Getenv("COLORTERM"); ct == "truecolor" || ct == "24bit" {
+		return fmt.Sprintf("[1;38;2;%d;%d;%dm", r, g, b)
+	}
+	return fmt.Sprintf("[1;38;5;%dm", c256)
+}
 
 type Options struct {
 	Color     bool // ANSI colours
