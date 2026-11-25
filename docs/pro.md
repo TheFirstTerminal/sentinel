@@ -42,4 +42,6 @@ key is checked offline.
 
 Email **[support@tft.markets](mailto:support@tft.markets)**
 with your company name and how many servers you need. You'll get an
-invoice, then a license key and access to the Pro image.
+invoice, then a license key. Paste it on the
+[download page](https://sentinel.tft.markets/download.html#pro) to download Pro
+for Windows, macOS, Linux or Docker.
