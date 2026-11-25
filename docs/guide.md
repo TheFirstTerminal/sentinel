@@ -1,5 +1,7 @@
 # Sentinel documents
 
+[عربي](ar/guide.html)
+
 Sentinel is a security gateway for web apps, APIs and AI endpoints. It sits
 in front of your app, checks every request (its own rules, the OWASP Core
 Rule Set and an ML model, plus rate limits, honeypots and a prompt-injection

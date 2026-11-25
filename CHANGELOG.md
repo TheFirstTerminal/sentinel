@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.1 · 2026-11-26
+- **Large bodies can't slow everyone down**: bodies of 64 KB or more now take turns in the Core Rule Set (at most half the CPUs inspect them at once), so a few large JSON uploads, each costing seconds of rule checks, no longer delay ordinary requests. A large body still waiting when `waf.max_inspect_ms` runs out is refused with BODY-004, as one that takes too long already was.
+- **Documentation in Arabic**: the guide, common setups, every setting and the Free/Pro comparison have Arabic pages (`/ar/guide.html` and on), linked from each English page and from the Arabic site. The documentation pages now use The First Terminal's colours and fonts.
+- **Privacy and terms pages** on the site, in English and Arabic, and how to pay for Pro (Qi Card or Zain Cash transfer).
+- **A sealed benchmark**: 5,243 public attack payloads Sentinel is never tuned on; 0.18.0 blocks 87.2% of them, ModSecurity with the Core Rule Set 79.6% ([benchmarks](docs/benchmarks.md)).
+
 ## 0.18.0 · 2026-11-25
 - **The dashboard in Arabic and in The First Terminal's look**:
   - The dashboard, the first-run setup page and the browser-check page now look like every TFT product: a midnight header with the star field, the arch logo with "Sentinel", saffron for the main action, and the Readex Pro and Noto Kufi Arabic fonts. Light and dark follow the system.

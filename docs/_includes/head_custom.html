@@ -7,3 +7,10 @@
   .site-title::before { content: ""; display: inline-block; width: 24px; height: 24px; margin-inline-end: 10px; vertical-align: -4px; background: url(https://tft.markets/brand/logo.svg) center/contain no-repeat; }
   .site-footer a.tft-by { color: #E8A33D; }
 </style>
+{% if page.lang == "ar" %}
+<style>
+  .main-content-wrap .main-content { direction: rtl; text-align: right; font-family: "Noto Kufi Arabic", "Readex Pro", sans-serif; line-height: 1.9; }
+  .main-content pre, .main-content code, .main-content .highlight { direction: ltr; text-align: left; unicode-bidi: isolate; }
+  .main-content table th, .main-content table td { text-align: right; }
+</style>
+{% endif %}

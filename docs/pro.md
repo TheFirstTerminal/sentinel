@@ -1,5 +1,7 @@
 # Sentinel Free and Sentinel Pro
 
+[عربي](ar/pro.html)
+
 **Sentinel Free** is the whole security gateway: attack detection (Sentinel's
 rules, the OWASP Core Rule Set and the ML model), the prompt-injection
 guard, rate limits, bans, bot checks, several sites, automatic HTTPS, the

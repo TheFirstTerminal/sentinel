@@ -1,5 +1,7 @@
 # Common setups
 
+[عربي](ar/setups.html)
+
 Sentinel is a reverse proxy: traffic goes **visitor → (your proxy or CDN) →
 Sentinel → your app**. This page covers the usual places it sits, and how to
 check it works. Settings are written as `sentinel.yaml` keys; each also has

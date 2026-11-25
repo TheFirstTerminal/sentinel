@@ -43,3 +43,40 @@ func TestBudget(t *testing.T) {
 	}
 	t.Logf("full %v, cut at %v", took, Budget)
 }
+
+// Large bodies take turns: with every slot taken, one waits until the
+// budget and comes back incomplete; small bodies never wait.
+func TestLargeBodiesTakeTurns(t *testing.T) {
+	s, err := Load(crsDir(t), 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < cap(largeSlots); i++ {
+		largeSlots <- struct{}{}
+	}
+	defer func() {
+		for len(largeSlots) > 0 {
+			<-largeSlots
+		}
+	}()
+	defer func(old time.Duration) { Budget = old }(Budget)
+	Budget = 50 * time.Millisecond
+
+	big := `{"a":"` + strings.Repeat("x", LargeBody) + `"}`
+	r := httptest.NewRequest("POST", "/api", strings.NewReader(big))
+	r.Header.Set("Content-Type", "application/json")
+	t0 := time.Now()
+	if res := s.Evaluate(r, []byte(big)); !res.Incomplete {
+		t.Fatal("a large body ran with no slot free")
+	}
+	if d := time.Since(t0); d < Budget || d > 10*Budget {
+		t.Errorf("waited %v, budget %v", d, Budget)
+	}
+
+	small := `{"q":"red shoes"}`
+	r = httptest.NewRequest("POST", "/api", strings.NewReader(small))
+	r.Header.Set("Content-Type", "application/json")
+	if res := s.Evaluate(r, []byte(small)); res.Incomplete {
+		t.Fatal("a small body waited for a large-body slot")
+	}
+}

@@ -219,7 +219,7 @@ func (e *Engine) Inspect(r *http.Request, body []byte) Decision {
 		if res.Incomplete {
 			// Fail closed: the rules that didn't run might have matched.
 			d.Score += 5
-			d.Matches = append(d.Matches, Match{RuleID: "BODY-004", Name: fmt.Sprintf("inspection took longer than %v", crs.Budget),
+			d.Matches = append(d.Matches, Match{RuleID: "BODY-004", Name: fmt.Sprintf("inspection not finished within %v (slow, or waiting behind other large bodies)", crs.Budget),
 				Category: "protocol", Severity: 5, Target: TargetBody, Excerpt: fmt.Sprintf("%d inputs", len(inputs))})
 		}
 		gql := plainGraphQLQueries(inputs)

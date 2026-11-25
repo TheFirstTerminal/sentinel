@@ -2,6 +2,7 @@ package crs
 
 import (
 	"net/http"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -33,12 +34,50 @@ type Result struct {
 // handful sent at once could stall the gateway.
 var Budget = 5 * time.Second
 
+// LargeBody is the body size from which inspections take turns (see
+// largeSlots). 64 KB is far more than a form or ordinary API call.
+const LargeBody = 64 << 10
+
+// largeSlots: at most half the CPUs inspect large bodies at once.
+var largeSlots = make(chan struct{}, max(1, runtime.NumCPU()/2))
+
+// acquireLarge waits for a slot until the deadline (forever when zero).
+func acquireLarge(deadline time.Time) bool {
+	select {
+	case largeSlots <- struct{}{}:
+		return true
+	default:
+	}
+	if deadline.IsZero() {
+		largeSlots <- struct{}{}
+		return true
+	}
+	t := time.NewTimer(time.Until(deadline))
+	defer t.Stop()
+	select {
+	case largeSlots <- struct{}{}:
+		return true
+	case <-t.C:
+		return false
+	}
+}
+
 // Evaluate runs the request rules. body must be the complete body.
 func (s *Set) Evaluate(r *http.Request, body []byte) Result {
-	tx := newTx(r, body)
+	var deadline time.Time
 	if Budget > 0 {
-		tx.deadline = time.Now().Add(Budget)
+		deadline = time.Now().Add(Budget)
 	}
+	// Large bodies take turns, so a few of them can't take every CPU and
+	// make ordinary requests wait. Waiting counts toward the budget.
+	if len(body) >= LargeBody {
+		if !acquireLarge(deadline) {
+			return Result{Incomplete: true}
+		}
+		defer func() { <-largeSlots }()
+	}
+	tx := newTx(r, body)
+	tx.deadline = deadline
 	pl := strconv.Itoa(s.Paranoia)
 	// What crs-setup.conf would set; CRS fills in every other default.
 	tx.tx["crs_setup_version"] = "480"
