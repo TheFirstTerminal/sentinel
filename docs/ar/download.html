@@ -1,0 +1,63 @@
+---
+layout: null
+permalink: /ar/download.html
+---
+<!doctype html>
+<html class="tft-base" lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>نزّل سنتينل</title>
+<meta name="description" content="نزّل سنتينل المجاني لـ Windows أو macOS أو Linux أو Docker، أو سنتينل Pro بمفتاح الترخيص.">
+<link rel="alternate" hreflang="en" href="https://sentinel.tft.markets/download.html">
+<link rel="alternate" hreflang="ar" href="https://sentinel.tft.markets/ar/download.html">
+<link rel="icon" href="https://tft.markets/brand/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://tft.markets/brand/tft.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ '/assets/site.css' | relative_url }}">
+</head>
+<body>
+<header class="tft-mid hero" style="padding-bottom:48px">
+  <div class="wrap">
+    <div class="top">
+      <a class="tft-lockup" href="./"><img src="https://tft.markets/brand/logo.svg" alt=""><span><b>سنتينل</b><small>البوابة الأولى</small></span></a>
+      <nav><a href="download.html">التنزيل</a><a href="../guide.html">الدليل <small>(English)</small></a><a href="../benchmarks.html">الاختبارات</a><a href="../pro.html">الأسعار</a><a href="https://github.com/TheFirstTerminal/sentinel">GitHub</a><a class="lang" href="../download.html" hreflang="en" lang="en">English</a></nav>
+    </div>
+    <h1>نزّل سنتينل</h1>
+    <p class="lede">ملف واحد، ما يحتاج تنصيب. حطه قدّام تطبيقك وافتح الرابط اللي يطبعه. الزر المناسب لجهازك متأشر.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <section>
+    <h2>سنتينل المجاني</h2>
+    <p class="prose">مجاني لأي عدد من السيرفرات، حتى بالإنتاج. الكود مفتوح، فتگدر تقرا بالضبط شنو يشتغل. <span id="free-version" class="tft-status live"></span></p>
+    <div class="files" id="free-files"></div>
+    <p class="note">Docker: <code dir="ltr">docker run -p 8080:8080 ghcr.io/thefirstterminal/sentinel</code>. Homebrew: <code dir="ltr">brew tap thefirstterminal/sentinel https://github.com/TheFirstTerminal/sentinel && brew install sentinel</code>. كل طرق التنصيب، وشلون تتأكد إن الملف أصلي: <a href="https://github.com/TheFirstTerminal/sentinel#quickstart">ملف README</a> (بالإنكليزي).</p>
+  </section>
+
+  <section id="pro">
+    <h2>سنتينل Pro</h2>
+    <p class="prose">تنزيلات Pro للزباين. الصق مفتاح الترخيص اللي وصلك، وتاخذ روابط لكل الأنظمة (تشتغل 10 دقايق، وتگدر ترجع تاخذ روابط جديدة أي وقت). ما عندك مفتاح؟ <a href="../pro.html">شوف شنو يضيف Pro والأسعار</a>.</p>
+    <form id="pro-form" class="keyrow">
+      <label for="pro-key" class="note" style="flex-basis:100%;margin:0">مفتاح الترخيص</label>
+      <textarea id="pro-key" class="tft-input" rows="2" placeholder="SENTINEL-PRO-..." spellcheck="false" autocomplete="off"></textarea>
+      <button class="tft-btn tft-btn-main" type="submit">جيب التنزيلات</button>
+    </form>
+    <p id="pro-msg" class="note" role="status"></p>
+    <div class="files" id="pro-files"></div>
+    <p class="note">المفتاح ينفحص وما ينحفظ. لأي سؤال: <a href="mailto:support@tft.markets">support@tft.markets</a>.</p>
+  </section>
+</main>
+
+<footer class="tft-mid">
+  <div class="wrap">
+    <a class="tft-by" href="https://tft.markets/"><img src="https://tft.markets/brand/logo.svg" alt=""> منتج من البوابة الأولى</a>
+    <span>© 2026 Saif Zahid. النسخة المجانية بترخيص PolyForm Shield 1.0.0.</span>
+  </div>
+</footer>
+<script src="{{ '/assets/download.js' | relative_url }}"></script>
+</body>
+</html>

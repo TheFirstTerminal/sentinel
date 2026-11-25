@@ -73,3 +73,17 @@ footer .tft-by { font-size: 14px; }
   main section { padding: 52px 0; }
   header.hero { padding-bottom: 52px; }
 }
+
+/* The download page. */
+.files { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); margin-top: 18px; }
+a.dl { display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; border: 1.5px solid var(--tft-line); border-radius: 16px; background: var(--tft-card); color: var(--tft-ink); text-decoration: none; position: relative; }
+a.dl:hover { border-color: var(--tft-primary); }
+a.dl span { color: var(--tft-mute); font-size: 14px; }
+a.dl code { color: var(--tft-mute); font-size: 11.5px; overflow-wrap: anywhere; margin-top: 4px; }
+a.dl.mine { border-color: var(--tft-saffron); }
+a.dl em { position: absolute; top: 12px; inset-inline-end: 12px; font-style: normal; }
+a.dl.extra { opacity: .8; }
+.keyrow { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+.keyrow textarea { flex: 1 1 320px; min-height: 48px; resize: vertical; direction: ltr; text-align: left; font: 13px/1.5 "JetBrains Mono", monospace; }
+#pro-msg { margin-top: 12px; min-height: 1.6em; }
+.note code, .prose code { overflow-wrap: anywhere; }

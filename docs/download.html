@@ -1,0 +1,63 @@
+---
+layout: null
+permalink: /download.html
+---
+<!doctype html>
+<html class="tft-base" lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Download Sentinel</title>
+<meta name="description" content="Download Sentinel Free for Windows, macOS, Linux or Docker, or Sentinel Pro with your license key.">
+<link rel="alternate" hreflang="en" href="https://sentinel.tft.markets/download.html">
+<link rel="alternate" hreflang="ar" href="https://sentinel.tft.markets/ar/download.html">
+<link rel="icon" href="https://tft.markets/brand/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://tft.markets/brand/tft.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ '/assets/site.css' | relative_url }}">
+</head>
+<body>
+<header class="tft-mid hero" style="padding-bottom:48px">
+  <div class="wrap">
+    <div class="top">
+      <a class="tft-lockup" href="./"><img src="https://tft.markets/brand/logo.svg" alt=""><span><b>Sentinel</b><small>The First Terminal</small></span></a>
+      <nav><a href="download.html">Download</a><a href="guide.html">Docs</a><a href="benchmarks.html">Benchmarks</a><a href="pro.html">Pricing</a><a href="https://github.com/TheFirstTerminal/sentinel">GitHub</a><a class="lang" href="ar/download.html" hreflang="ar" lang="ar">عربي</a></nav>
+    </div>
+    <h1>Download Sentinel</h1>
+    <p class="lede">One file, no installer needed. Put it in front of your app and open the link it prints. The button for this computer is marked.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <section>
+    <h2>Sentinel Free</h2>
+    <p class="prose">Free for any number of servers, in production too. The source code is public, so you can read exactly what runs. <span id="free-version" class="tft-status live"></span></p>
+    <div class="files" id="free-files"></div>
+    <p class="note">Docker: <code>docker run -p 8080:8080 ghcr.io/thefirstterminal/sentinel</code>. Homebrew: <code>brew tap thefirstterminal/sentinel https://github.com/TheFirstTerminal/sentinel && brew install sentinel</code>. Every way to install, and how to check a download is genuine: <a href="https://github.com/TheFirstTerminal/sentinel#quickstart">the README</a>.</p>
+  </section>
+
+  <section id="pro">
+    <h2>Sentinel Pro</h2>
+    <p class="prose">Pro downloads are for customers. Paste the license key you received, and you get links for every system (they work for 10 minutes; come back for new ones any time). No key yet? <a href="pro.html">See what Pro adds and the prices</a>.</p>
+    <form id="pro-form" class="keyrow">
+      <label for="pro-key" class="note" style="flex-basis:100%;margin:0">License key</label>
+      <textarea id="pro-key" class="tft-input" rows="2" placeholder="SENTINEL-PRO-..." spellcheck="false" autocomplete="off"></textarea>
+      <button class="tft-btn tft-btn-main" type="submit">Get the downloads</button>
+    </form>
+    <p id="pro-msg" class="note" role="status"></p>
+    <div class="files" id="pro-files"></div>
+    <p class="note">The key is checked and not stored. Questions: <a href="mailto:support@tft.markets">support@tft.markets</a>.</p>
+  </section>
+</main>
+
+<footer class="tft-mid">
+  <div class="wrap">
+    <a class="tft-by" href="https://tft.markets/"><img src="https://tft.markets/brand/logo.svg" alt=""> A product of The First Terminal</a>
+    <span>© 2026 Saif Zahid. Free edition under PolyForm Shield 1.0.0.</span>
+  </div>
+</footer>
+<script src="{{ '/assets/download.js' | relative_url }}"></script>
+</body>
+</html>
