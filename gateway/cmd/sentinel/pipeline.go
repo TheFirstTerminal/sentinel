@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sentinel/gateway/internal/feeds"
+	"sentinel/gateway/internal/update"
 	"slices"
 	"strings"
 	"sync"
@@ -175,6 +177,9 @@ func newShared(cfg *config.Config, engine *waf.Engine, authSvc *auth.Service, re
 	}
 	if sh.filter.AllowIPs, err = geo.ParsePrefixes(cfg.IPAllow); err != nil {
 		return nil, fmt.Errorf("IP_ALLOW: %w", err)
+	}
+	if sh.filter.Feeds, err = ipFeeds(cfg, log); err != nil {
+		return nil, fmt.Errorf("IP_FEEDS: %w", err)
 	}
 	sh.loginFails = &middleware.LoginFailures{Store: sh.store, Window: 15 * time.Minute}
 	sh.logins = sh.loginFails
@@ -544,6 +549,9 @@ func (sh *shared) adminPages(excl *exclude.Set) (http.Handler, error) {
 			}
 			return reloadFunc(why)
 		}}
+		if cfg.UpdateCheck {
+			a.dash.NewVersion = updateChecker().Available
+		}
 		if edition.Dashboard != nil {
 			edition.Dashboard(sh, a.dash)
 		}
@@ -707,3 +715,39 @@ func siteStatus(sites []*site, defaultMode string) []dashboard.SiteStatus {
 
 // brandFiles serves the TFT brand kit to the dashboard and setup pages.
 var brandFiles = brand.Handler()
+
+// The IP lists are downloaded by one instance per setting, kept across
+// config reloads so a reload doesn't start another daily download.
+var (
+	feedsMu  sync.Mutex
+	feedsFor = map[string]*feeds.Feeds{}
+)
+
+func ipFeeds(cfg *config.Config, log *slog.Logger) (*feeds.Feeds, error) {
+	if strings.TrimSpace(cfg.IPFeeds) == "" || cfg.IPFeeds == "off" {
+		return nil, nil
+	}
+	feedsMu.Lock()
+	defer feedsMu.Unlock()
+	if f := feedsFor[cfg.IPFeeds]; f != nil {
+		return f, nil
+	}
+	f, err := feeds.New(cfg.IPFeeds, cfg.DataDir, log)
+	if err != nil {
+		return nil, err
+	}
+	f.Start(context.Background())
+	feedsFor[cfg.IPFeeds] = f
+	return f, nil
+}
+
+var (
+	updateOnce sync.Once
+	updates    *update.Checker
+)
+
+// updateChecker starts the daily release check once per process.
+func updateChecker() *update.Checker {
+	updateOnce.Do(func() { updates = update.Start(context.Background(), Version) })
+	return updates
+}

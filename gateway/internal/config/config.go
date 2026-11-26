@@ -109,6 +109,8 @@ type Config struct {
 	GeoAllowCountries string // if set, only these (and LAN)
 	IPDeny            string // CIDRs always refused
 	IPAllow           string // if set, only these may connect
+	IPFeeds           string // public lists of bad IPs, refreshed daily (IP_FEEDS)
+	UpdateCheck       bool   // ask GitHub once a day whether a newer version exists (UPDATE_CHECK)
 	RiskEnabled       bool   // risk scoring (Sentinel Pro)
 	RiskStepUp        int
 	RiskBlock         int
@@ -351,6 +353,8 @@ func Load() (*Config, error) {
 		GeoAllowCountries: os.Getenv("GEO_ALLOW_COUNTRIES"),
 		IPDeny:            os.Getenv("IP_DENY"),
 		IPAllow:           os.Getenv("IP_ALLOW"),
+		IPFeeds:           os.Getenv("IP_FEEDS"),
+		UpdateCheck:       os.Getenv("UPDATE_CHECK") != "off" && os.Getenv("UPDATE_CHECK") != "false",
 		RiskEnabled:       Pro && !strings.EqualFold(os.Getenv("RISK"), "off"),
 		RiskStepUp:        stepUp,
 		RiskBlock:         block,

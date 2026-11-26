@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"net/netip"
 	"os"
+	"sentinel/gateway/internal/feeds"
 	"sort"
 	"strings"
 )
@@ -96,10 +97,11 @@ type Filter struct {
 	DenyCountries  map[string]bool
 	AllowCountries map[string]bool // if set, only these countries (and LAN)
 	BlockUnknown   bool            // with AllowCountries: block IPs with no country
+	Feeds          *feeds.Feeds    // public lists of bad IPs (IP_FEEDS)
 }
 
 func (f *Filter) Enabled() bool {
-	return len(f.DenyIPs) > 0 || len(f.AllowIPs) > 0 || len(f.DenyCountries) > 0 || len(f.AllowCountries) > 0
+	return f.Feeds.Enabled() || len(f.DenyIPs) > 0 || len(f.AllowIPs) > 0 || len(f.DenyCountries) > 0 || len(f.AllowCountries) > 0
 }
 
 // Check returns "" if allowed, otherwise the reason.
@@ -113,6 +115,9 @@ func (f *Filter) Check(ip, country string) string {
 		if p.Contains(a) {
 			return "IP " + ip + " is on the deny list (" + p.String() + ")"
 		}
+	}
+	if list := f.Feeds.Match(a); list != "" {
+		return "IP " + ip + " is on the public list " + list
 	}
 	if len(f.AllowIPs) > 0 {
 		ok := false
@@ -150,6 +155,10 @@ func (f *Filter) Check(ip, country string) string {
 func ParsePrefixes(s string) ([]netip.Prefix, error) {
 	var out []netip.Prefix
 	for _, p := range splitList(s) {
+		if strings.EqualFold(p, "cloudflare") {
+			out = append(out, Cloudflare...)
+			continue
+		}
 		if !strings.Contains(p, "/") {
 			a, err := netip.ParseAddr(p)
 			if err != nil {
@@ -194,3 +203,16 @@ func keys(m map[string]bool) string {
 	sort.Strings(k)
 	return strings.Join(k, ", ")
 }
+
+// Cloudflare is Cloudflare's address ranges (https://www.cloudflare.com/ips/,
+// November 2026), so "cloudflare" can stand for them in TRUSTED_PROXIES.
+var Cloudflare = func() []netip.Prefix {
+	var out []netip.Prefix
+	for _, s := range []string{"173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22", "141.101.64.0/18",
+		"108.162.192.0/18", "190.93.240.0/20", "188.114.96.0/20", "197.234.240.0/22", "198.41.128.0/17", "162.158.0.0/15",
+		"104.16.0.0/13", "104.24.0.0/14", "172.64.0.0/13", "131.0.72.0/22", "2400:cb00::/32", "2606:4700::/32",
+		"2803:f800::/32", "2405:b500::/32", "2405:8100::/32", "2a06:98c0::/29", "2c0f:f248::/32"} {
+		out = append(out, netip.MustParsePrefix(s))
+	}
+	return out
+}()

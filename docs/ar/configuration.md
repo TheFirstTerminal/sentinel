@@ -41,6 +41,7 @@ sentinel --config /path/to/sentinel.yaml
 | `dashboard_listen` | `DASHBOARD_ADDR` | ماكو (على المنفذ الرئيسي) | انطي اللوحة منفذ خاص، مثلاً `:9000`: وقتها تنفتح على `http://<host>:9000` وما توصلها أبداً من المنفذ العام. ننصح تخلي هذا المنفذ خاص (جدار حماية أو VPN). حظر الـ IP ما ينطبق عليه، فالمدير اللي يشارك عنوان ويا مهاجم (شبكة مكتب أو موبايل) يگدر يدخل ويشيل الحظر؛ وتسجيل الدخول هناك يبقى عليه حد |
 | `security_headers` | `SECURITY_HEADERS` | شغال | يضيف nosniff وReferrer-Policy وX-Frame-Options و(على HTTPS) HSTS إذا التطبيق ما يضيفهن |
 | `timezone` | `TZ` | `UTC` | المنطقة الزمنية لأوقات السجل اللي تطلع للناس |
+| `update_check` | `UPDATE_CHECK` | شغال | يسأل GitHub مرة باليوم إذا نزلت نسخة أحدث من Sentinel، ويگول باللوحة. بس الطلب نفسه ينرسل (لا رقم، ولا إعدادات، ولا طلبات). `off` يطفيه |
 
 ### حسابات لوحة التحكم
 
@@ -173,12 +174,13 @@ sites:
 | `rate_limits` | `RATE_LIMITS` | `{/__sentinel/auth/: 10/1m, /: 600/1m}` | عدد الطلبات بكل فترة حسب بداية المسار؛ المستخدمين المسجلين ينحسبون بالاسم. `off` يطفيه. العميل اللي يرسل 3 أضعاف حده خلال فترة وحدة يعتبر إغراق وينحظر الـ IP مالته (`honeypot.ban_minutes`) |
 | `login_fail_limit` | `LOGIN_FAIL_LIMIT` | `10` | محاولات الدخول الفاشلة لكل حساب (من أي IP) قبل توقف 15 دقيقة؛ `0` = مطفي |
 | `redis_url` | `REDIS_URL` | ماكو (بالذاكرة) | مشاركة العدادات والحظر بين نسخ Sentinel |
-| `trusted_proxies` | `TRUSTED_PROXIES` | ماكو | نطاقات CIDR مال موزع الحمل مالتك؛ بس `X-Forwarded-For` منهم ينصدّق |
+| `trusted_proxies` | `TRUSTED_PROXIES` | ماكو | نطاقات CIDR مال موزع الحمل مالتك؛ بس `X-Forwarded-For` منهم ينصدّق. كلمة `cloudflare` تعني كل نطاقات Cloudflare |
 | `trust_proxy_headers` | `TRUST_PROXY_HEADERS` | `false` | صدّق `X-Forwarded-For` من أي أحد (بس إذا محد يوصل لـ Sentinel غير البروكسي مالتك) |
 | `geo.file` | `GEOIP_FILE` | ماكو | ملف CSV بصيغة `cidr,country` (حوّل أي قاعدة بيانات IP-إلى-بلد) |
 | `geo.deny_countries` | `GEO_DENY_COUNTRIES` | ماكو | مثلاً `[KP]` |
 | `geo.allow_countries` | `GEO_ALLOW_COUNTRIES` | ماكو | إذا انضبط، بس هذني البلدان (والعناوين الخاصة) |
 | `ip.deny` / `ip.allow` | `IP_DENY` / `IP_ALLOW` | ماكو | نطاقات CIDR تنرفض دائماً / الوحيدة المسموحة |
+| `ip.feeds` | `IP_FEEDS` | ماكو | قوائم عامة بعناوين IP معروفة بالأذى، تنزل من ناشريها مرة باليوم وتنحفظ بمجلد البيانات: `firehol_level1` (شبكات مخترقة وإجرامية؛ ننصح بيها)، `spamhaus_drop` (شبكات يديرها مجرمين)، `tor_exits` (مخارج Tor: تحجب كل مستخدمي Tor)، أو أي رابط `https://` بيه IP أو CIDR بكل سطر. النطاقات الخاصة والمحجوزة ما تنحجب أبداً. التطابق ينرفض كـ `geo-filter` |
 
 ## المراقبة والتنبيهات
 

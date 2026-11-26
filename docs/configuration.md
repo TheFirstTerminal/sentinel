@@ -41,6 +41,7 @@ In the file, nested keys map to one variable: `waf: {threshold: 7}` is
 | `dashboard_listen` | `DASHBOARD_ADDR` | none (on the main port) | Give the dashboard its own port, e.g. `:9000`: then it opens at `http://<host>:9000` and is not reachable on the public port at all. Recommended: keep that port private (firewall or VPN). IP bans don't apply on it, so an admin who shares an address with an attacker (an office or mobile network) can still get in to lift the ban; logins there stay rate limited |
 | `security_headers` | `SECURITY_HEADERS` | on | Adds nosniff, Referrer-Policy, X-Frame-Options and (over HTTPS) HSTS when the app doesn't |
 | `timezone` | `TZ` | `UTC` | Time zone for log times shown to people |
+| `update_check` | `UPDATE_CHECK` | on | Ask GitHub once a day whether a newer Sentinel is out, and say so on the dashboard. Only the request itself is sent (no ID, settings or traffic). `off` turns it off |
 
 ### Dashboard accounts
 
@@ -216,12 +217,13 @@ paths, so use it for pages like `/login`, not your whole site.
 | `rate_limits` | `RATE_LIMITS` | `{/__sentinel/auth/: 10/1m, /: 600/1m}` | Requests per window by path prefix; logged-in users are counted by name. `off` turns it off. A client that sends 3× its limit within one window is flooding and its IP is banned (`honeypot.ban_minutes`) |
 | `login_fail_limit` | `LOGIN_FAIL_LIMIT` | `10` | Failed logins per account (from any IP) before a 15-minute pause; `0` = off |
 | `redis_url` | `REDIS_URL` | none (memory) | Share counters and bans between Sentinel instances |
-| `trusted_proxies` | `TRUSTED_PROXIES` | none | Your load balancer's CIDRs; only their `X-Forwarded-For` is believed |
+| `trusted_proxies` | `TRUSTED_PROXIES` | none | Your load balancer's CIDRs; only their `X-Forwarded-For` is believed. The word `cloudflare` stands for all of Cloudflare's ranges |
 | `trust_proxy_headers` | `TRUST_PROXY_HEADERS` | `false` | Believe `X-Forwarded-For` from anyone (only when nothing can reach Sentinel except your proxy) |
 | `geo.file` | `GEOIP_FILE` | none | `cidr,country` CSV (convert any IP-to-country database) |
 | `geo.deny_countries` | `GEO_DENY_COUNTRIES` | none | e.g. `[KP]` |
 | `geo.allow_countries` | `GEO_ALLOW_COUNTRIES` | none | If set, only these countries (and private addresses) |
 | `ip.deny` / `ip.allow` | `IP_DENY` / `IP_ALLOW` | none | CIDRs always refused / the only ones allowed |
+| `ip.feeds` | `IP_FEEDS` | none | Public lists of known-bad IPs, downloaded from their publishers once a day and kept in the data folder: `firehol_level1` (hijacked and criminal networks; recommended), `spamhaus_drop` (networks run by criminals), `tor_exits` (Tor exit relays: blocks every Tor user), or any `https://` URL with one IP or CIDR per line. Private and reserved ranges are never blocked. A match is refused as `geo-filter` |
 
 ## Monitoring and alerts
 

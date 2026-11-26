@@ -155,7 +155,7 @@ footer .tft-by { color: var(--muted); }
 <body>
 <header class="tft-mid">
   <a class="tft-lockup" href="/__sentinel/dashboard"><img src="/__sentinel/brand/logo.svg" alt=""><span><b data-i18n="product">Sentinel</b><small data-i18n="org">The First Terminal</small></span></a>
-  <span class="pill" id="version">dashboard</span>
+  <span class="pill" id="version">dashboard</span><a class="pill warn hidden" id="update" target="_blank" rel="noopener"></a>
   <a class="pill hidden" id="edition" target="_blank" rel="noopener"></a>
   <span class="sp"></span>
   <label class="hidden" id="site-pick"><span style="font-size:12px;margin-inline-end:6px" data-i18n="site">Site</span><select id="site-sel" aria-label="Show one site"><option value="*">All sites</option></select></label>
@@ -413,7 +413,7 @@ const I18N = {
     "se.title": (n) => "Edit " + n, "se.routes": "routes from the config file", "se.none": "none", "se.badlimit": "Write each limit as: /path 10/1m",
     "al.on": (u) => "on, sending to " + u, "al.isoff": "off", "al.keep": " (leave empty to keep)",
     "h.searching": "searching…", "h.nothing": "Nothing in this range.", "h.more": "+ (newest 500; narrow the range)", "h.found": " found",
-    "ed.soon": " · license ends soon", "ed.expired": " · license expired", "ed.free": "Free · what Pro adds →",
+    "ed.soon": " · license ends soon", "ed.expired": " · license expired", "ed.free": "Free · what Pro adds →", "upd": "{v} is out: update",
     "ed.freett": "Single sign-on, access rules, risk-based 2FA, mTLS, a tamper-evident audit log",
     "i.mode": "Mode", "i.monitor": "MONITOR: logging only, nothing is blocked", "i.protect": "protect", "i.rules": (n) => n + " rules",
     "i.limits": "Rate limits", "i.persite": "per site, shown on each site above", "i.store": "Shared store", "i.geo": "Geo",
@@ -487,7 +487,7 @@ const I18N = {
     "se.title": (n) => "تعديل " + n, "se.routes": "المسارات من ملف الإعدادات", "se.none": "ماكو", "se.badlimit": "اكتب كل حد هيچ: /path 10/1m",
     "al.on": (u) => "مفعّلة، ترسل إلى " + u, "al.isoff": "مطفية", "al.keep": " (خليه فارغ حتى يبقى)",
     "h.searching": "ديدوّر…", "h.nothing": "ماكو شي بهاي الفترة.", "h.more": "+ (أحدث 500، ضيّق الفترة)", "h.found": " لگينا",
-    "ed.soon": " · الترخيص قرّب يخلص", "ed.expired": " · الترخيص خلص", "ed.free": "مجاني · شنو يضيف Pro ←",
+    "ed.soon": " · الترخيص قرّب يخلص", "ed.expired": " · الترخيص خلص", "ed.free": "مجاني · شنو يضيف Pro ←", "upd": "نزلت {v}: حدّث",
     "ed.freett": "دخول موحّد، قواعد وصول، تحقق إضافي حسب الخطورة، mTLS، وسجل تدقيق ما يتلاعب بيه",
     "i.mode": "الوضع", "i.monitor": "مراقبة: تسجيل بس، ما ينحجب شي", "i.protect": "حماية", "i.rules": (n) => n + " قاعدة",
     "i.limits": "حدود الطلبات", "i.persite": "لكل موقع، معروضة على كل موقع فوگ", "i.store": "المخزن المشترك", "i.geo": "الموقع الجغرافي",
@@ -1090,6 +1090,12 @@ async function loadInfo() {
   try {
     const i = await api("info");
     $("version").textContent = "v" + i.version;
+    const up = $("update");
+    if (i.new_version) {
+      up.textContent = t("upd").replace("{v}", i.new_version);
+      up.href = "https://sentinel.tft.markets/download.html" + (i.edition === "pro" ? "#pro" : "");
+      up.classList.remove("hidden");
+    } else up.classList.add("hidden");
     const ed = $("edition");
     if (i.edition === "pro") {
       ed.textContent = "Pro" + (i.license_state === "expiring" ? t("ed.soon") : i.license_state === "expired" ? t("ed.expired") : "");

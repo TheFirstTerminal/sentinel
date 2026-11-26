@@ -30,7 +30,7 @@ permalink: /privacy.html
 <p>Short version: Sentinel runs on your own server and never sends us anything. This site has no cookies, no analytics and no ads. We only keep what we need to sell you Pro. Last updated 26 November 2026.</p>
 
 <h2>Sentinel itself</h2>
-<p>Sentinel Free and Pro run on your server. Your traffic, logs, dashboard accounts and settings stay there. Sentinel has no telemetry and doesn't contact us. A Pro license key is checked offline, on your server. Sentinel only connects to other places if you set it up to, such as your alert webhook, Telegram, syslog or OpenTelemetry collector, or Let's Encrypt for automatic HTTPS.</p>
+<p>Sentinel Free and Pro run on your server. Your traffic, logs, dashboard accounts and settings stay there. Sentinel has no telemetry and doesn't contact us. Once a day it asks GitHub whether a newer version is out (only the request itself; turn it off with <code>UPDATE_CHECK=off</code>). A Pro license key is checked offline, on your server. Sentinel only connects to other places if you set it up to, such as your alert webhook, Telegram, syslog or OpenTelemetry collector, Let's Encrypt for automatic HTTPS, or the publishers of the IP blocklists you turn on.</p>
 
 <h2>This website</h2>
 <p>The site is hosted by GitHub Pages. It sets no cookies and runs no analytics. Like any web host, GitHub sees your IP address when you visit; see <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub's privacy statement</a>. The download page asks GitHub's public API for the latest Free release.</p>
@@ -48,7 +48,7 @@ permalink: /privacy.html
 <footer class="tft-mid">
   <div class="wrap">
     <a class="tft-by" href="https://tft.markets/"><img src="https://tft.markets/brand/logo.svg" alt=""> A product of The First Terminal</a>
-    <span>© 2026 The First Terminal. <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="mailto:support@tft.markets">support@tft.markets</a></span>
+    <span>© 2026 The First Terminal. <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="security.html">Security</a> · <a href="mailto:support@tft.markets">support@tft.markets</a></span>
   </div>
 </footer>
 </body>

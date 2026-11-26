@@ -55,6 +55,8 @@ type Info struct {
 	Started    string      `json:"started"`
 	// Edition is "free" or "pro". License is who Pro is licensed to, with
 	// LicenseState "ok", "expiring" (30 days or less) or "expired".
+	// NewVersion is a newer release, when the update check found one.
+	NewVersion   string `json:"new_version,omitempty"`
 	Edition      string `json:"edition"`
 	License      string `json:"license,omitempty"`
 	LicenseState string `json:"license_state,omitempty"`
@@ -124,6 +126,7 @@ type ServerStatus struct {
 }
 
 type Dashboard struct {
+	NewVersion func() string                           // a newer release, or "" (nil = no check)
 	Sites      func() []SiteStatus                     // nil = not available
 	SetMode    func(site, mode string) error           // switch a site between monitor and protect
 	SetSite    func(site string, s SiteSettings) error // change a site's modes and rate limits
@@ -303,7 +306,11 @@ func (d *Dashboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			jsonError(w, http.StatusNotFound, "unknown dashboard API path", info.ID)
 		}
 	case path == "info" && r.Method == "GET":
-		reply(w, d.Info)
+		in := d.Info
+		if d.NewVersion != nil {
+			in.NewVersion = d.NewVersion()
+		}
+		reply(w, in)
 	case strings.HasPrefix(path, "sites/") && strings.HasSuffix(path, "/mode") && r.Method == "POST" && d.SetMode != nil:
 		name := strings.TrimSuffix(strings.TrimPrefix(path, "sites/"), "/mode")
 		if name == "_" {

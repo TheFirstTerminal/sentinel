@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.19.0 · 2026-11-26
+- **Public IP blocklists**: new `ip.feeds` (`IP_FEEDS`). Name `firehol_level1` (hijacked and criminal networks), `spamhaus_drop` or `tor_exits`, or give any `https://` list; Sentinel downloads them from their publishers once a day, keeps a copy in the data folder for restarts without internet, and refuses matching addresses. Private and reserved ranges are never blocked, and a failed download keeps the last good copy. Lookups are a binary search, so thousands of ranges cost nothing per request.
+- **Behind Cloudflare in one word**: `trusted_proxies: [cloudflare]` stands for all of Cloudflare's address ranges.
+- **New-version notice**: the dashboard header says when a newer Sentinel is out and links to the download page. It asks GitHub once a day and sends nothing but the request; `UPDATE_CHECK=off` turns it off.
+- **Security page** on the site, in English and Arabic: how Sentinel is built, released and tested, how data is handled, how to report a vulnerability, and what isn't there yet.
+
 ## 0.18.1 · 2026-11-26
 - **Large bodies can't slow everyone down**: bodies of 64 KB or more now take turns in the Core Rule Set (at most half the CPUs inspect them at once), so a few large JSON uploads, each costing seconds of rule checks, no longer delay ordinary requests. A large body still waiting when `waf.max_inspect_ms` runs out is refused with BODY-004, as one that takes too long already was.
 - **Documentation in Arabic**: the guide, common setups, every setting and the Free/Pro comparison have Arabic pages (`/ar/guide.html` and on), linked from each English page and from the Arabic site. The documentation pages now use The First Terminal's colours and fonts.

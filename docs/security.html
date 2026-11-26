@@ -1,0 +1,74 @@
+---
+layout: null
+permalink: /security.html
+---
+<!doctype html>
+<html class="tft-base" lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security</title>
+<meta name="description" content="How Sentinel is built and released, how your data is handled, and how to report a vulnerability.">
+<link rel="alternate" hreflang="en" href="https://sentinel.tft.markets/security.html">
+<link rel="alternate" hreflang="ar" href="https://sentinel.tft.markets/ar/security.html">
+<link rel="icon" href="https://tft.markets/brand/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://tft.markets/brand/tft.css">
+<link rel="stylesheet" href="{{ '/assets/site.css' | relative_url }}">
+</head>
+<body>
+<header class="tft-mid hero" style="padding-bottom:48px">
+  <div class="wrap">
+    <div class="top">
+      <a class="tft-lockup" href="./"><img src="https://tft.markets/brand/logo.svg" alt=""><span><b>Sentinel</b><small>The First Terminal</small></span></a>
+      <nav><a href="download.html">Download</a><a href="guide.html">Docs</a><a href="benchmarks.html">Benchmarks</a><a href="pro.html">Pricing</a><a href="https://github.com/TheFirstTerminal/sentinel">GitHub</a><a class="lang" href="ar/security.html" hreflang="ar" lang="ar">عربي</a></nav>
+    </div>
+    <h1>Security</h1>
+  </div>
+</header>
+
+<main class="wrap"><section class="prose legal">
+<p>What a security team usually asks before choosing a gateway, answered in one place. If your company has its own questionnaire, send it to <a href="mailto:support@tft.markets">support@tft.markets</a> and we'll fill it in.</p>
+
+<h2>Your data</h2>
+<p>Sentinel runs on your servers. Requests, logs, accounts and settings never leave them: there is no telemetry, and the Pro license is checked offline. The only outside requests are the ones you turn on (alerts, log export, automatic HTTPS, IP blocklists) and a once-a-day check on GitHub for a newer version, which <code>UPDATE_CHECK=off</code> turns off. More on the <a href="privacy.html">privacy page</a>.</p>
+
+<h2>How Sentinel is built</h2>
+<ul>
+<li><strong>Public source.</strong> Sentinel Free's code is public on <a href="https://github.com/TheFirstTerminal/sentinel">GitHub</a>, so you can read what runs. Pro adds access control on top of the same code.</li>
+<li><strong>Tested on every change.</strong> Every push runs thousands of tests, the OWASP Core Rule Set's own regression suite (3,765 of 3,794 pass), fuzz tests and a test against a running container.</li>
+<li><strong>Measured honestly.</strong> Detection is measured on public data, including a <a href="benchmarks.html">sealed test</a> that Sentinel is never tuned on. The weak spots are published too.</li>
+<li><strong>Mapped to a standard.</strong> Each requirement of OWASP ASVS 4.0.3 that a gateway can cover is <a href="asvs.html">mapped to what Sentinel does</a>, including the gaps.</li>
+<li><strong>Few dependencies.</strong> The gateway is one Go program with a short, vendored dependency list.</li>
+</ul>
+
+<h2>How releases are protected</h2>
+<ul>
+<li>Every release is built by GitHub Actions from a tagged commit, not on a personal computer.</li>
+<li>The checksums file is signed (Sigstore), and each release has a software bill of materials (SBOM) and a vulnerability scan. <a href="supply-chain.html">How to check a download yourself</a>.</li>
+<li>Pro downloads are only handed out for a valid license key, through links that expire after 10 minutes.</li>
+</ul>
+
+<h2>Defaults that fail safe</h2>
+<ul>
+<li>New installs start in monitor mode, so nothing legitimate is blocked before you've seen the log.</li>
+<li>The dashboard needs two-factor authentication for every account, and roles limit who can change what.</li>
+<li>An unknown or mistyped setting stops the start instead of turning a protection off silently.</li>
+<li>A request that can't be inspected in time, or a body too large to inspect whole, is refused rather than let through.</li>
+</ul>
+
+<h2>Reporting a vulnerability</h2>
+<p>Report it privately through <a href="https://github.com/TheFirstTerminal/sentinel/security">GitHub's Security tab</a> (Report a vulnerability) or to <a href="mailto:support@tft.markets">support@tft.markets</a>. A bypass counts: an attack that <code>protect</code> mode lets through. You get an answer within 3 days, fixes ship in a new release, and you're credited by name in the changelog unless you'd rather not be. There are no cash rewards yet. Full rules: <a href="https://github.com/TheFirstTerminal/sentinel/blob/main/SECURITY.md">SECURITY.md</a>.</p>
+
+<h2>What we don't have yet</h2>
+<p>We'd rather say it than have you find out. Sentinel has not had an independent penetration test yet; one is planned. The First Terminal has no SOC 2 or ISO 27001 certification. Support is by email, on working days, not around the clock.</p>
+
+</section></main>
+
+<footer class="tft-mid">
+  <div class="wrap">
+    <a class="tft-by" href="https://tft.markets/"><img src="https://tft.markets/brand/logo.svg" alt=""> A product of The First Terminal</a>
+    <span>© 2026 Saif Zahid. <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="security.html">Security</a> · <a href="mailto:support@tft.markets">support@tft.markets</a></span>
+  </div>
+</footer>
+</body>
+</html>

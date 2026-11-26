@@ -59,33 +59,13 @@ trusted_proxies: [127.0.0.1/32]   # believe X-Forwarded-For from Nginx only
 
 ## ورا Cloudflare
 
-Cloudflare يرسل عنوان الزائر بـ `X-Forwarded-For`. صدّقه بس من عناوين Cloudflare نفسها ([القائمة الحالية](https://www.cloudflare.com/ips/)):
+Cloudflare يرسل عنوان الزائر بـ `X-Forwarded-For`. صدّقه بس من عناوين Cloudflare نفسها ([القائمة الحالية](https://www.cloudflare.com/ips/))؛ وكلمة `cloudflare` تعنيها:
 
 ```yaml
-trusted_proxies:
-  - 173.245.48.0/20
-  - 103.21.244.0/22
-  - 103.22.200.0/22
-  - 103.31.4.0/22
-  - 141.101.64.0/18
-  - 108.162.192.0/18
-  - 190.93.240.0/20
-  - 188.114.96.0/20
-  - 197.234.240.0/22
-  - 198.41.128.0/17
-  - 162.158.0.0/15
-  - 104.16.0.0/13
-  - 104.24.0.0/14
-  - 172.64.0.0/13
-  - 131.0.72.0/22
-  - 2400:cb00::/32
-  - 2606:4700::/32
-  - 2803:f800::/32
-  - 2405:b500::/32
-  - 2405:8100::/32
-  - 2a06:98c0::/29
-  - 2c0f:f248::/32
+trusted_proxies: [cloudflare]   # all of Cloudflare's ranges, built in
 ```
+
+خطة Cloudflare المجانية گدام Sentinel تضيف اللي سيرفر واحد ما يگدر يسويه وحده: تمتص الإغراق (DDoS)، وCDN يوصل موقعك من مكان قريب على كل زائر. وSentinel وراها يسوي الشغل الدقيق: حجب مشروح، تسجيل دخول، وحدود لكل مستخدم.
 
 - **HTTPS:** خلّي وضع SSL بـ Cloudflare على *Full (strict)* وانطي Sentinel [شهادة origin من Cloudflare](https://developers.cloudflare.com/ssl/origin-configuration/origin-ca/) (`tls.cert_file`، `tls.key_file`، `tls.listen: ":443"`). الـ HTTPS التلقائي مال Sentinel هم يشتغل ورا Cloudflare، بس شهادة الـ origin أبسط.
 - **Cloudflare Tunnel** (`cloudflared`): وجّه النفق على `http://localhost:8080` واضبط `trusted_proxies: [127.0.0.1/32]`.

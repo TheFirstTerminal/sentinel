@@ -1,0 +1,74 @@
+---
+layout: null
+permalink: /ar/security.html
+---
+<!doctype html>
+<html class="tft-base" lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>الأمان</title>
+<meta name="description" content="شلون ينبني Sentinel وينشر، شلون نتعامل ويا معلوماتك، وشلون تبلغ عن ثغرة.">
+<link rel="alternate" hreflang="en" href="https://sentinel.tft.markets/security.html">
+<link rel="alternate" hreflang="ar" href="https://sentinel.tft.markets/ar/security.html">
+<link rel="icon" href="https://tft.markets/brand/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://tft.markets/brand/tft.css">
+<link rel="stylesheet" href="{{ '/assets/site.css' | relative_url }}">
+</head>
+<body>
+<header class="tft-mid hero" style="padding-bottom:48px">
+  <div class="wrap">
+    <div class="top">
+      <a class="tft-lockup" href="./"><img src="https://tft.markets/brand/logo.svg" alt=""><span><b>Sentinel</b><small>The First Terminal</small></span></a>
+      <nav><a href="download.html">التنزيل</a><a href="guide.html">الدليل</a><a href="../benchmarks.html">الاختبارات</a><a href="pro.html">الأسعار</a><a href="https://github.com/TheFirstTerminal/sentinel">GitHub</a><a class="lang" href="../security.html" hreflang="en" lang="en">English</a></nav>
+    </div>
+    <h1>الأمان</h1>
+  </div>
+</header>
+
+<main class="wrap"><section class="prose legal">
+<p>الأسئلة اللي عادةً يسألها فريق الأمن قبل ما يختار بوابة، مجاوبة بمكان واحد. إذا شركتك عندها استبيان خاص بيها، دزه على <a href="mailto:support@tft.markets">support@tft.markets</a> ونعبيه.</p>
+
+<h2>معلوماتك</h2>
+<p>Sentinel يشتغل على سيرفراتك. الطلبات، والسجلات، والحسابات، والإعدادات ما تطلع منها أبداً: ماكو قياس استخدام، وترخيص Pro يتفحص بدون إنترنت. الطلبات الوحيدة للخارج هي اللي انت تشغلها (التنبيهات، تصدير السجلات، HTTPS التلقائي، قوائم الـ IP)، وفحص مرة باليوم على GitHub إذا نزلت نسخة أحدث، وتطفيه بـ <code>UPDATE_CHECK=off</code>. أكثر بـ<a href="privacy.html">صفحة الخصوصية</a>.</p>
+
+<h2>شلون ينبني Sentinel</h2>
+<ul>
+<li><strong>الكود مفتوح.</strong> كود Sentinel المجاني منشور على <a href="https://github.com/TheFirstTerminal/sentinel">GitHub</a>، فتگدر تقرا شنو يشتغل. Pro يضيف التحكم بالوصول فوگ نفس الكود.</li>
+<li><strong>ينفحص ويا كل تغيير.</strong> كل تحديث يشغّل آلاف الاختبارات، ومجموعة اختبارات OWASP Core Rule Set نفسها (3,765 من 3,794 تنجح)، واختبارات fuzz، واختبار على حاوية شغالة.</li>
+<li><strong>قياس صادق.</strong> الكشف ينقاس على بيانات عامة، ومنها <a href="../benchmarks.html">اختبار مختوم</a> ما نضبط Sentinel عليه أبداً. ونقاط الضعف هم منشورة.</li>
+<li><strong>مربوط بمعيار.</strong> كل متطلب من OWASP ASVS 4.0.3 تگدر بوابة تغطيه <a href="../asvs.html">مربوط بشنو يسوي Sentinel</a>، ويا النواقص.</li>
+<li><strong>اعتماديات قليلة.</strong> البوابة برنامج Go واحد، بقائمة اعتماديات قصيرة ومحفوظة ويا الكود.</li>
+</ul>
+
+<h2>شلون تنحمى النسخ المنشورة</h2>
+<ul>
+<li>كل نسخة تنبني على GitHub Actions من commit موسوم، مو على حاسبة شخصية.</li>
+<li>ملف الـ checksums موقّع (Sigstore)، وكل نسخة وياها قائمة مكونات (SBOM) وفحص ثغرات. <a href="../supply-chain.html">شلون تتحقق من التنزيل بنفسك</a>.</li>
+<li>تنزيلات Pro تنطى بس بمفتاح ترخيص صحيح، بروابط تنتهي بعد 10 دقايق.</li>
+</ul>
+
+<h2>إعدادات افتراضية آمنة</h2>
+<ul>
+<li>التنصيب الجديد يبدأ بوضع المراقبة، فما ينحجب شي سليم قبل ما تشوف السجل.</li>
+<li>لوحة التحكم تطلب تحقق بخطوتين لكل حساب، والأدوار تحدد منو يگدر يغير شنو.</li>
+<li>إعداد غير معروف أو مكتوب غلط يوقف التشغيل بدل ما يطفي حماية بالسكوت.</li>
+<li>الطلب اللي ما يلحق ينفحص بوقته، أو الـ body الأكبر من إنه ينفحص كامل، ينرفض بدل ما يعبر.</li>
+</ul>
+
+<h2>التبليغ عن ثغرة</h2>
+<p>بلّغ بشكل خاص من <a href="https://github.com/TheFirstTerminal/sentinel/security">تبويب Security على GitHub</a> (Report a vulnerability) أو على <a href="mailto:support@tft.markets">support@tft.markets</a>. التجاوز ينحسب: هجوم يعبر بوضع <code>protect</code>. يوصلك رد خلال 3 أيام، والتصليح ينزل بنسخة جديدة، واسمك ينذكر بسجل التغييرات إلا إذا ما تريد. ماكو مكافآت فلوس بعد. القواعد كاملة: <a href="https://github.com/TheFirstTerminal/sentinel/blob/main/SECURITY.md">SECURITY.md</a>.</p>
+
+<h2>شنو ما عدنا بعد</h2>
+<p>نفضّل نگولها قبل ما تكتشفها. Sentinel بعد ما انفحص اختبار اختراق مستقل؛ مخطط إله. البوابة الأولى ما عدها شهادة SOC 2 أو ISO 27001. الدعم بالإيميل، بأيام العمل، مو على مدار الساعة.</p>
+
+</section></main>
+
+<footer class="tft-mid">
+  <div class="wrap">
+    <a class="tft-by" href="https://tft.markets/"><img src="https://tft.markets/brand/logo.svg" alt=""> منتج من البوابة الأولى</a>
+    <span>© 2026 Saif Zahid. <a href="privacy.html">الخصوصية</a> · <a href="terms.html">الشروط</a> · <a href="security.html">الأمان</a> · <a href="mailto:support@tft.markets">support@tft.markets</a></span>
+  </div>
+</footer>
+</body>
+</html>
