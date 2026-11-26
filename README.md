@@ -263,8 +263,8 @@ gateways, in production, at no cost.
 **Sentinel Pro** adds access control for your apps: single sign-on (Google,
 Microsoft, Okta, Keycloak or any OpenID Connect provider), logins with 2FA,
 access rules by role and department, risk-based step-up, mTLS for services
-and a tamper-evident audit log, with email support. **$29 per server a
-month** ($19 for the first 50 customers), no per-user charge.
+and a tamper-evident audit log, with email support. **$9 per server a
+month** ($5 for the first 50 customers), no per-user charge.
 [Free vs Pro](https://sentinel.tft.markets/pro.html).
 
 ## License

@@ -31,8 +31,8 @@ part of your apps, not only which requests are attacks.
 
 | | Monthly | Yearly |
 |---|---|---|
-| **Sentinel Pro** | **$29** per server | **$290** per server (two months free) |
-| **Early customers** (the first 50) | **$19** per server | **$190** per server |
+| **Sentinel Pro** | **$9** per server | **$90** per server (two months free) |
+| **Early customers** (the first 50) | **$5** per server | **$50** per server |
 
 No per-user charge: one server covers every person who signs in through it.
 The early price stays for as long as you renew.
