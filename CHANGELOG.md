@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.19.1 · 2026-11-27
+- **IP lists are harder to misuse**: a downloaded list that covers more than 3% of IPv4 addresses (FireHOL level 1 covers about 0.4%) is refused and the last good copy kept, so a broken or tampered list can't block normal visitors; downloads follow https redirects only; and addresses on your own `ip.allow` list are never blocked by a public list.
+- **Dashboard**: in Arabic, the new-version notice kept the version number in the wrong place around the colon; fixed.
+- **Docs**: links from the documentation site to files in the repository (CHANGELOG, SECURITY.md, the Grafana dashboard, the release workflow) were broken on the site; they point to GitHub now.
+- Checked for this release: no known vulnerabilities in dependencies (govulncheck), every link on the site works, the sealed benchmark is unchanged (87.2%).
+
 ## 0.19.0 · 2026-11-26
 - **Public IP blocklists**: new `ip.feeds` (`IP_FEEDS`). Name `firehol_level1` (hijacked and criminal networks), `spamhaus_drop` or `tor_exits`, or give any `https://` list; Sentinel downloads them from their publishers once a day, keeps a copy in the data folder for restarts without internet, and refuses matching addresses. Private and reserved ranges are never blocked, and a failed download keeps the last good copy. Lookups are a binary search, so thousands of ranges cost nothing per request.
 - **Behind Cloudflare in one word**: `trusted_proxies: [cloudflare]` stands for all of Cloudflare's address ranges.

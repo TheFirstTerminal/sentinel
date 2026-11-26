@@ -1092,7 +1092,7 @@ async function loadInfo() {
     $("version").textContent = "v" + i.version;
     const up = $("update");
     if (i.new_version) {
-      up.textContent = t("upd").replace("{v}", i.new_version);
+      up.textContent = t("upd").replace("{v}", "⁨" + i.new_version + "⁩"); // keeps the number in place in Arabic
       up.href = "https://sentinel.tft.markets/download.html" + (i.edition === "pro" ? "#pro" : "");
       up.classList.remove("hidden");
     } else up.classList.add("hidden");
