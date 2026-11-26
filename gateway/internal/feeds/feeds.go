@@ -168,6 +168,10 @@ func (f *Feeds) refresh(ctx context.Context) {
 			f.warn("IP list downloaded empty; keeping the last copy", n, "")
 			continue
 		}
+		if c := coverage(ps); c > MaxShare {
+			f.warn("IP list covers too much of the internet; keeping the last copy", n, fmt.Sprintf("%.1f%% of IPv4 addresses", 100*c))
+			continue
+		}
 		f.lists[n] = ps
 		changed = true
 		if p := f.file(n); p != "" && os.MkdirAll(f.dir, 0o755) == nil {
@@ -193,7 +197,14 @@ func fetch(ctx context.Context, url string) (string, error) {
 		return "", err
 	}
 	req.Header.Set("User-Agent", "Sentinel IP list update")
-	resp, err := http.DefaultClient.Do(req)
+	client := *http.DefaultClient
+	client.CheckRedirect = func(r *http.Request, via []*http.Request) error {
+		if r.URL.Scheme != "https" || len(via) >= 5 {
+			return fmt.Errorf("redirect to %s refused (https only, at most 5)", r.URL.Redacted())
+		}
+		return nil
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -255,6 +266,23 @@ func parse(r io.Reader) []netip.Prefix {
 		}
 	}
 	return out
+}
+
+// MaxShare is the most of the IPv4 space one list may cover. FireHOL level 1
+// covers about 0.4%; a list that suddenly covers far more was broken or
+// tampered with, and would block normal visitors.
+const MaxShare = 0.03
+
+// coverage is the share of IPv4 addresses a list covers (overlaps counted
+// twice, which only makes the check stricter).
+func coverage(ps []netip.Prefix) float64 {
+	var n float64
+	for _, p := range ps {
+		if p.Addr().Is4() {
+			n += float64(uint64(1) << (32 - p.Bits()))
+		}
+	}
+	return n / (1 << 32)
 }
 
 func v4num(a netip.Addr) uint32 {

@@ -1,7 +1,7 @@
 # How Sentinel works
 
 This is the deep dive. For installing and configuring Sentinel, start with
-the [README](../README.md).
+the [README](https://github.com/TheFirstTerminal/sentinel/blob/main/README.md).
 
 ## How a request flows
 

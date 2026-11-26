@@ -116,19 +116,21 @@ func (f *Filter) Check(ip, country string) string {
 			return "IP " + ip + " is on the deny list (" + p.String() + ")"
 		}
 	}
-	if list := f.Feeds.Match(a); list != "" {
-		return "IP " + ip + " is on the public list " + list
-	}
-	if len(f.AllowIPs) > 0 {
-		ok := false
-		for _, p := range f.AllowIPs {
-			if p.Contains(a) {
-				ok = true
-				break
-			}
+	allowed := false
+	for _, p := range f.AllowIPs {
+		if p.Contains(a) {
+			allowed = true
+			break
 		}
-		if !ok {
-			return "IP " + ip + " is not on the allow list"
+	}
+	if len(f.AllowIPs) > 0 && !allowed {
+		return "IP " + ip + " is not on the allow list"
+	}
+	// Your own allow list wins over a public list, so a mistake in one
+	// can't lock you out.
+	if !allowed {
+		if list := f.Feeds.Match(a); list != "" {
+			return "IP " + ip + " is on the public list " + list
 		}
 	}
 	if country == LAN {

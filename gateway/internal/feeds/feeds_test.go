@@ -42,6 +42,19 @@ func TestMatch(t *testing.T) {
 	}
 }
 
+func TestCoverageCap(t *testing.T) {
+	var big strings.Builder
+	for i := 11; i < 30; i++ { // nineteen /8s: 7.4% of IPv4
+		big.WriteString(netip.AddrFrom4([4]byte{byte(i), 0, 0, 0}).String() + "/8\n")
+	}
+	if c := coverage(parse(strings.NewReader(big.String()))); c <= MaxShare {
+		t.Fatalf("coverage %v", c)
+	}
+	if c := coverage(parse(strings.NewReader("1.2.3.0/24\n"))); c > MaxShare {
+		t.Fatalf("coverage %v", c)
+	}
+}
+
 func TestDownloadAndKeepCopy(t *testing.T) {
 	body := "203.0.113.0/24\n"
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(body)) }))

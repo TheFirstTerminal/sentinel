@@ -116,7 +116,7 @@ config file are removed in the file.
 
 A profile fills in settings that suit a kind of app. Anything you set
 yourself still wins, and you can see exactly what a profile does in
-[`gateway/internal/config/profiles.go`](../gateway/internal/config/profiles.go).
+[`gateway/internal/config/profiles.go`](https://github.com/TheFirstTerminal/sentinel/blob/main/gateway/internal/config/profiles.go).
 
 | Profile | What it does |
 |---|---|
@@ -257,7 +257,7 @@ Metrics: `sentinel_requests_total{outcome}`, `sentinel_rule_stops_total{rule}`,
 `sentinel_request_duration_seconds` (histogram), `sentinel_bans_active`,
 `sentinel_rules_loaded`, `sentinel_exclusions`, `sentinel_info{version,mode}`,
 plus uptime, memory and goroutines. A ready Grafana dashboard is in
-[`deploy/grafana/sentinel.json`](../deploy/grafana/sentinel.json).
+[`deploy/grafana/sentinel.json`](https://github.com/TheFirstTerminal/sentinel/blob/main/deploy/grafana/sentinel.json).
 
 ## The dashboard's login, API schema and HTTPS
 

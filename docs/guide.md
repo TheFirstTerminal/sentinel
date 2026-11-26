@@ -28,7 +28,7 @@ with every release.
 | [`evaluation.md`](evaluation.md) | Everyone | Attacking the lab from outside (replay, overhead, sqlmap) and what it found |
 | [`asvs.md`](asvs.md) | Everyone | Sentinel mapped to OWASP ASVS 4.0.3, including the gaps |
 | [`supply-chain.md`](supply-chain.md) | Whoever releases or installs Sentinel | SBOM, vulnerability scans, signatures, how to verify |
-| [`../SECURITY.md`](../SECURITY.md) | Everyone | How to report a security problem privately |
+| [`../SECURITY.md`](https://github.com/TheFirstTerminal/sentinel/blob/main/SECURITY.md) | Everyone | How to report a security problem privately |
 
 ## Updating
 
@@ -38,5 +38,5 @@ with every release.
 - **Homebrew:** `brew upgrade sentinel`.
 - **The demo lab in a clone of this repository:** `bash lab/update.sh`.
 
-See [`CHANGELOG.md`](../CHANGELOG.md) for what changed. Questions and bug reports: [GitHub issues](https://github.com/TheFirstTerminal/sentinel/issues).
-Security problems: see [`SECURITY.md`](../SECURITY.md), not a public issue.
+See [`CHANGELOG.md`](https://github.com/TheFirstTerminal/sentinel/blob/main/CHANGELOG.md) for what changed. Questions and bug reports: [GitHub issues](https://github.com/TheFirstTerminal/sentinel/issues).
+Security problems: see [`SECURITY.md`](https://github.com/TheFirstTerminal/sentinel/blob/main/SECURITY.md), not a public issue.

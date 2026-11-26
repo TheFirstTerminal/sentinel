@@ -1,7 +1,7 @@
 # Supply chain: SBOM, scanning and signatures
 
 Every release (a `v*` tag) is built by GitHub Actions
-([`.github/workflows/release.yml`](../.github/workflows/release.yml)), not on
+([`.github/workflows/release.yml`](https://github.com/TheFirstTerminal/sentinel/blob/main/.github/workflows/release.yml)), not on
 a laptop, so anyone can see exactly how it was made.
 
 ## What a release contains
