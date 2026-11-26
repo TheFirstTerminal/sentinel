@@ -129,7 +129,13 @@ jobs:
           for t in "ml FuzzScoreFast" "prefilter FuzzPrefilterSound" "crs FuzzTransforms" "crs FuzzParseRule" "crs FuzzEvaluate" \
                    "waf FuzzNormalize" "waf FuzzInspect" "promptguard FuzzInspect" "config FuzzParseFile" "exclude FuzzLoad"; do
             set -- $t
-            go test -run XXX -fuzz "^$2\$" -fuzztime 30s ./internal/$1/
+            # Go's fuzzer sometimes stops with "context deadline exceeded" at
+            # the time limit without finding anything; only a saved failing
+            # input under testdata/fuzz is a real failure, so try once more.
+            if ! go test -run XXX -fuzz "^$2\$" -fuzztime 30s ./internal/$1/; then
+              if git status --porcelain -- "internal/$1/testdata/fuzz" | grep -q .; then exit 1; fi
+              go test -run XXX -fuzz "^$2\$" -fuzztime 30s ./internal/$1/
+            fi
           done
 
   helm:
