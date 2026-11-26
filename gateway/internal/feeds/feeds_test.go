@@ -94,3 +94,24 @@ func TestDownloadAndKeepCopy(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestSavedCopyChecked(t *testing.T) {
+	dir := t.TempDir()
+	f, _ := New("https://x.example/a.txt", dir, nil)
+	os.MkdirAll(filepath.Join(dir, "feeds"), 0o755)
+	var big strings.Builder
+	for i := 11; i < 30; i++ {
+		big.WriteString(netip.AddrFrom4([4]byte{byte(i), 0, 0, 0}).String() + "/8\n")
+	}
+	os.WriteFile(f.file(f.names[0]), []byte(big.String()), 0o644)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	f.Start(ctx)
+	if f.Match(netip.MustParseAddr("12.1.1.1")) != "" {
+		t.Fatal("oversized saved list was used")
+	}
+	g, _ := New("https://a.example/x.txt, https://a.example/x_txt", dir, nil)
+	if g.file(g.names[0]) == g.file(g.names[1]) {
+		t.Fatal("two URLs share one saved file")
+	}
+}

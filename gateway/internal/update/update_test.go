@@ -37,6 +37,13 @@ func TestCheck(t *testing.T) {
 	if c.Available() != "" {
 		t.Fatalf("current version told to update: %q", c.Available())
 	}
+	tag = `{"tag_name":"v9.0.0-<b>x</b>"}`
+	c = &Checker{current: "0.19.0"}
+	c.latest.Store("")
+	c.check(context.Background())
+	if c.Available() != "9.0.0" {
+		t.Fatalf("tag not reduced to its number: %q", c.Available())
+	}
 	var nilC *Checker
 	if nilC.Available() != "" {
 		t.Fatal("nil checker")

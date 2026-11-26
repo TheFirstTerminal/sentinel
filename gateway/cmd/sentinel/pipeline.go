@@ -719,8 +719,10 @@ var brandFiles = brand.Handler()
 // The IP lists are downloaded by one instance per setting, kept across
 // config reloads so a reload doesn't start another daily download.
 var (
-	feedsMu  sync.Mutex
-	feedsFor = map[string]*feeds.Feeds{}
+	feedsMu      sync.Mutex
+	feedsCur     *feeds.Feeds
+	feedsSetting string
+	feedsStop    context.CancelFunc
 )
 
 func ipFeeds(cfg *config.Config, log *slog.Logger) (*feeds.Feeds, error) {
@@ -729,15 +731,21 @@ func ipFeeds(cfg *config.Config, log *slog.Logger) (*feeds.Feeds, error) {
 	}
 	feedsMu.Lock()
 	defer feedsMu.Unlock()
-	if f := feedsFor[cfg.IPFeeds]; f != nil {
-		return f, nil
+	if feedsCur != nil && feedsSetting == cfg.IPFeeds {
+		return feedsCur, nil
 	}
 	f, err := feeds.New(cfg.IPFeeds, cfg.DataDir, log)
 	if err != nil {
 		return nil, err
 	}
-	f.Start(context.Background())
-	feedsFor[cfg.IPFeeds] = f
+	// The setting changed: stop the old lists' daily downloads. Requests
+	// still on the old pipeline keep matching against what it loaded.
+	if feedsStop != nil {
+		feedsStop()
+	}
+	ctx, stop := context.WithCancel(context.Background())
+	f.Start(ctx)
+	feedsCur, feedsSetting, feedsStop = f, cfg.IPFeeds, stop
 	return f, nil
 }
 

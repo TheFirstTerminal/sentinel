@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.19.2 · 2026-11-27
+- **IP lists**: the copy saved in the data folder now gets the same 3% check as a download, so a damaged or tampered file can't block normal visitors after a restart; two custom list URLs that cleaned up to the same file name no longer overwrite each other's saved copy; and changing `ip.feeds` and reloading stops the old lists' daily downloads instead of leaving them running.
+- **New-version notice**: only the version number from GitHub is kept and shown.
+- **CI**: a fuzz run that stops at its time limit without finding a failing input is tried once more instead of failing the build.
+- Checked for this release: no known vulnerabilities in dependencies (govulncheck), all tests pass, every link on the site works.
+
 ## 0.19.1 · 2026-11-27
 - **IP lists are harder to misuse**: a downloaded list that covers more than 3% of IPv4 addresses (FireHOL level 1 covers about 0.4%) is refused and the last good copy kept, so a broken or tampered list can't block normal visitors; downloads follow https redirects only; and addresses on your own `ip.allow` list are never blocked by a public list.
 - **Dashboard**: in Arabic, the new-version notice kept the version number in the wrong place around the colon; fixed.

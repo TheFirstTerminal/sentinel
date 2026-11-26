@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"log/slog"
 	"net/http"
@@ -123,7 +124,12 @@ func (f *Feeds) Start(ctx context.Context) {
 	for _, n := range f.names {
 		if p := f.file(n); p != "" {
 			if b, err := os.ReadFile(p); err == nil {
-				f.lists[n] = parse(strings.NewReader(string(b)))
+				ps := parse(strings.NewReader(string(b)))
+				if c := coverage(ps); c > MaxShare {
+					f.warn("saved IP list covers too much of the internet; ignoring it", n, fmt.Sprintf("%.1f%% of IPv4 addresses", 100*c))
+					continue
+				}
+				f.lists[n] = ps
 			}
 		}
 	}
@@ -145,12 +151,17 @@ func (f *Feeds) file(name string) string {
 	if f.dir == "" {
 		return ""
 	}
+	suffix := ""
+	if _, known := Known[name]; !known {
+		// Different URLs can clean up to the same name; keep them apart.
+		suffix = fmt.Sprintf("-%08x", crc32.ChecksumIEEE([]byte(name)))
+	}
 	return filepath.Join(f.dir, strings.Map(func(r rune) rune {
 		if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || r == '_' || r == '-' {
 			return r
 		}
 		return '_'
-	}, strings.ToLower(name))+".txt")
+	}, strings.ToLower(name))+suffix+".txt")
 }
 
 func (f *Feeds) refresh(ctx context.Context) {

@@ -6,6 +6,7 @@ package update
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -60,9 +61,11 @@ func (c *Checker) check(ctx context.Context) {
 	if resp.StatusCode != http.StatusOK || json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&r) != nil {
 		return
 	}
-	v := strings.TrimPrefix(r.Tag, "v")
-	if Newer(v, c.current) {
-		c.latest.Store(v)
+	// Keep only the number: the tag is shown in the dashboard.
+	if p := parts(strings.TrimPrefix(r.Tag, "v")); p != nil {
+		if v := fmt.Sprintf("%d.%d.%d", p[0], p[1], p[2]); Newer(v, c.current) {
+			c.latest.Store(v)
+		}
 	}
 }
 
